@@ -1,6 +1,5 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-# Wallpapers Path
 CACHE_DIR=$HOME/.cache/rofi_wallpaper_picker
 CACHE_DIR2=$HOME/.cache/wallpaper_changer
 WALLPAPER_DIR="$HOME/.config/wallpaper"
@@ -28,7 +27,6 @@ find -L "${WALLPAPER_DIR}" -type f \( -iname \*.jpg -o -iname \*.jpeg -o -iname 
 
     # If the thumbnail doesn't exist, create it
     if [ ! -f "${thumbnail_path}" ]; then
-        # Using magick to create a small thumbnail
         magick "${wallpaper_path}" -thumbnail '320x180>' "${thumbnail_path}"
     fi
 done
@@ -46,28 +44,13 @@ executeCommand() {
     local selected_wallpaper="$1"
     local relative_path="${selected_wallpaper#${WALLPAPER_DIR}/}"
     local selected_thumbnail_path="${CACHE_DIR}/${relative_path%.*}.png"
-
     wal -c
-
-    # Generate the new color scheme using wal with the determined flag
-    wal ${wal_flags} -i ${selected_wallpaper}
-
-    # Update other applications
-    # swww img --transition-type any --transition-angle 45 "${selected_wallpaper}"
-    # pywalfox update
-    #sh $HOME/.config/hypr/scripts/wallpaper_changer.sh ${selected_wallpaper}
+    wal -i ${selected_wallpaper}
     echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR2/wallpaper-hyprland.conf
-    # pkill -SIGUSR2 waybar
-    # swaync-client -rs
     echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > ~/.cache/wallpaper_thumbnail
     echo "inputbar { background-image: url(\"$selected_thumbnail_path\", width); }" > ~/.cache/wallpaper_thumbnail.rasi
-    # $HOME/.config/nwg-dock-hyprland/reload.sh &
-    # $HOME/.config/swayosd/launch.sh &
-
     echo "${selected_wallpaper}" > "${CURRENT_WALLPAPER_PATH_FILE}"
-
-    convert "${selected_wallpaper}" /home/stefan/.config/bg.jpg
-
+    convert "${selected_wallpaper}" ~/.config/bg.jpg
 }
 
 # Execution
