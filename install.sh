@@ -55,8 +55,8 @@ source $OMVOID_INSTALL/development/node.sh
 
 # Desktop
 show_logo 
-source $OMVOID_INSTALL/desktop/fonts.sh
-source ~/.config/hypr/scripts/init_wallpaper.sh
+source $OMVOID_INSTALL/desktop/fonts.sh 
+source $OMVOID_INSTALL/desktop/theme.sh
 sudo ln -s /etc/sv/sddm /var/service
 
 # # Desktop
