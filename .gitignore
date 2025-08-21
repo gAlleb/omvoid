@@ -1,0 +1,4 @@
+config/rclone/*
+!config/rclone/.gitkeep
+config/senpai/*
+!config/senpai/.gitkeep

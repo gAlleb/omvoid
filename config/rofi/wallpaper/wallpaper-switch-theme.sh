@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+# Paths (should match your main wallpaper script)
+CACHE_DIR="$HOME/.cache/rofi_wallpaper_picker"
+WALLPAPER_DIR="$HOME/.config/wallpaper"
+themesDir="$HOME/.config/rofi/wallpaper/themes"
+
+# State file to remember the current wallpaper
+CURRENT_WALLPAPER_PATH_FILE="${CACHE_DIR}/current_wallpaper_path"
+
+# --- Main Logic ---
+
+# 1. Check if a current wallpaper has been set before
+if [ ! -f "${CURRENT_WALLPAPER_PATH_FILE}" ]; then
+    rofi -e "No current wallpaper set. Please run the wallpaper picker first."
+    exit 1
+fi
+
+# 2. Read the path of the current wallpaper
+current_wallpaper=$(cat "${CURRENT_WALLPAPER_PATH_FILE}")
+
+# 3. Check if the saved path is empty or the file doesn't exist anymore
+if [ -z "${current_wallpaper}" ] || [ ! -f "${current_wallpaper}" ]; then
+    rofi -e "Saved wallpaper not found. Please run the wallpaper picker again."
+    exit 1
+fi
+
+# 4. Show the Rofi menu for Light/Dark mode selection
+mode_choice=$(echo -e "Dark Mode\0icon\x1f${themesDir}/black.png\nLight Mode\0icon\x1f${themesDir}/white.png" | rofi -dmenu -p "Switch Mode" -theme "${themesDir}/dark-light-mode-select.rasi")
+
+# 5. Exit if the user cancelled
+if [[ -z "$mode_choice" ]]; then
+    exit 0
+fi
+
+# 6. Determine the correct `wal` flag based on the choice
+wal_flags=""
+if [ "$mode_choice" = "Light Mode" ]; then
+    wal_flags="-l"
+fi
+
+# 7. Execute all the commands to re-apply the theme
+# This is the same block of commands from your other script
+echo "Applying theme with wallpaper: ${current_wallpaper}"
+
+wal -c
+wal ${wal_flags} -i "${current_wallpaper}"
+pywalfox update
+pkill -SIGUSR2 waybar
+swaync-client -rs
+$HOME/.config/nwg-dock-hyprland/reload.sh &
+$HOME/.config/swayosd/launch.sh &
+
+exit 0

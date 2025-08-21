@@ -1,0 +1,88 @@
+/* config - Wallpaper select */
+
+configuration {
+    modi:                        "drun";
+    show-icons:                  true;
+  	drun-display-format:         "{name}";
+    hover-select:                true;
+    font:                        "JetBrains Mono Nerd Font 10";
+}
+/* Config and colors ----------------------------------------------- */
+
+@import "default.rasi"
+
+/* Main Window ------------------------------------------------ */
+window {
+    width:                       50%;
+    height:                      50%;
+    margin:                      0px;
+    border-radius:               36px;
+ 
+}
+
+/* Main Box --------------------------------------------------- */
+mainbox {
+    children:                    [ "listview" ];
+    background-color:            transparent;
+
+    spacing:                     24px;
+    margin:                      0px;
+    padding:                     75px;
+}
+
+/* ---- List ---- */
+listview {
+    columns:                     2;
+    lines:                       1;
+    cycle:                       true;
+    dynamic:                     true;
+    scrollbar:                   false;
+    layout:                      vertical;
+    reverse:                     false;
+    fixed-height:                true;
+    fixed-columns:               true;
+
+    background-color:           transparent;
+    text-color:                 @foreground;
+
+    spacing:                     0px;
+    margin:                      0px;
+    padding:                     0px;
+}
+
+/* Elements --------------------------------------------------- */
+element {
+    cursor:                      pointer;
+    border-radius:               36px;
+    background-color:            transparent;
+    text-color:                  @foreground; /* Default text color (for Dark Mode) */
+    orientation:                 vertical;
+
+    spacing:                     10px;
+    margin:                      0px;
+    padding:                     20px;
+}
+
+
+element-text {
+    background-color:               inherit;
+    text-color:                     inherit;
+    font:                           "JetBrainsMono Nerd Font 10";
+    vertical-align:                 0.5;
+    horizontal-align:               0.5;
+    border-radius:               36px;
+}
+/* This is for the second element (Light Mode) */
+element.alternate {
+    text-color:                  #000000; /* Black text for the white background */
+}
+
+element-icon {
+    expand:                      false;
+    /* REMOVED background-color, it now comes from the icon file */
+    background-color:            transparent;
+    text-color:                  inherit;
+    size:                        20%;
+    cursor:                      inherit;
+    border-radius:               36px;
+}

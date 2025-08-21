@@ -1,0 +1,119 @@
+@import "/home/stefan/.cache/wal/colors-waybar.css";
+* {
+	border-radius: 16;
+	border: none;
+	font-family: SF Pro Display, Symbols Nerd Font;
+	
+	font-size: 14px;
+	padding: 0px 0px;
+	margin: 0px 5px;
+}
+
+@define-color bg70 @background70;
+@define-color bg @background;
+@define-color fg @foreground;
+@define-color gr #545d70;
+@define-color red #f7768e;
+@define-color green #b9f27c;
+@define-color blue @color3;
+@define-color cyan @color3;
+window#waybar {
+	background-color: @background70;
+    color: #ffffff;
+    transition-property: background-color;
+    transition-duration: .5s;
+   /* opacity: 0.7; */
+}
+#workspaces {
+	font-weight: bold;
+}
+#workspaces button {
+	color: @fg;
+	background-color: transparent; 
+	padding: 0px 0px;
+	margin: 2px 2px;
+        font-weight: bold;
+}
+#workspaces button.empty {
+	color: @color9;
+}
+#workspaces button:hover {
+	color: @fg;
+}
+#workspaces button.active {
+	color: @bg;
+	background-color: @cyan;
+
+}
+#workspaces button.urgent {
+	color: @red;
+}
+
+#backlight,
+#mpd,
+#cpu,
+#memory,
+#window,
+#battery,
+#custom-swaync,
+#custom-media,
+#custom-cmus,
+#custom-weather,
+#custom-updates,
+#custom-hdd,
+#custom-wlogout,
+#custom-screenshot,
+#tray,
+#language,
+#pulseaudio,
+#clock {
+	padding: 0 6px;
+	margin: 0 0px;
+	color: @fg;
+	background-color: transparent;
+}
+
+#tray, #custom-weather {
+background-color: @color3_70;
+padding: 0px 6px;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#custom-menu {
+	background-color: transparent;
+	color: @cyan;
+	padding: 0px 0px;
+	margin-left: 10px;
+	margin-top: 1px;
+	font-size: 20px;
+}
+#custom-screenshot {
+font-size: 18px;
+}
+#custom-wlogout{
+background-color: @color2;
+padding: 0px 4px 0px 6px;
+margin-top: 5px;
+margin-bottom: 5px;
+
+}
+#custom-sep {
+	color: rgba(0, 0, 0, 0.0);
+}
+
+#window {
+	background-color: transparent;
+	color: @cyan;
+	font-weight: bold;
+	font-family: SFPRODISPLAY;
+	font-size: 30px;
+}
+#language {
+	min-width: 18px;
+}
+
+#clock {
+        margin-top: 5px;
+        margin-bottom: 5px;
+        background-color: @color2;
+}
