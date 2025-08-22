@@ -28,6 +28,7 @@ show_subtext() {
 
 # Install prerequisites
 # source $OMVOID_INSTALL/preflight/migrations.sh
+source $OMVOID_INSTALL/preflight/update.sh
 source $OMVOID_INSTALL/preflight/gum.sh
 
 # Configuration
@@ -55,8 +56,15 @@ source $OMVOID_INSTALL/development/node.sh
 
 # Desktop
 show_logo 
+show_subtext "Installing desktop tools [3/5]"
 source $OMVOID_INSTALL/desktop/fonts.sh 
 source $OMVOID_INSTALL/desktop/theme.sh
+
+# # Apps
+show_logo
+show_subtext "Installing void-packages repo and building apps [4/5]"
+source $OMVOID_INSTALL/apps/voidpackages.sh 
+
 sudo ln -s /etc/sv/sddm /var/service
 
 # # Desktop
@@ -83,6 +91,6 @@ sudo ln -s /etc/sv/sddm /var/service
 
 # # Reboot
 show_logo
-show_subtext "You're done, you gorgeous! Rebooting now..."
+show_subtext "We're done, you gorgeous! Rebooting now..."
 sleep 3
 sudo reboot

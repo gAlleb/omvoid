@@ -2,7 +2,7 @@
 sudo xbps-install -y \
   wget curl unzip fzf nano Waybar senpai \
   make base-devel freetype-devel fontconfig-devel \
-  xwallpaper xcompmgr xsetroot figlet lxappearance libX11-devel \
+  xwallpaper xcompmgr xsetroot libX11-devel \
   libXft-devel libXinerama-devel  imlib2-devel xorg xinit \
   wl-clipboard fastfetch man tldr less ufw network-manager-applet \
   ImageMagick wf-recorder brightnessctl playerctl nautilus \
