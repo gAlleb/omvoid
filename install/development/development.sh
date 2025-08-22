@@ -19,7 +19,11 @@ xdg-user-dirs-update
 
 # Add Gimp Photoshop plugin
 git clone https://github.com/Diolinux/PhotoGIMP.git /tmp/PhotoGIMP
-mv ~/.config/GIMP ~/.config/GIMP_original
+
+if [ -d ~/.config/GIMP ]; then
+  mv ~/.config/GIMP ~/.config/GIMP_original
+fi
+
 cp -r /tmp/PhotoGIMP/.config/GIMP ~/.config/
 
 sudo usermod -aG mpd,transmission $USER 
