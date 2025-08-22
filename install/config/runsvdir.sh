@@ -28,6 +28,7 @@ exit /home/__USERNAME__/.config/service/*
 EOF
 
 sudo sed -i "s/__USERNAME__/$USER/g"  /etc/sv/runsvdir-$USER/finish
+sudo sed -i "s/__USERNAME__/$USER/g"  /home/$USER/.config/service/mpd/run
 
 sudo chmod +x /etc/sv/runsvdir-$USER/finish
 

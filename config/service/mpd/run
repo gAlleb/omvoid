@@ -1,3 +1,3 @@
 #!/bin/sh
 export XDG_RUNTIME_DIR=/run/user/1000
-exec mpd --no-daemon /home/stefan/.config/mpd/mpd.conf
+exec mpd --no-daemon /home/__USERNAME__/.config/mpd/mpd.conf
