@@ -45,7 +45,7 @@ source $OMVOID_INSTALL/config/power.sh
 
 # Development
 show_logo
-show_subtext "Installing terminal tools [2/5]"
+show_subtext "Installing terminal and main tools [2/5]"
 source $OMVOID_INSTALL/development/docker.sh
 source $OMVOID_INSTALL/development/hyprtime.sh
 source $OMVOID_INSTALL/development/development.sh
@@ -62,35 +62,18 @@ source $OMVOID_INSTALL/desktop/theme.sh
 
 # # Apps
 show_logo
-show_subtext "Installing void-packages repo and building apps [4/5]"
+show_subtext "Installing default applications [4/5]"
+source $OMVOID_INSTALL/apps/webapps.sh
+source $OMVOID_INSTALL/apps/xtras.sh
+source $OMVOID_INSTALL/apps/mimetypes.sh
+
+show_logo
+show_subtext "Installing void-packages repo and building apps [5/5]"
 source $OMVOID_INSTALL/apps/voidpackages.sh 
-
-sudo ln -s /etc/sv/sddm /var/service
-
-# # Desktop
-# show_logo slice 60
-# show_subtext "Installing desktop tools [3/5]"
-# source $OMVOID_INSTALL/desktop/theme.sh
-# source $OMVOID_INSTALL/desktop/bluetooth.sh
-# source $OMVOID_INSTALL/desktop/asdcontrol.sh
-# source $OMVOID_INSTALL/desktop/fonts.sh
-# source $OMVOID_INSTALL/desktop/printer.sh
-
-# # Apps
-# show_logo
-# show_subtext "Installing default applications [4/5]"
-# source $OMVOID_INSTALL/apps/webapps.sh
-# source $OMVOID_INSTALL/apps/xtras.sh
-# source $OMVOID_INSTALL/apps/mimetypes.sh
-
-# # Updates
-# show_logo
-# show_subtext "Updating system packages [5/5]"
-# sudo updatedb
-# yay -Syu --noconfirm --ignore uwsm
 
 # # Reboot
 show_logo
 show_subtext "We're done, you gorgeous! Rebooting now..."
 sleep 3
+sudo ln -s /etc/sv/sddm /var/service
 sudo reboot
