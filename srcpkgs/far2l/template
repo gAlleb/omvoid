@@ -1,0 +1,17 @@
+# Template file for 'far2l'
+pkgname=far2l
+version=2.6.5
+revision=1
+build_style=cmake
+#configure_args="-DUSEWX=yes -DCMAKE_BUILD_TYPE=Release -DPYTHON=yes -G Ninja -DwxWidgets_CONFIG_EXECUTABLE=/usr/bin/wx-config"
+configure_args="-DUSEWX=no -DCMAKE_BUILD_TYPE=Release -DPYTHON=yes -G Ninja"
+hostmakedepends="pkg-config cmake perl python3"
+makedepends="wxWidgets-devel python3-devel pcre2-devel pcre-devel libxerces-c-devel  libX11-devel libXi-devel libxml2-devel uchardet-devel libssh-devel openssl-devel samba-devel libnfs-devel neon-devel libarchive-devel"
+short_desc="Linux port of FAR v2"
+maintainer="Stefan <s@omfm.ru>"
+license="GPL-2.0-only (maybe)"
+homepage="https://github.com/elfmz/far2l"
+distfiles="https://github.com/elfmz/far2l/archive/refs/tags/v_${version}.tar.gz"
+checksum="0e68efff1c5d950c86cdad0387bf1aae7b152dbdd7d24b70bbefeeb4f873a9c9"
+
+

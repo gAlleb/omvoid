@@ -1,0 +1,21 @@
+# Template file for freeLib
+pkgname=freeLib
+version=6.1.0
+revision=1
+build_style=cmake
+maintainer="Stefan <s@omfm.ru>"
+hostmakedepends="pkg-config cmake git"
+makedepends="qt6-base-devel qt6-qt5compat-devel  qt6-websockets-devel qt6-svg-devel quazip-qt6-devel tbb-devel qtkeychain-qt6-devel djvulibre-devel"
+short_desc="Cataloger for LibRusEc and Flibusta libraries"
+homepage="https://github.com/petrovvlad/freeLib"
+license="GPL-3.0-only"
+
+wrksrc="${pkgname}-${version}"
+
+do_fetch() {
+    git clone "${homepage}.git" "${wrksrc}" --recurse-submodules -b "v${version}"
+}
+
+configure_args=" -DCMAKE_BUILD_TYPE=Release"
+
+

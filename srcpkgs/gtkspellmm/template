@@ -1,0 +1,24 @@
+# Template file for 'gtkspellmm'
+pkgname=gtkspellmm
+version=3.0.5
+revision=1
+build_style=gnu-configure
+configure_args="CONFIG_SHELL=/bin/bash"
+hostmakedepends="perl pkg-config m4 automake mm-common autoconf libtool perl-XML-Parser"
+makedepends="gtkmm-devel gtkspell3-devel"
+short_desc="C++ bindings for GtkSpell-3"
+maintainer="Stefan <s@omfm.ru>"
+license="LGPL-2.1-or-later"
+homepage="https://github.com/manisandro/gtkspellmm"
+distfiles="https://downloads.sourceforge.net/gtkspell/$pkgname-$version.tar.xz"
+checksum="5b875a5753ce593274d0c6e803af6300973020c5443905999aba96ed3cef1545"
+
+gtkspellmm-devel_package() {
+	short_desc+=" - development files"
+	depends="${sourcepkg}>=${version}_${revision}"
+	pkg_install() {
+		vmove usr/include
+		vmove usr/lib/*.so
+		vmove usr/lib/pkgconfig
+	}
+}

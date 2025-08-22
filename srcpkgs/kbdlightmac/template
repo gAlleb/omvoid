@@ -1,0 +1,15 @@
+# Template file for 'kbdlightmac'
+pkgname=kbdlightmac
+version=1.0.0
+revision=1
+build_style=gnu-makefile
+short_desc="Simple application that changes MacBooks' keyboard backlight level"
+maintainer="S <s@omfm.ru>"
+license="MIT"
+homepage="https://github.com/galleb/kbdlightmac"
+distfiles="https://github.com/galleb/${pkgname}/archive/refs/tags/v${version}.tar.gz"
+checksum=c9035e34f96336f752535b19398ea9746529ae4f5d5c2fde318f49d4acc67b1b
+
+post_install() {
+	vlicense LICENCE
+}
