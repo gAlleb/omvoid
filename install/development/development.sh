@@ -17,6 +17,8 @@ sudo xbps-install -y \
 
 xdg-user-dirs-update 
 
+sudo usermod -aG mpd,transmission $USER 
+
 # Add Gimp Photoshop plugin
 git clone https://github.com/Diolinux/PhotoGIMP.git /tmp/PhotoGIMP
 
@@ -25,7 +27,3 @@ if [ -d ~/.config/GIMP ]; then
 fi
 
 cp -r /tmp/PhotoGIMP/.config/GIMP ~/.config/
-
-sudo usermod -aG mpd,transmission $USER 
-
-

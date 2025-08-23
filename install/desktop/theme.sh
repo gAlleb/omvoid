@@ -11,4 +11,4 @@ gsettings set org.gnome.desktop.interface gtk-theme "WhiteSur-dark"
 gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
 gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-grey-dark"
 
-source ~/.config/hypr/scripts/init_random_wallpaper.sh
+source ~/.config/hypr/scripts/init_wallpaper.sh
