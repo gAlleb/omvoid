@@ -3,8 +3,6 @@
 # Get the aliases and functions
 [ -f $HOME/.bashrc ] && . $HOME/.bashrc
 
-export PATH="$PATH:$HOME/.local/bin:$HOME/scripts:$HOME/.local/share/omvoid/bin"
-
 export LIBVIRT_DEFAULT_URI="qemu:///system"
 
 # BEGIN opam configuration

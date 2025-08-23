@@ -8,6 +8,8 @@ export SVDIR=~/.config/service
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
 
+export PATH="$PATH:$HOME/.local/bin:$HOME/scripts:$HOME/.local/share/omvoid/bin"
+
 alias ls='ls --color=auto'
 alias xi='sudo xbps-install'
 alias xr='sudo xbps-remove'
