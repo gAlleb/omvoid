@@ -14,7 +14,7 @@ packages=(
     "brave-browser"
   )
 
-read -p "Would you like to clone void-packages repo and setup additional packages? Some of them are needed for smooth user experience, e.g. 'rofi-wayland' and 'SwayOSD'. Beware, it may take a while, like a really while :-). You can always return to this step later, by running './.local/share/omvoid/install/apps/voidpackages.sh' from $HOME directory. So? (y/n) " -n 1 -r
+  read -p "INITIAL setup of 'void-packages' repo. Would you like to clone void-packages repo and setup additional packages? Some of them are needed for smooth user experience, e.g. 'rofi-wayland' and 'SwayOSD'. Beware, it may take a while, like a really while :-). You can always return to this step later by doing everything on your own (cause you're a big boy/girl) or by running './.local/share/omvoid/install/apps/voidpackages.sh' from $HOME directory. So? (y/n) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     if [ ! -d ~/.local/pkgs/void-packages ]; then
@@ -66,11 +66,10 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
                     echo "-> Performing post-install steps for SwayOSD..."
                     if [ ! -L "/var/service/swayosd-libinput-backend/" ]; then
                         sudo ln -s /etc/sv/swayosd-libinput-backend /var/service
-                        sed -i '/^source = ~\/.config\/hypr\/config\/keybindings.conf/s/^/#/' ~/.config/hypr/hyprland.conf
-                        sed -i '/^#source = ~\/.config\/hypr\/config\/keybindingsSwayOSD.conf/s/^#//' ~/.config/hypr/hyprland.conf
                     fi
+                    sed -i '/^source = ~\/.config\/hypr\/config\/keybindings.conf/s/^/#/' ~/.config/hypr/hyprland.conf
+                    sed -i '/^#source = ~\/.config\/hypr\/config\/keybindingsSwayOSD.conf/s/^#//' ~/.config/hypr/hyprland.conf
                 fi
-
             }
 
             packages_to_install=()

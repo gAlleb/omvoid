@@ -5,6 +5,6 @@ Comment=System information from Fastfetch
 Exec=alacritty -o "font.size=9" --class=About --title=About -e bash -c 'fastfetch; read -n 1 -s'
 Terminal=false
 Type=Application
-Icon=void-linu
+Icon=Void
 Categories=GTK;
 StartupNotify=false
