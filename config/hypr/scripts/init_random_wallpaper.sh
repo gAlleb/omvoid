@@ -1,18 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-CACHE_DIR=$HOME/.cache/rofi_wallpaper_picker
-CACHE_DIR2=$HOME/.cache/wallpaper_changer
+# Wallpapers Path
+CACHE_DIR="$HOME/.cache/omvoid_wallpaper"
 WALLPAPER_DIR="$HOME/.config/wallpaper"
-themesDir="$HOME/.config/rofi/wallpaper/themes"
+THEMES_DIR="$HOME/.config/rofi/wallpaper/themes"
 CURRENT_WALLPAPER_PATH_FILE="${CACHE_DIR}/current_wallpaper_path"
-CURRENT_THEME_FILE="${STATE_DIR}/current_theme"
 
 if [ ! -d "${CACHE_DIR}" ] ; then
     mkdir -p "${CACHE_DIR}"
-fi
-
-if [ ! -d "${CACHE_DIR2}" ] ; then
-    mkdir -p "${CACHE_DIR2}"
 fi
 
 find -L "${WALLPAPER_DIR}" -type f \( -iname \*.jpg -o -iname \*.jpeg -o -iname \*.png -o -iname \*.webp \) | while read -r wallpaper_path; do
@@ -27,6 +22,7 @@ find -L "${WALLPAPER_DIR}" -type f \( -iname \*.jpg -o -iname \*.jpeg -o -iname 
 
     # If the thumbnail doesn't exist, create it
     if [ ! -f "${thumbnail_path}" ]; then
+        # Using magick to create a small thumbnail
         magick "${wallpaper_path}" -thumbnail '320x180>' "${thumbnail_path}"
     fi
 done
@@ -44,13 +40,24 @@ executeCommand() {
     local selected_wallpaper="$1"
     local relative_path="${selected_wallpaper#${WALLPAPER_DIR}/}"
     local selected_thumbnail_path="${CACHE_DIR}/${relative_path%.*}.png"
+
     wal -c
-    wal -i ${selected_wallpaper}
-    echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR2/wallpaper-hyprland.conf
-    echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > ~/.cache/wallpaper_thumbnail
-    echo "inputbar { background-image: url(\"$selected_thumbnail_path\", width); }" > ~/.cache/wallpaper_thumbnail.rasi
+
+    # Generate the new color scheme using wal with the determined flag
+    wal ${wal_flags} -i ${selected_wallpaper}
+
+    # Update other applications
+    swww img --transition-type any --transition-angle 45 "${selected_wallpaper}"
+    pywalfox update
+    echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR/wallpaper-hyprland.conf
+    pkill -SIGUSR2 waybar
+    swaync-client -rs
+    echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > ${CACHE_DIR}/wallpaper_thumbnail
+    echo "inputbar { background-image: url(\"$selected_thumbnail_path\", width); }" > ${CACHE_DIR}/wallpaper_thumbnail.rasi
+    $HOME/.config/nwg-dock-hyprland/reload.sh &
+    $HOME/.config/swayosd/launch.sh &
     echo "${selected_wallpaper}" > "${CURRENT_WALLPAPER_PATH_FILE}"
-    convert "${selected_wallpaper}" ~/.config/bg.jpg
+    magick "${selected_wallpaper}" ~/.config/bg.jpg
 }
 
 # Execution

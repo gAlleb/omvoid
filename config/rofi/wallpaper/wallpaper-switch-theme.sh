@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 
 # Paths (should match your main wallpaper script)
-CACHE_DIR="$HOME/.cache/rofi_wallpaper_picker"
+CACHE_DIR="$HOME/.cache/omvoid_wallpaper"
 WALLPAPER_DIR="$HOME/.config/wallpaper"
-themesDir="$HOME/.config/rofi/wallpaper/themes"
-
-# State file to remember the current wallpaper
+THEMES_DIR="$HOME/.config/rofi/wallpaper/themes"
 CURRENT_WALLPAPER_PATH_FILE="${CACHE_DIR}/current_wallpaper_path"
 
 # --- Main Logic ---
@@ -26,7 +24,7 @@ if [ -z "${current_wallpaper}" ] || [ ! -f "${current_wallpaper}" ]; then
 fi
 
 # 4. Show the Rofi menu for Light/Dark mode selection
-mode_choice=$(echo -e "Dark Mode\0icon\x1f${themesDir}/black.png\nLight Mode\0icon\x1f${themesDir}/white.png" | rofi -dmenu -p "Switch Mode" -theme "${themesDir}/dark-light-mode-select.rasi")
+mode_choice=$(echo -e "Dark Mode\0icon\x1f${THEMES_DIR}/black.png\nLight Mode\0icon\x1f${THEMES_DIR}/white.png" | rofi -dmenu -p "Switch Mode" -theme "${THEMES_DIR}/dark-light-mode-select.rasi")
 
 # 5. Exit if the user cancelled
 if [[ -z "$mode_choice" ]]; then
@@ -42,7 +40,6 @@ fi
 # 7. Execute all the commands to re-apply the theme
 # This is the same block of commands from your other script
 echo "Applying theme with wallpaper: ${current_wallpaper}"
-
 wal -c
 wal ${wal_flags} -i "${current_wallpaper}"
 pywalfox update

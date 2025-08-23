@@ -66,6 +66,8 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
                     echo "-> Performing post-install steps for SwayOSD..."
                     if [ ! -L "/var/service/swayosd-libinput-backend/" ]; then
                         sudo ln -s /etc/sv/swayosd-libinput-backend /var/service
+                        sed -i '/^source = ~\/.config\/hypr\/config\/keybindings.conf/s/^/#/' ~/.config/hypr/hyprland.conf
+                        sed -i '/^#source = ~\/.config\/hypr\/config\/keybindingsSwayOSD.conf/s/^#//' ~/.config/hypr/hyprland.conf
                     fi
                 fi
 

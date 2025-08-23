@@ -1,26 +1,14 @@
 #!/usr/bin/env bash
-## /* ---- 💫 https://github.com/JaKooLit 💫 ---- */  ##
-# This script for selecting wallpapers (SUPER W)
-
 # Wallpapers Path
-CACHE_DIR=$HOME/.cache/rofi_wallpaper_picker
-CACHE_DIR2=$HOME/.cache/wallpaper_changer
+CACHE_DIR="$HOME/.cache/omvoid_wallpaper"
 WALLPAPER_DIR="$HOME/.config/wallpaper"
-themesDir="$HOME/.config/rofi/wallpaper/themes"
+THEMES_DIR="$HOME/.config/rofi/wallpaper/themes"
 CURRENT_WALLPAPER_PATH_FILE="${CACHE_DIR}/current_wallpaper_path"
-CURRENT_THEME_FILE="${STATE_DIR}/current_theme"
 
 if [ ! -d "${CACHE_DIR}" ] ; then
     mkdir -p "${CACHE_DIR}"
 fi
 
-if [ ! -d "${CACHE_DIR2}" ] ; then
-    mkdir -p "${CACHE_DIR2}"
-fi
-
-#==============================================================================
-# NEW CACHING SECTION
-#==============================================================================
 # Create thumbnails for all wallpapers if they don't exist in the cache.
 # This makes Rofi load much faster.
 # Note: Requires 'imagemagick' to be installed.
@@ -51,35 +39,15 @@ randomChoice="[${#PICS[@]}] Random"
 
 themeSwitchChoice="🎨 Switch Theme" # <-- ADD THIS LINE
 # Rofi command
-rofiCommand="rofi -show -dmenu -theme ${themesDir}/wallpaper-select.rasi"
+rofiCommand="rofi -show -dmenu -theme ${THEMES_DIR}/wallpaper-select.rasi"
 
-# Execute command according the wallpaper manager
-#executeCommand() {
-
-#convert "$1" /home/stefan/.config/bg.jpg
-#wal -c
-#wal -i /home/stefan/.config/bg.jpg
-#pywalfox update
-##sh $HOME/.config/hypr/scripts/wallpaper_changer.sh $1
-#swww img --transition-type wipe --transition-angle 45 $1
-#pkill -SIGUSR2 waybar
-#swaync-client -rs
-#}
-#==============================================================================
-# MODIFIED SECTION
-#==============================================================================
 # Execute command according the wallpaper manager
 executeCommand() {
     # The selected wallpaper path is passed as the first argument ($1)
     local selected_wallpaper="$1"
     local relative_path="${selected_wallpaper#${WALLPAPER_DIR}/}"
     local selected_thumbnail_path="${CACHE_DIR}/${relative_path%.*}.png"
-    # --- New Rofi menu for Light/Dark mode selection ---
-    # We use `echo` to create the menu entries and pipe them to rofi in dmenu mode.
-    # We also add a prompt (-p) to make it clear what the user is choosing.
-    #mode_choice=$(echo -e "Dark Mode\nLight Mode" | rofi -dmenu -p "Select Mode" -theme "${themesDir}/dark-light-mode-select.rasi")
-
-    mode_choice=$(echo -e "Dark Mode\0icon\x1f${themesDir}/black.png\nLight Mode\0icon\x1f${themesDir}/white.png" | rofi -dmenu -p "Select Mode" -theme "${themesDir}/dark-light-mode-select.rasi")
+    mode_choice=$(echo -e "Dark Mode\0icon\x1f${THEMES_DIR}/black.png\nLight Mode\0icon\x1f${THEMES_DIR}/white.png" | rofi -dmenu -p "Select Mode" -theme "${THEMES_DIR}/dark-light-mode-select.rasi")
 
     # If the user cancels the mode selection (e.g., presses Esc), exit gracefully.
     if [[ -z "$mode_choice" ]]; then
@@ -100,23 +68,20 @@ executeCommand() {
     # Update other applications
     swww img --transition-type any --transition-angle 45 "${selected_wallpaper}"
     pywalfox update
-    #sh $HOME/.config/hypr/scripts/wallpaper_changer.sh ${selected_wallpaper}
-    echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR2/wallpaper-hyprland.conf
+    echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR/wallpaper-hyprland.conf
     pkill -SIGUSR2 waybar
     swaync-client -rs
-    echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > ~/.cache/wallpaper_thumbnail
-    echo "inputbar { background-image: url(\"$selected_thumbnail_path\", width); }" > ~/.cache/wallpaper_thumbnail.rasi
+    echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > $CACHE_DIR/wallpaper_thumbnail
+    echo "inputbar { background-image: url(\"$selected_thumbnail_path\", width); }" > $CACHE_DIR/wallpaper_thumbnail.rasi
     $HOME/.config/nwg-dock-hyprland/reload.sh &
     $HOME/.config/swayosd/launch.sh &
 
     echo "${selected_wallpaper}" > "${CURRENT_WALLPAPER_PATH_FILE}"
 
-    convert "${selected_wallpaper}" /home/stefan/.config/bg.jpg
+    magick "${selected_wallpaper}" ~/.config/bg.jpg
 
 }
-#==============================================================================
-# END OF MODIFIED SECTION
-#==============================================================================
+
 # Show the images
 menu() {
 
@@ -157,7 +122,7 @@ main() {
     # Find the directory where this script is located
     SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
     # Execute the other script and exit
-    "/home/stefan/.config/rofi/wallpaper/wallpaper-switch-theme.sh"
+    "$HOME/.config/rofi/wallpaper/wallpaper-switch-theme.sh"
     exit 0
   # --- END OF NEW SECTION ---
 
