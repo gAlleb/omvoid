@@ -2,7 +2,7 @@
 * {
     font: "JetBrains Mono Nerd Font 10";
 }
-@import "/home/stefan/.cache/wal/colors-rofi.rasi"
+@import "~/.cache/wal/colors-rofi.rasi"
 
 /*****----- Configuration -----*****/
 configuration {

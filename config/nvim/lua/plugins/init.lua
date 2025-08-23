@@ -4,7 +4,6 @@ return {
     -- event = 'BufWritePre', -- uncomment for format on save
     opts = require "configs.conform",
   },
-
   -- These are some examples, uncomment them if you want to see them work!
   {
     "neovim/nvim-lspconfig",
@@ -24,7 +23,7 @@ return {
     "catgoose/nvim-colorizer.lua",
     event = "BufReadPre",
     opts = { -- set to setup table
-                RGB = true, -- #RGB hex codes
+            RGB = true, -- #RGB hex codes
             RRGGBB = true, -- #RRGGBB hex codes
             names = false, -- "Name" codes like Blue
             RRGGBBAA = true, -- #RRGGBBAA hex codes
@@ -42,32 +41,31 @@ return {
     vim.cmd.colorscheme("pywal16")
     end,
   },
- {
-  "NeogitOrg/neogit",
-  dependencies = {
-    "nvim-lua/plenary.nvim",         -- required
-    "sindrets/diffview.nvim",        -- optional - Diff integration
-
-    -- Only one of these is needed.
-    "nvim-telescope/telescope.nvim", -- optional
-  --   "ibhagwan/fzf-lua",              -- optional
-  --    "echasnovski/mini.pick",         -- optional
-  --    "folke/snacks.nvim",             -- optional
+  {
+    "NeogitOrg/neogit",
+    dependencies = {
+      "nvim-lua/plenary.nvim",         -- required
+      "sindrets/diffview.nvim",        -- optional - Diff integration
+      -- Only one of these is needed.
+      "nvim-telescope/telescope.nvim", -- optional
+      --   "ibhagwan/fzf-lua",              -- optional
+      --    "echasnovski/mini.pick",         -- optional
+      --    "folke/snacks.nvim",             -- optional
   },
    -- lazy = true
-    keys = {
-    -- disable the keymap to grep files
-    { "<leader>gg", "<cmd>Neogit<cr>", desc = "Neogit" },
-    },
+  keys = {
+     -- disable the keymap to grep files
+     { "<leader>gg", "<cmd>Neogit<cr>", desc = "Neogit" },
+     },
   },
   {
-  "iamcco/markdown-preview.nvim",
-  cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
-  build = "cd app && npm install",
-  init = function()
-    vim.g.mkdp_filetypes = { "markdown" }
-  end,
-  ft = { "markdown" },
+    "iamcco/markdown-preview.nvim",
+    cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
+    build = "cd app && npm install",
+    init = function()
+      vim.g.mkdp_filetypes = { "markdown" }
+    end,
+    ft = { "markdown" },
   },
   {
     "3rd/image.nvim",
@@ -88,27 +86,26 @@ return {
     end,
   },
   {
-  "HakonHarnes/img-clip.nvim",
-
-  opts = {
+    "HakonHarnes/img-clip.nvim",
+    opts = {
     -- add options here
     -- or leave it empty to use the default settings
-  },
-  keys = {
+    },
+    keys = {
     -- suggested keymap
     { "<leader>pp", "<cmd>PasteImage<cr>", desc = "Paste image from system clipboard" },
-  },
+    },
  },
  {
-  -- The plugin location on GitHub
-  "vimwiki/vimwiki",
-  -- The event that triggers the plugin
-  event = "BufEnter *.md",
-  -- The keys that trigger the plugin
-  keys = { "<leader>ww", "<leader>wt" },
-  -- The configuration for the plugin
-  lazy = false,
-  init = function()
+    -- The plugin location on GitHub
+    "vimwiki/vimwiki",
+    -- The event that triggers the plugin
+    event = "BufEnter *.md",
+    -- The keys that trigger the plugin
+    keys = { "<leader>ww", "<leader>wt" },
+    -- The configuration for the plugin
+    lazy = false,
+    init = function()
     vim.g.vimwiki_list = {
       {
         -- Here will be the path for your wiki
@@ -121,15 +118,15 @@ return {
      vim.g.vimwiki_global_ext = 0
      --vim.g.vimwiki_ext2syntax = {}
   end,
-  },
-    {
-    "folke/zen-mode.nvim",
-    keys = {
-    -- suggested keymap
-    { "<leader>zm", "<cmd>ZenMode<cr>", desc = "ZenMode" },
-    },
-    cmd = "ZenMode",
-    opts = {
+},
+{
+   "folke/zen-mode.nvim",
+   keys = {
+   -- suggested keymap
+   { "<leader>zm", "<cmd>ZenMode<cr>", desc = "ZenMode" },
+   },
+   cmd = "ZenMode",
+   opts = {
       -- your configuration comes here
       -- or leave it empty to use the default settings
       window = {
@@ -144,8 +141,8 @@ return {
           signcolumn = "no",
           list = false,
         },
-      },
-      plugins = {
+   },
+   plugins = {
         options = {
           enabled = true,
           ruler = false, -- disables the ruler text in the cmd line area
@@ -164,7 +161,7 @@ return {
         gitsigns = { enabled = true }, -- Disables gitsigns in zen-mode
         tmux = { enabled = true }, -- Disables tmux statusline integration
       },
-    },
+   },
   },
 -- {
 --    "junegunn/goyo.vim",
