@@ -66,7 +66,7 @@ executeCommand() {
     wal ${wal_flags} -i ${selected_wallpaper}
     magick "${selected_wallpaper}" ~/.config/bg.jpg
     xwallpaper --zoom $HOME/.config/bg.jpg
-    xrdb merge /home/stefan/.cache/wal/colors-dwm-xresources
+    xrdb merge  $HOME/.cache/wal/colors-dwm-xresources
     xdotool key alt+shift+F5
     xrdb merge ~/.Xresources
     pywalfox update

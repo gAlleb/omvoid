@@ -1,4 +1,4 @@
-@import url('file:///home/stefan/.cache/wal/colors-waybar.css');
+@import url('file://~/.cache/wal/colors-waybar.css');
 
 #window,
 #box,
@@ -36,7 +36,7 @@ slider,
 
 #box {
   border-radius: 2px;
-  background: alpha(@background, 0.85);
+  background: alpha(@background, 0.95);
   padding: 32px;
   border-radius: 16px;
   border: 1px solid lighter(@background);
