@@ -2,10 +2,8 @@
 
 # Get the aliases and functions
 [ -f $HOME/.bashrc ] && . $HOME/.bashrc
-#startx
 
-# Created by `pipx` on 2025-04-14 17:06:07
-export PATH="$PATH:$HOME/.local/bin:$HOME/scripts"
+export PATH="$PATH:$HOME/.local/bin:$HOME/scripts:$HOME/.local/share/omvoid/bin"
 
 export LIBVIRT_DEFAULT_URI="qemu:///system"
 

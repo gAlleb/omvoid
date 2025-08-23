@@ -32,3 +32,7 @@ fi
 if [[ -n "${OMVOID_USER_EMAIL//[[:space:]]/}" ]]; then
   git config --global user.email "$OMVOID_USER_EMAIL"
 fi
+
+if [[ -n "${OMVOID_USER_CITY//[[:space:]]/}" ]]; then
+  sed -i "s/^LOCATION=.*/LOCATION=$OMVOID_USER_CITY/" ~/.config/hypr/scripts/forecast-hypr.sh
+fi
