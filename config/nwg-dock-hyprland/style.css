@@ -1,4 +1,4 @@
-@import "/home/stefan/.cache/wal/colors-waybar.css";
+@import "../../.cache/wal/colors-waybar.css";
 window {
   background: @background70;
 	border-radius: 16px;
