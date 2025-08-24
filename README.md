@@ -17,4 +17,4 @@
 > [!NOTE]
 > based on Hyprland by running a single command.
 
-<img width="60%" height="60%" alt="screenshot" src="https://github.com/user-attachments/assets/c154c25b-0e20-4005-93f5-51e8f77b46d6" />
+<img width="60%" height="60%" alt="screenshot-2025-08-24_17-32-25" src="https://github.com/user-attachments/assets/338bcc80-1771-44e1-a2b8-dc2a0276e9ad" />
