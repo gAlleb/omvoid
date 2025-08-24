@@ -37,7 +37,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 
         if [[ $REPLY =~ ^[Yy]$ ]]; then
           (
-            echo "Recreating ~/.local/pkgs/void-packages"
+            echo "\nRecreating ~/.local/pkgs/void-packages"
             sudo rm -r ~/.local/pkgs/void-packages
             git clone https://github.com/void-linux/void-packages.git ~/.local/pkgs/void-packages
             echo "Entering ~/.local/pkgs/void-packages"
@@ -53,7 +53,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
           )
         else
           
-            echo "Proceeding with existing ~/.local/pkgs/void-packages"
+            echo "\nProceeding with existing ~/.local/pkgs/void-packages"
 
         fi
 
