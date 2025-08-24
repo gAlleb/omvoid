@@ -43,8 +43,21 @@ sudo tee /etc/autofs/auto.mymounts <<'EOF'
 EOF
 
 sudo mkdir -p /root/.config/rclone
+
 sudo cp -r ~/.local/share/omvoid/config/rclone/rclone.conf /root/.config/rclone/
-sudo ln -s /etc/sv/autofs /var/service/ 
-sudo ln -s /etc/sv/netmount /var/service/ 
-sudo ln -s /etc/sv/rpcbind /var/service/ 
-sudo ln -s /etc/sv/statd /var/service/ 
+
+if [ ! -L "/var/service/autofs" ]; then
+    sudo ln -s /etc/sv/autofs /var/service/ 
+fi 
+
+if [ ! -L "/var/service/netmount" ]; then
+   sudo ln -s /etc/sv/netmount /var/service/ 
+fi 
+
+if [ ! -L "/var/service/rpcbind" ]; then
+   sudo ln -s /etc/sv/rpcbind /var/service/ 
+fi 
+
+if [ ! -L "/var/service/statd/" ]; then
+   sudo ln -s /etc/sv/statd /var/service/ 
+fi 
