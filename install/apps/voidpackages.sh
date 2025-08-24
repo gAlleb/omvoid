@@ -18,18 +18,39 @@ read -p "INITIAL setup of 'void-packages' repo. Would you like to clone void-pac
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     if [ ! -d ~/.local/pkgs/void-packages ]; then
-
+          (
             git clone https://github.com/void-linux/void-packages.git ~/.local/pkgs/void-packages
+            echo "Entering ~/.local/pkgs/void-packages"
+            cd ~/.local/pkgs/void-packages || exit 1
+
+            # 1. Prepare void repo
+            echo "-> Preparing xbps-src environment..."
+            ./xbps-src binary-bootstrap
+            echo XBPS_ALLOW_RESTRICTED=yes >> etc/conf
+
+            # 2. Copy templates to srcpkgs
+            cp -r ~/.local/share/omvoid/srcpkgs/* ~/.local/pkgs/void-packages/srcpkgs/ 
+          )  
     else
 
         read -p "Directory ~/.local/pkgs/void-packages already exists. Would you like to recreate it from scratch or continue with the existing one? (Y - recreate it / N - continue with existing one) " -n 1 -r 
 
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-
+          (
             echo "Recreating ~/.local/pkgs/void-packages"
             sudo rm -r ~/.local/pkgs/void-packages
             git clone https://github.com/void-linux/void-packages.git ~/.local/pkgs/void-packages
+            echo "Entering ~/.local/pkgs/void-packages"
+            cd ~/.local/pkgs/void-packages || exit 1
 
+            # 1. Prepare void repo
+            echo "-> Preparing xbps-src environment..."
+            ./xbps-src binary-bootstrap
+            echo XBPS_ALLOW_RESTRICTED=yes >> etc/conf
+
+            # 2. Copy templates to srcpkgs
+            cp -r ~/.local/share/omvoid/srcpkgs/* ~/.local/pkgs/void-packages/srcpkgs/ 
+          )
         else
           
             echo "Proceeding with existing ~/.local/pkgs/void-packages"
@@ -41,14 +62,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         (
             echo "Entering ~/.local/pkgs/void-packages"
             cd ~/.local/pkgs/void-packages || exit 1
-
-            # 1. Prepare void repo
-            echo "-> Preparing xbps-src environment..."
-            ./xbps-src binary-bootstrap
-            echo XBPS_ALLOW_RESTRICTED=yes >> etc/conf
-
-            # 2. Copy templates to srcpkgs
-            cp -r ~/.local/share/omvoid/srcpkgs/* ~/.local/pkgs/void-packages/srcpkgs/ 
 
             # --- Start of new dynamic selection logic ---
             echo
