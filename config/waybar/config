@@ -1,144 +1,147 @@
 {
+
 	"layer": "top",
 	"position": "top",
 	"height": 30,
 	"width": 1525,
 	"margin-top": 5,
 
-	
-    "modules-center": ["mpd"],
-    "modules-left": ["custom/menu", "custom/sep", "hyprland/workspaces", "custom/sep", "hyprland/window"],
-    "modules-right": ["tray", "cpu", "memory", "custom/hdd", "custom/weather", "custom/updates", "battery", "hyprland/language", "custom/screenshot", "backlight", "clock", "custom/swaync", "custom/wlogout"],
-"mpris": {
-	"format": "{player_icon} {dynamic}",
-	"format-paused": "{status_icon} <i>{dynamic}</i>",
-  "max-length": 30,
-  "player": "mpd",
-	"player-icons": {
-		"default": "▶",
-		"mpd": "🎵"
-	},
-	"status-icons": {
-		"paused": "⏸"
-	},
-	"ignored-players": ["firefox","brave"],
-	"on-click": "mpc toggle",
-	"on-click-right": "setsid -f kitty -e rmpc",
-	"on-click-middle": "~/.config/hypr/scripts/mpd-notify.sh",
-},
-            "backlight": {
-                "device": "intel_backlight",
-                "format": "{icon} {percent}%",
-                "format-icons": ["󰃜","󰃛","󰃞", "󰃝", "󰃟", "󰃠"],
-                "min-length": 4,
-            },
-            "custom/wlogout": {
-              "format": "{icon}{}",
-              "on-click": "wlogout",
-              "format-icons": "󰍃",
-            },
-"custom/swaync": {
-    "tooltip":true,
-    "format": "{icon} {}",
-    "format-icons": {
-      "notification": "<span foreground='red'><sup></sup></span>",
-      "none": "",
-      "dnd-notification": "<span foreground='red'><sup></sup></span>",
-      "dnd-none": "",
-      "inhibited-notification": "<span foreground='red'><sup></sup></span>",
-      "inhibited-none": "",
-      "dnd-inhibited-notification": "<span foreground='red'><sup></sup></span>",
-      "dnd-inhibited-none": ""
-    },
-    "return-type": "json",
-    "exec-if": "which swaync-client",
-    "exec": "swaync-client -swb",
-    "on-click": "sleep 0.1 && swaync-client -t -sw",
-    "on-click-right": "swaync-client -d -sw",
-    "escape": true,
-},
-"mpd": {
-	"format": "{stateIcon}  {artist} - {title}",
-	"format-disconnected": "Disconnected ",
-	"format-stopped": "Stopped",
-	"interval": 2,
-        "max-length": 30,
-	"consume-icons": {
-		"on": " " // Icon shows only when "consume" is on
-	},
-	"random-icons": {
-		"off": "", // Icon grayed out when "random" is off
-		"on": " "
-	},
-	"repeat-icons": {
-		"on": " "
-	},
-	"single-icons": {
-		"on": "1 "
-	},
-	"state-icons": {
-		"paused": "",
-		"playing": "",
-	},
-	"tooltip-format": "MPD (connected)",
-	"tooltip-format-disconnected": "MPD (disconnected)",
-	"on-click": "mpc toggle",
-	"on-click-right": "setsid -f kitty -e rmpc",
-	"on-click-middle": "~/.config/hypr/scripts/mpd-notify.sh",
-},
-    "cpu": {
-		"format": " {usage}%",
-		"tooltip": false,
-		"on-click": "setsid -f alacritty -e top"
+  "modules-center": ["mpd"],
+  "modules-left": ["custom/menu", "custom/sep", "hyprland/workspaces", "custom/sep", "hyprland/window"],
+  "modules-right": ["tray", "cpu", "memory", "custom/hdd", "custom/weather", "custom/updates", "battery", "hyprland/language", "custom/screenshot", "backlight", "clock", "custom/swaync", "custom/wlogout"],
+
+  "mpris": {
+	    "format": "{player_icon} {dynamic}",
+	    "format-paused": "{status_icon} <i>{dynamic}</i>",
+      "max-length": 30,
+      "player": "mpd",
+	    "player-icons": {
+		      "default": "▶",
+		      "mpd": "🎵"
+    	},
+      "status-icons": {
+  		    "paused": "⏸"
+	    },
+    	"ignored-players": ["firefox","brave"],
+    	"on-click": "mpc toggle",
+    	"on-click-right": "setsid -f kitty -e rmpc",
+    	"on-click-middle": "~/.config/hypr/scripts/mpd-notify.sh",
+  },
+  
+  "backlight": {
+      "device": "intel_backlight",
+      "format": "{icon} {percent}%",
+      "format-icons": ["󰃜","󰃛","󰃞", "󰃝", "󰃟", "󰃠"],
+      "min-length": 4,
+  },
+
+  "custom/wlogout": {
+      "format": "{icon}{}",
+      "on-click": "wlogout",
+      "format-icons": "󰍃",
+  },
+
+  "custom/swaync": {
+      "tooltip":true,
+      "format": "{icon} {}",
+      "format-icons": {
+          "notification": "<span foreground='red'><sup></sup></span>",
+          "none": "",
+          "dnd-notification": "<span foreground='red'><sup></sup></span>",
+          "dnd-none": "",
+          "inhibited-notification": "<span foreground='red'><sup></sup></span>",
+          "inhibited-none": "",
+          "dnd-inhibited-notification": "<span foreground='red'><sup></sup></span>",
+          "dnd-inhibited-none": ""
+      },
+      "return-type": "json",
+      "exec-if": "which swaync-client",
+      "exec": "swaync-client -swb",
+      "on-click": "sleep 0.1 && swaync-client -t -sw",
+      "on-click-right": "swaync-client -d -sw",
+      "escape": true,
+  },
+
+  "mpd": {
+    	"format": "{stateIcon}  {artist} - {title}",
+	    "format-disconnected": "Disconnected ",
+	    "format-stopped": "Stopped",
+	    "interval": 2,
+          "max-length": 30,
+    	"consume-icons": {
+	      	"on": " " // Icon shows only when "consume" is on
+    	},
+	    "random-icons": {
+	      	"off": "", // Icon grayed out when "random" is off
+	      	"on": " "
+    	},
+    	"repeat-icons": {
+      		"on": " "
+    	},
+    	"single-icons": {
+	      	"on": "1 "
+    	},
+    	"state-icons": {
+	      	"paused": "",
+	      	"playing": "",
+    	},
+    	"tooltip-format": "MPD (connected)",
+    	"tooltip-format-disconnected": "MPD (disconnected)",
+    	"on-click": "mpc toggle",
+    	"on-click-right": "setsid -f kitty -e rmpc",
+    	"on-click-middle": "~/.config/hypr/scripts/mpd-notify.sh",
+  },
+
+  "cpu": {
+	  	"format": " {usage}%",
+	  	"tooltip": false,
+	  	"on-click": "setsid -f alacritty -e top"
     },
 
-        "custom/screenshot": {
-	      "on-click": "~/.config/hypr/scripts/screenshot.sh",
-        "on-click-middle": "setsid -f alacritty -e ~/.config/hypr/scripts/screenrecord.sh",
-        "on-click-right": "~/.config/hypr/scripts/screenshot_clipboard.sh",
-	      "format": "",
-      	},
+  "custom/screenshot": {
+	    "on-click": "~/.config/hypr/scripts/screenshot.sh",
+      "on-click-middle": "setsid -f alacritty -e ~/.config/hypr/scripts/screenrecord.sh",
+      "on-click-right": "~/.config/hypr/scripts/screenshot_clipboard.sh",
+	    "format": "",
+    },
+
 	"memory": {
-		"format": " {}%",
-		"tooltip": false
+	  	"format": " {}%",
+	  	"tooltip": false
 	},
-
 
 	"hyprland/window": {
-		"format": "{class}",
-		"separate-outputs": false,
-		"icon": true,
-		"icon-size": 25,
+  		"format": "{class}",
+  		"separate-outputs": false,
+	  	"icon": true,
+	  	"icon-size": 25,
 },
 
-
 	"custom/menu": {
-		"format": "{icon}",
-		"format-icons": "",
-		"on-click": "~/.config/rofi/applaunch/launcher-hypr.sh",
-		"escape": true,
-		"tooltip": false
+	  	"format": "{icon}",
+  		"format-icons": "",
+	  	"on-click": "~/.config/rofi/applaunch/launcher-hypr.sh",
+	  	"escape": true,
+  		"tooltip": false
 	},
-
 
 	"hyprland/workspaces": {
-		"format": "{icon}",
-		"icon-size": 20,
-		"on-click": "activate",
-		"format-icons": {
-			"1": "1",
-			"2": "2",
-			"3": "3",
-			"4": "4",
-			"5": "5",
-			"6": "6",
+		  "format": "{icon}",
+	  	"icon-size": 20,
+	  	"on-click": "activate",
+	  	"format-icons": {
+		    	"1": "1",
+		    	"2": "2",
+		    	"3": "3",
+		    	"4": "4",
+		    	"5": "5",
+		    	"6": "6",
 			},
-		"tooltip": false,
-    		"persistent-workspaces": {
-            		"*": 6, // 5 workspaces by default on every monitor
-      		},
+		  "tooltip": false,
+      "persistent-workspaces": {
+          "*": 6, // 5 workspaces by default on every monitor
+    	},
 	},
-
 
 	"hyprland/language": {
 	    "format": "{}",
@@ -146,88 +149,91 @@
 	    "format-ru": "RU",
 	},
 
-
 	"tray": {
-		"icon-size": 16,
-		"spacing": 0,
+		  "icon-size": 16,
+		  "spacing": 0,
 	},
 
-
 	"clock": {
-		"format-alt": "{:%Y-%m-%d}",
-		"format": "{:%a,  %B %d  %H:%M}",
+		  "format-alt": "{:%Y-%m-%d}",
+		  "format": "{:%a,  %B %d  %H:%M}",
 	    "tooltip-format": "<tt><small>{calendar}</small></tt>",
-    "calendar": {
-      "mode"          : "year",
-      "mode-mon-col"  : 3,
-      "weeks-pos"     : "right",
-      "on-scroll"     : 1,
-      "format": {
-      "months":     "<span color='#ffead3'><b>{}</b></span>",
-      "days":       "<span color='#ecc6d9'><b>{}</b></span>",
-      "weeks":      "<span color='#99ffdd'><b>W{}</b></span>",
-      "weekdays":   "<span color='#ffcc66'><b>{}</b></span>",
-      "today":      "<span color='#ff6699'><b><u>{}</u></b></span>"
-                }
-                }
+      "calendar": {
+          "mode"          : "year",
+          "mode-mon-col"  : 3,
+          "weeks-pos"     : "right",
+          "on-scroll"     : 1,
+          "format": {
+              "months":     "<span color='#ffead3'><b>{}</b></span>",
+              "days":       "<span color='#ecc6d9'><b>{}</b></span>",
+              "weeks":      "<span color='#99ffdd'><b>W{}</b></span>",
+              "weekdays":   "<span color='#ffcc66'><b>{}</b></span>",
+              "today":      "<span color='#ff6699'><b><u>{}</u></b></span>"
+              }
+           }
 	},
 
 	"custom/weather": {
-	"format": "{}",
-	"interval": 1800,
-	"exec": "~/.config/hypr/scripts/forecast-hypr.sh",
-	"tooltip": false,
-	"on-click": "setsid -f alacritty -e less -Sfr $HOME/.cache/weatherreport"
+	    "format": "{}",
+	    "interval": 1800,
+	    "exec": "~/.config/hypr/scripts/forecast-hypr.sh",
+	    "tooltip": false,
+    	"on-click": "setsid -f alacritty -e less -Sfr $HOME/.cache/weatherreport"
 	},
-        "custom/updates": {
-        "format": "{}",
-        "interval": 1800,
-        "exec": "~/.config/hypr/scripts/updates-void-hypr.sh",
-        "tooltip": false,
-        },
-        "disk": {
-      	"interval": 1800,
-	      "format": "{percentage_free}% free on {path}",
-        },
-        "custom/hdd": {
-        "format": "{}",
-        "interval": 1800,
-        "exec": "~/.config/hypr/scripts/hdd-hypr.sh",
-        "tooltip": false,
-        },
-	"custom/sep": {
-	"format": "_",
-	},
-"pulseaudio": {
-	"format": "{icon} {volume}%",
-        "format-bluetooth": "{icon} 󰂰 {volume}%",
-    "format-muted": "󰖁",
-    "format-icons": {
-        "headphone": "",
-        "hands-free": "",
-        "headset": "",
-        "phone": "",
-        "portable": "",
-        "car": "",
-    "default": ["", "", "󰕾", ""],
-    "ignored-sinks": ["Easy Effects Sink"],
-    },
-	"scroll-step": 1,
-	"on-click": "pavucontrol",
-"on-scroll-up": "pactl set-sink-mute 0 false ; pactl set-sink-volume 0 -3%",
-"on-scroll-down": "pactl set-sink-mute 0 false ; pactl set-sink-volume 0 +3%",
-},
-"battery": {
-	"bat": "BAT0",
-	"interval": 60,
-        "states": {
-                "warning": 30,
-                "critical": 15
-        },
-	"format": "{icon} {capacity}%",
-	"format-icons": ["", "", "", "", ""],
-	"tooltip": false,
-},
 
+  "custom/updates": {
+      "format": "{}",
+      "interval": 1800,
+      "exec": "~/.config/hypr/scripts/updates-void-hypr.sh",
+      "tooltip": false,
+  },
+
+  "disk": {
+    	"interval": 1800,
+	    "format": "{percentage_free}% free on {path}",
+  },
+
+  "custom/hdd": {
+      "format": "{}",
+      "interval": 1800,
+      "exec": "~/.config/hypr/scripts/hdd-hypr.sh",
+      "tooltip": false,
+  },
+
+	"custom/sep": {
+	    "format": "_",
+	},
+
+  "pulseaudio": {
+  	  "format": "{icon} {volume}%",
+      "format-bluetooth": "{icon} 󰂰 {volume}%",
+      "format-muted": "󰖁",
+      "format-icons": {
+          "headphone": "",
+          "hands-free": "",
+          "headset": "",
+          "phone": "",
+          "portable": "",
+          "car": "",
+          "default": ["", "", "󰕾", ""],
+          "ignored-sinks": ["Easy Effects Sink"],
+      },
+  	  "scroll-step": 1,
+    	"on-click": "pavucontrol",
+      "on-scroll-up": "pactl set-sink-mute 0 false ; pactl set-sink-volume 0 -3%",
+      "on-scroll-down": "pactl set-sink-mute 0 false ; pactl set-sink-volume 0 +3%",
+  },
+
+  "battery": {
+	    "bat": "BAT0",
+	    "interval": 60,
+      "states": {
+          "warning": 30,
+          "critical": 15
+          },
+	    "format": "{icon} {capacity}%",
+    	"format-icons": ["", "", "", "", ""],
+    	"tooltip": false,
+   },
 
 }
