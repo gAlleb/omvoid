@@ -15,7 +15,6 @@ echo -e "\n$ansi_art\n"
 
 sudo xbps-install -y git
 
-# Use custom repo if specified, otherwise default to basecamp/omarchy
 OMVOID_REPO="${OMVOID_REPO:-galleb/omvoid}"
 
 echo -e "\nCloning OMVOID from: https://github.com/${OMVOID_REPO}.git"
