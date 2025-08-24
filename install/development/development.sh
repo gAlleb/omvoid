@@ -1,19 +1,25 @@
 #!/bin/bash
+
+# Main batch
 sudo xbps-install -y \
-  wget curl unzip fzf nano Waybar senpai \
+  wget curl unzip fzf nano Waybar  \
   make base-devel freetype-devel fontconfig-devel \
   xwallpaper xcompmgr xsetroot libX11-devel \
-  libXft-devel libXinerama-devel  imlib2-devel xorg xinit \
+  libXft-devel libXinerama-devel imlib2-devel xorg xinit \
   wl-clipboard fastfetch man tldr less ufw network-manager-applet \
   ImageMagick wf-recorder brightnessctl playerctl nautilus \
-  libnotify pywal python3-pipx imv lazydocker vlc mpv \
+  libnotify pywal python3-pipx imv lazydocker \
   nautilus gvfs mpd mpc mpDris2 cava SwayNotificationCenter \
   libcanberra-gtk3 libcanberra-utils sound-theme-freedesktop \
-  wf-recorder satty slurp grim webp-pixbuf-loader mpv swww \
+  wf-recorder satty slurp grim webp-pixbuf-loader swww \
   neovim alacritty kitty walker gnome-keyring seahorse rmpc wlogout \
-  caffeine-ng telegram-desktop gnome-themes-extra xdg-user-dirs swaybg \
+  caffeine-ng gnome-themes-extra xdg-user-dirs swaybg 
+
+# Extra batch 
+sudo xbps-install -y \
   remmina flacon filezilla transmission transmission-qt gnome-calculator \
-  foliate vscode obs audacity strawberry ghostty gimp chromium
+  foliate vscode obs audacity strawberry ghostty gimp chromium puddletag \
+  senpai vlc mpv telegram-desktop
 
 xdg-user-dirs-update 
 
