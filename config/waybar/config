@@ -156,7 +156,7 @@
 
 	"clock": {
 		  "format-alt": "{:%Y-%m-%d}",
-		  "format": "{:%a,  %B %d  %H:%M}",
+		  "format": "{:%a,  %b %d  %H:%M}",
 	    "tooltip-format": "<tt><small>{calendar}</small></tt>",
       "calendar": {
           "mode"          : "year",
