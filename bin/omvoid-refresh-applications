@@ -2,7 +2,7 @@
 
 # Copy and sync icon files
 mkdir -p ~/.local/share/icons/hicolor/48x48/apps/
-cp ~/.local/share/omvoid//applications/icons/* ~/.local/share/icons/hicolor/48x48/apps/
+cp ~/.local/share/omvoid/applications/icons/* ~/.local/share/icons/hicolor/48x48/apps/
 gtk-update-icon-cache ~/.local/share/icons/hicolor &>/dev/null
 
 # Copy .desktop declarations
