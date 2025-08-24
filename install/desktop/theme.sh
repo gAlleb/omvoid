@@ -6,9 +6,10 @@ git clone https://github.com/vinceliuice/WhiteSur-gtk-theme.git --depth=1 /tmp/W
 /tmp/WhiteSur-gtk-theme/install.sh -l -c dark
 git clone https://github.com/vinceliuice/WhiteSur-icon-theme.git /tmp/WhiteSur-icon-theme
 /tmp/WhiteSur-icon-theme/install.sh -t grey
+/tmp/WhiteSur-icon-theme/install.sh -t red
 
 gsettings set org.gnome.desktop.interface gtk-theme "WhiteSur-dark"
 gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
-gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-grey-dark"
+gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-red-dark"
 
 source ~/.config/hypr/scripts/init_wallpaper.sh

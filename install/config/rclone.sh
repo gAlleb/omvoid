@@ -21,14 +21,24 @@ fi
 echo -e "/media /etc/autofs/auto.mymounts --timeout 0 --ghost\n" | sudo tee -a /etc/autofs/auto.master
 
 sudo tee /etc/autofs/auto.mymounts <<'EOF'
+#  
 # fstype=fuse.rclonefs works, fstype=rclone - doesn't. TODO:
 # symlink rclone binary to /sbin/mount.rclone and optionally /usr/bin/rclonefs
+#
+# EXAMPLE MOUNTPOINTS:
+#
+# CIFS:
 #music -fstype=cifs,rw,credentials=/etc/autofs/credentials,noperm ://192.168.1.14/music
 #nextcloud -fstype=cifs,rw,credentials=/etc/autofs/credentials,noperm ://192.168.1.14/nextcloud
-truenas2 -rw,soft 192.168.1.14:/mnt/my-1tb-pool/music
-nextcloud -rw,soft 192.168.1.14:/mnt/my-1tb-pool/nextcloud
-GoogleDrive -allow_other,args2env,fstype=fuse.rclonefs,config=/root/.config/rclone/rclone.conf,cache-db-purge,allow-other,vfs-cache-mode=writes :GoogleDrive:
-YandexDisk -allow_other,args2env,fstype=fuse.rclonefs,config=/root/.config/rclone/rclone.conf,cache-db-purge,allow-other,vfs-cache-mode=writes :YandexDiskLinux:
+#
+# NFS:
+#truenas2 -rw,soft 192.168.1.14:/mnt/my-1tb-pool/music
+#nextcloud -rw,soft 192.168.1.14:/mnt/my-1tb-pool/nextcloud
+#
+# CLOUD DRIVES:
+#
+#GoogleDrive -allow_other,args2env,fstype=fuse.rclonefs,config=/root/.config/rclone/rclone.conf,cache-db-purge,allow-other,vfs-cache-mode=writes :GoogleDrive:
+#YandexDisk -allow_other,args2env,fstype=fuse.rclonefs,config=/root/.config/rclone/rclone.conf,cache-db-purge,allow-other,vfs-cache-mode=writes :YandexDiskLinux:
 
 EOF
 
