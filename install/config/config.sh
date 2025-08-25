@@ -4,6 +4,9 @@
 
 if [ ! -d ~/.config ] ; then
     mkdir -p ~/.config
+fi
+if [ ! -d ~/.local/bin ] ; then
+    mkdir -p ~/.local/bin
 fi 
 
 cp -R ~/.local/share/omvoid/config/* ~/.config/
