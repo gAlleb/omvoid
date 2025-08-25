@@ -1,0 +1,130 @@
+#!/bin/bash
+
+tee ~/.local/bin/spec <<'EOF'
+#!/bin/bash
+
+# spec - Copyright (c) 2024 Matthias C. Hormann
+# 2024-03-26
+# Show spectrogram for an audio file, using ffmpeg's showspectrumpic
+# Add this to the "Open with…" context menu of your file manager!
+
+# define me
+me=`basename "$0"`
+version="0.2"
+
+if [ -z "$1" ] ; then
+  exit 1;
+fi
+
+# Create temporary file names to use.
+# kludge for MacOS: Mac variant first, then Linux:
+TEMP=`mktemp -u -t ${me} 2>/dev/null || mktemp -u -t ${me}-XXXXXXXXXX`
+TEMPIMG="${TEMP}.png"
+TEMPTXT="${TEMP}.txt"
+
+# Shell + ffmpeg quoting rules are a mess, and inconsistent,
+# so better use a temporary text file for the info.
+# Save the original file name to show in the spectrogram.
+basename "$1" > "${TEMPTXT}"
+
+# Note: showspectrumpic height MUST be a power of 2!
+ffmpeg -v quiet -y -i "$1" -filter_complex showspectrumpic=s=1024x512:stop=22000,drawtext="expansion=none:textfile='${TEMPTXT}':x=(w-tw)/2:y=16:fontcolor='white':fontsize=20" "$TEMPIMG"
+exitcode=$?
+if [ $exitcode -ne 0 ] ; then
+  rm "$TEMPTXT"
+  exit $exitcode
+fi
+
+# Open in your default PNG image file viewer.
+# Using a subshell here so we can wait until closed, before removing the temp file
+# Macs don’t have `xdg-open`, so use `open` instead. Requires correct file extension.
+dummy=$(xdg-open "$TEMPIMG")
+rm "$TEMPIMG" "$TEMPTXT"
+EOF
+
+tee ~/.local/bin/audiometer <<'EOF'
+#!/usr/bin/env python3
+# encoding: utf-8
+
+# audiometer.py
+# https://github.com/Warblefly/audiometer/tree/master
+
+""" Audio Display """
+# Uses the MPV player to display useful information about incoming stereo audio
+# Have a look here for a Windows download. https://github.com/Warblefly/MultimediaTools-mingw-w64
+
+from string import Template
+import argparse
+import tempfile
+import subprocess
+import json
+import pprint
+
+
+def ffmpegEscape(inp):
+    return(inp.replace("\\",  "\\\\").replace(":",  "\\:"))
+
+
+parser = argparse.ArgumentParser(description='Audio monitor. Requires one audio input.')
+parser.add_argument('filename', metavar='file', help='Audio file to be displayed.')
+parser.add_argument('-r', default=25, type=int, help='Frame rate to display.')
+parser.add_argument('-j', action='store_true', help='Use Jack audio server')
+parser.add_argument('-l', metavar='level', type=float, default=0.0, help='Input attenuation in dB')
+parser.add_argument('-q', action='store_true', help='Audio to rear channels of quad speakers')
+
+args = parser.parse_args()
+filename_raw = '"' + args.filename.replace('"', '`"') + '"'
+rate = args.r
+jack = args.j
+level = args.l
+quad = args.q
+
+filename = ffmpegEscape(filename_raw)
+
+if quad == True:
+    audioOutCommand = "[n][p];[n]aformat=cl=quad,pan=quad|BL=c0|BR=c1[ao]"
+    audioChannels = "--audio-channels=quad"
+else:
+    audioOutCommand = "[ao][p]"
+    audioChannels = "--audio-channels=stereo"
+
+# if ffmpeg is compiled with '--enable-libsoxr' we can use :resampler=soxr
+# "[c]aresample=50000:resampler=soxr,showfreqs=fscale=lin:cmode=separate:size=360x360,fps=fps=" + str(rate) + "," + \
+
+LAVFI = "[aid1]volume=" + str(-level) + "dB," + \
+        "asplit=8[a][b][c][d][e][f][g][i];" + \
+        "[a]avectorscope=size=360x360:zoom=0.1:swap=1:draw=line:rate=" + str(rate) + ",drawgrid=180:180:color=gray[z];" + \
+        "[b]ebur128=video=1:meter=18[q][h];" + \
+        "[q]fps=fps=" + str(rate) + ",scale=360:360[y];[z][y]hstack[w];" + \
+        "[c]aresample=50000,showfreqs=fscale=lin:cmode=separate:size=360x360,fps=fps=" + str(rate) + "," + \
+        "drawgrid=x=0:y=0:w=72:h=180:color=gray[u];" + \
+        "[d]showspectrum=overlap=0:slide=scroll:scale=5thrt:mode=combined:legend=1:fps=" + str(rate) + "," + \
+        "scale=360:360[t];" + \
+        "[t][u]hstack[v];" + \
+        "[e]aresample=192000,volume=+5.2dB,showvolume=rate=" + str(rate) + ":w=720:h=40:t=0:f=0.9:v=1:m=p:dm=1:ds=lin," + \
+        "drawtext=font=Arial:fontsize=16:" + \
+        "text='1    2       3             4                      5                                   6                                                          7':" + \
+        "x=35:y=34:fontcolor=white," + \
+        "scale=720:-1[s];" + \
+        "[f]showcqt=size=720x120:bar_g=7:bar_t=0.25:timeclamp=0.5:rate=" + str(rate) + "[r];" + \
+        "[g]aphasemeter=size=720x39:rate=" + str(rate) + ":mpc=red" + audioOutCommand + ";" + \
+        "[h]anullsink;" + \
+        "[i]ahistogram=rate=" + str(rate) + ":size=720x80:rheight=1/2:acount=40:slide=scroll[x];" + \
+        "[v][w][r][p][x][s]vstack=inputs=6,setsar=1/1[vo]"
+
+if jack == True:
+    jack_command = " --ao=jack --jack-name=Audiometer "
+else:
+    jack_command = " "
+
+
+dos_command = 'mpv' + ' -v  --background=color --background-color=#FF000000 ' + audioChannels + " " + jack_command + ' --lavfi-complex="' + LAVFI + '" ' + filename_raw
+
+try:
+    test = str(subprocess.check_output(dos_command, shell=True))
+except subprocess.CalledProcessError as e:
+    print(e)
+EOF
+
+chmod +x ~/.local/bin/spec
+chmod +x ~/.local/bin/audiometer
