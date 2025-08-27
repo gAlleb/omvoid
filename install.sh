@@ -36,6 +36,7 @@ show_logo
 show_subtext "Let's install OMVOID! [1/5]"
 source $OMVOID_INSTALL/config/identification.sh
 source $OMVOID_INSTALL/config/config.sh
+source $OMVOID_INSTALL/config/xcompose.sh
 source $OMVOID_INSTALL/config/services.sh
 source $OMVOID_INSTALL/config/runsvdir.sh
 source $OMVOID_INSTALL/config/groups.sh
