@@ -1,5 +1,4 @@
 {
-
 	"layer": "top",
 	"position": "top",
 	"height": 30,
@@ -115,7 +114,7 @@
   		"separate-outputs": false,
 	  	"icon": true,
 	  	"icon-size": 25,
-},
+  },
 
 	"custom/menu": {
 	  	"format": "{icon}",
