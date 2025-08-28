@@ -13,7 +13,7 @@ sudo xbps-install -y \
   libcanberra-gtk3 libcanberra-utils sound-theme-freedesktop \
   wf-recorder satty slurp grim webp-pixbuf-loader swww \
   neovim alacritty kitty walker gnome-keyring seahorse rmpc wlogout \
-  caffeine-ng gnome-themes-extra xdg-user-dirs swaybg 
+  caffeine-ng gnome-themes-extra xdg-user-dirs swaybg SwayOSD 
 
 # Extra batch 
 sudo xbps-install -y \
@@ -24,6 +24,10 @@ sudo xbps-install -y \
 xdg-user-dirs-update 
 
 sudo usermod -aG mpd,transmission $USER 
+
+if [ ! -L "/var/service/swayosd-libinput-backend/" ]; then
+    sudo ln -s /etc/sv/swayosd-libinput-backend /var/service
+fi
 
 # Add Gimp Photoshop plugin
 git clone https://github.com/Diolinux/PhotoGIMP.git /tmp/PhotoGIMP
