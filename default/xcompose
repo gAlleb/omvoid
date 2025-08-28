@@ -27,3 +27,5 @@ include "%L"
 
 # Typography
 <Multi_key> <space> <space> : "—"
+<Multi_key> <space> <q> : "«"
+<Multi_key> <space> <w> : "»"
