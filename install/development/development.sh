@@ -8,18 +8,24 @@ sudo xbps-install -y \
   libXft-devel libXinerama-devel imlib2-devel xorg xinit \
   wl-clipboard fastfetch man tldr less ufw network-manager-applet \
   ImageMagick wf-recorder brightnessctl playerctl nautilus \
-  libnotify pywal python3-pipx imv lazydocker \
+  libnotify imv lazydocker \
   nautilus gvfs mpd mpc mpDris2 cava SwayNotificationCenter \
   libcanberra-gtk3 libcanberra-utils sound-theme-freedesktop \
   wf-recorder satty slurp grim webp-pixbuf-loader swww \
   neovim alacritty kitty walker gnome-keyring seahorse rmpc wlogout \
-  caffeine-ng gnome-themes-extra xdg-user-dirs swaybg SwayOSD 
+  caffeine-ng gnome-themes-extra xdg-user-dirs swaybg SwayOSD kvantum qt5ct qt6ct 
 
 # Extra batch 
 sudo xbps-install -y \
   remmina flacon filezilla transmission transmission-qt gnome-calculator \
   foliate vscode obs audacity strawberry ghostty gimp chromium puddletag \
   senpai vlc mpv telegram-desktop
+
+# pipx
+sudo xbps-install -y \
+  python3-pipx 
+
+pipx install pywal16
 
 xdg-user-dirs-update 
 

@@ -8,8 +8,8 @@ configuration {
     display-run:                "";
     display-filebrowser:        "";
     display-window:             "";
-	drun-display-format:        "{name}";
-	window-format:              "{w}: {c}";
+	  drun-display-format:        "{name}";
+	  window-format:              "{w}: {c}";
     run,drun,filebrowser,window {
            fallback-icon: "application-x-addon";
         }
@@ -64,11 +64,11 @@ listbox {
 /*****----- Inputbar -----*****/
 inputbar {
     enabled:                     true;
-    spacing:                     10px;
-    padding:                     100px 40px;
+    spacing:                     75px;
+    padding:                     20px 20px;
     background-color:            transparent;
     text-color:                  @foreground;
-    orientation:                 horizontal;
+    orientation:                 vertical;
     children:                    [ "textbox-prompt-colon", "entry", "dummy", "mode-switcher" ];
 }
 textbox-prompt-colon {
@@ -100,12 +100,12 @@ dummy {
 /*****----- Mode Switcher -----*****/
 mode-switcher{
     enabled:                     true;
-    spacing:                     5px;
+    spacing:                     15px;
     background-color:            transparent;
     text-color:                  @foreground;
 }
 button {
-    padding:                     0px 36px 0px 32px;
+    padding:                     8px 36px 8px 32px;
     border-radius:               100%;
     background-color:            @background;
     text-color:                  inherit;
@@ -202,3 +202,4 @@ error-message {
     background-color:            @background;
     text-color:                  @foreground;
 }
+
