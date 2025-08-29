@@ -87,7 +87,7 @@
     	"tooltip-format": "MPD (connected)",
     	"tooltip-format-disconnected": "MPD (disconnected)",
     	"on-click": "mpc toggle",
-    	"on-click-right": "setsid -f kitty -e rmpc",
+    	"on-click-right": "setsid -f kitty --class=rmpc -o font_size=12 -e rmpc",
     	"on-click-middle": "~/.config/hypr/scripts/mpd-notify.sh",
   },
 
