@@ -8,8 +8,8 @@ configuration {
     display-run:                "";
     display-filebrowser:        "";
     display-window:             "";
-	drun-display-format:        "{name}";
-	window-format:              "{w}: {c}";
+	  drun-display-format:        "{name}";
+	  window-format:              "{w}: {c}";
     run,drun,filebrowser,window {
            fallback-icon: "application-x-addon";
         }
