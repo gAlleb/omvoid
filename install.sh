@@ -28,6 +28,7 @@ show_subtext() {
 
 # Install prerequisites
 # source $OMVOID_INSTALL/preflight/migrations.sh
+source $OMVOID_INSTALL/preflight/first-run-mode.sh
 source $OMVOID_INSTALL/preflight/update.sh
 source $OMVOID_INSTALL/preflight/gum.sh
 
