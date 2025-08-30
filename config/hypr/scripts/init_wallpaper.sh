@@ -41,10 +41,10 @@ executeCommand() {
     local relative_path="${selected_wallpaper#${WALLPAPER_DIR}/}"
     local selected_thumbnail_path="${CACHE_DIR}/${relative_path%.*}.png"
 
-    wal -c
+    ~/.local/bin/wal -c
 
     # Generate the new color scheme using wal with the determined flag
-    wal ${wal_flags} -i ${selected_wallpaper}
+    ~/.local/bin/wal ${wal_flags} -i ${selected_wallpaper}
 
     # Update other applications
     echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR/wallpaper-hyprland.conf
