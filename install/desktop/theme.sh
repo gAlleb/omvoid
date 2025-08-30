@@ -18,7 +18,6 @@ gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-red-dark"
 
 # Init random wallpapeper theme with wal from xbps and remove it
 source ~/.config/hypr/scripts/init_wallpaper.sh
-sudo xbps-remove -y wal 
 
 # Setup theme links
 mkdir -p ~/.config/omvoid/themes

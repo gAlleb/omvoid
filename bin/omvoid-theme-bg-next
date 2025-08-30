@@ -44,8 +44,6 @@ else
 
   swww img --transition-type any --transition-angle 45 "$CURRENT_BACKGROUND_LINK"
   
-
-
   # Create thumbnail
   CURRENT_BACKGROUND_DIR=$(dirname "$CURRENT_BACKGROUND_LINK")
   CURRENT_BACKGROUND_BASENAME=$(basename "$CURRENT_BACKGROUND_LINK")
