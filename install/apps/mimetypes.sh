@@ -49,3 +49,5 @@ xdg-mime default mpv.desktop application/ogg
 # xdg-mime default vlc.desktop video/x-ogm+ogg
 # xdg-mime default vlc.desktop video/x-theora+ogg
 # xdg-mime default vlc.desktop application/ogg
+
+sed -i 's|^source $OMVOID_INSTALL/apps/mimetypes.sh\s*$|#source $OMVOID_INSTALL/apps/mimetypes.sh|' ~/.local/share/omvoid/install.sh

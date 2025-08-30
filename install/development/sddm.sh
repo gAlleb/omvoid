@@ -25,3 +25,5 @@ EnableHiDPI=true
 EOF
 
 #sudo ln -s /etc/sv/sddm /var/service
+
+sed -i 's|^source $OMVOID_INSTALL/development/sddm.sh\s*$|#source $OMVOID_INSTALL/development/sddm.sh|' ~/.local/share/omvoid/install.sh

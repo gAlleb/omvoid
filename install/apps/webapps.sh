@@ -7,3 +7,5 @@ omvoid-webapp-install "omFM" https://omfm.ru/ https://main.omfm.ru/logo-omfm.png
 # omvoid-webapp-install "ChatGPT" https://chatgpt.com/ https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/chatgpt.png
 omvoid-webapp-install "YouTube" https://youtube.com/ https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/youtube.png
 omvoid-webapp-install "GitHub" https://github.com/ https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/github-light.png
+
+sed -i 's|^source $OMVOID_INSTALL/apps/webapps.sh\s*$|#source $OMVOID_INSTALL/apps/webapps.sh|' ~/.local/share/omvoid/install.sh

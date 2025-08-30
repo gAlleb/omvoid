@@ -16,8 +16,9 @@ gsettings set org.gnome.desktop.interface gtk-theme "WhiteSur-Dark"
 gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
 gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-red-dark"
 
-# Init random wallpapeper theme 
+# Init random wallpapeper theme with wal from xbps and remove it
 source ~/.config/hypr/scripts/init_wallpaper.sh
+sudo xbps-remove -y wal 
 
 # Setup theme links
 mkdir -p ~/.config/omvoid/themes
@@ -28,4 +29,4 @@ mkdir -p ~/.config/omvoid/current
 ln -snf ~/.config/omvoid/themes/redpeace ~/.config/omvoid/current/theme
 ln -snf ~/.config/omvoid/current/theme/backgrounds/redpeace.png ~/.config/omvoid/current/background
 
-
+sed -i 's|^source $OMVOID_INSTALL/desktop/theme.sh\s*$|#source $OMVOID_INSTALL/desktop/theme.sh|' ~/.local/share/omvoid/install.sh

@@ -8,3 +8,5 @@ include "%H/.local/share/omvoid/default/xcompose"
 <Multi_key> <space> <n> : "$OMVOID_USER_NAME"
 <Multi_key> <space> <e> : "$OMVOID_USER_EMAIL"
 EOF
+
+sed -i 's|^source $OMVOID_INSTALL/config/xcompose.sh\s*$|#source $OMVOID_INSTALL/config/xcompose.sh|' ~/.local/share/omvoid/install.sh

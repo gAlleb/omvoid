@@ -37,3 +37,5 @@ echo "File '/etc/sv/runsvdir-$USER/finish' created and made executable."
 sudo ln -s /etc/sv/runsvdir-$USER /var/service/
 
 echo "Per-user service is enabled"
+
+sed -i 's|^source $OMVOID_INSTALL/config/runsvdir.sh\s*$|#source $OMVOID_INSTALL/config/runsvdir.sh|' ~/.local/share/omvoid/install.sh
