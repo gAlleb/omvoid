@@ -29,7 +29,17 @@ Project started as a private repo just to reproduce my setup across different ma
 
 ---
 
+### And, of course, themes :D
+
 <img width="60%" height="60%" alt="screenshot-2025-08-24_17-32-25" src="https://github.com/user-attachments/assets/338bcc80-1771-44e1-a2b8-dc2a0276e9ad" />
 
 <img width="60%" height="60%" alt="screenshot-2025-08-24_19-35-34" src="https://github.com/user-attachments/assets/42b7936a-778e-4a43-80ca-41dac5b11cb8" />
+
+<img width="60%" height="60%" alt="screenshot-2025-08-30_21-47-08" src="https://github.com/user-attachments/assets/613dce38-bf98-48cf-8ced-e9dedffbef04" />
+
+<img width="60%" height="60%" alt="screenshot-2025-08-30_21-48-03" src="https://github.com/user-attachments/assets/ebab5570-4bd9-485e-9b83-33e0547cbdcd" />
+
+<img width="60%" height="60%" alt="screenshot-2025-08-30_21-48-46" src="https://github.com/user-attachments/assets/420a848a-3820-4eb3-a745-5d4ba0e093a3" />
+
+
 
