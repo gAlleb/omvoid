@@ -39,3 +39,5 @@ fi
 if [[ -n "${OMVOID_USER_CITY//[[:space:]]/}" ]]; then
   sed -i "s/^LOCATION=.*/LOCATION=$OMVOID_USER_CITY/" ~/.config/hypr/scripts/forecast-hypr.sh
 fi
+
+sed -i 's|^source $OMVOID_INSTALL/config/config.sh\s*$|#source $OMVOID_INSTALL/config/config.sh|' ~/.local/share/omvoid/install.sh

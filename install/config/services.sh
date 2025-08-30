@@ -35,3 +35,5 @@ fi
 
 # Add user to necessary groups
 sudo usermod -aG network,dbus,polkitd $USER
+
+sed -i 's|^source $OMVOID_INSTALL/config/services.sh\s*$|#source $OMVOID_INSTALL/config/services.sh|' ~/.local/share/omvoid/install.sh

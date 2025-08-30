@@ -11,3 +11,4 @@ sudo xbps-install -y \
   xdg-desktop-portal-gtk xdg-desktop-portal-wlr mesa-dri
 sudo sed -i 's/Exec=Hyprland/Exec=dbus-run-session Hyprland/' /usr/share/wayland-sessions/hyprland.desktop
 
+sed -i 's|^source $OMVOID_INSTALL/development/hyprtime.sh\s*$|#source $OMVOID_INSTALL/development/hyprtime.sh|' ~/.local/share/omvoid/install.sh

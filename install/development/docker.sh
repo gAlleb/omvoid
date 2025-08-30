@@ -4,3 +4,5 @@ sudo mkdir -p /etc/docker
 echo '{"log-driver":"json-file","log-opts":{"max-size":"10m","max-file":"3"}}' | sudo tee /etc/docker/daemon.json
 sudo ln -s /etc/sv/docker /var/service
 sudo usermod -aG docker $USER 
+
+sed -i 's|^source $OMVOID_INSTALL/development/docker.sh\s*$|#source $OMVOID_INSTALL/development/docker.sh|' ~/.local/share/omvoid/install.sh
