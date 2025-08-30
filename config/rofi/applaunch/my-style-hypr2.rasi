@@ -65,7 +65,7 @@ listbox {
 inputbar {
     enabled:                     true;
     spacing:                     75px;
-    padding:                     20px 20px;
+    padding:                     15px 15px;
     background-color:            transparent;
     text-color:                  @foreground;
     orientation:                 vertical;
@@ -128,7 +128,7 @@ listview {
     reverse:                     false;
     fixed-height:                true;
     fixed-columns:               true;
-    padding:                     10px;
+    padding:                     15px;
     spacing:                     10px;
     background-color:            rgba(0,0,0,0.3);
     text-color:                  @foreground;
@@ -202,4 +202,6 @@ error-message {
     background-color:            @background;
     text-color:                  @foreground;
 }
+
+
 
