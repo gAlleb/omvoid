@@ -3,7 +3,8 @@ export MOZ_USE_XINPUT2=1
 export BROWSER=brave-browser
 export TERMINAL=alacritty
 export SVDIR=~/.config/service
-export PATH="$PATH:$HOME/.local/bin:$HOME/scripts:$HOME/.local/share/omvoid/bin"
+export OMVOID_PATH=$HOME/.local/share/omvoid 
+export PATH="$PATH:$HOME/.local/bin:$HOME/scripts:$HOME/.local/share/omvoid/bin:$OMVOID_PATH/bin"
 export LIBVIRT_DEFAULT_URI="qemu:///system"
 # BEGIN opam configuration
 # This is useful if you're using opam as it adds:
