@@ -8,7 +8,7 @@ sudo xbps-install -y \
   libXft-devel libXinerama-devel imlib2-devel xorg xinit \
   wl-clipboard fastfetch man tldr less ufw network-manager-applet \
   ImageMagick wf-recorder brightnessctl playerctl nautilus \
-  libnotify imv lazydocker \
+  libnotify imv lazydocker inotify-tools \
   nautilus gvfs mpd mpc mpDris2 cava SwayNotificationCenter \
   libcanberra-gtk3 libcanberra-utils sound-theme-freedesktop \
   wf-recorder satty slurp grim webp-pixbuf-loader swww \

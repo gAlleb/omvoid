@@ -32,16 +32,27 @@ if [[ -z "$mode_choice" ]]; then
 fi
 
 # 6. Determine the correct `wal` flag based on the choice
-wal_flags=""
+local wal_flags=""
 if [ "$mode_choice" = "Light Mode" ]; then
-    wal_flags="-l"
+    wal_flags="-l -i ${current_wallpaper}"
+    gsettings set org.gnome.desktop.interface gtk-theme "WhiteSur-Light"
+    gsettings set org.gnome.desktop.interface color-scheme "prefer-light"
+    gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-light"
+    kvantummanager --set WhiteSur-opaque
+else
+    wal_flags="-i ${current_wallpaper}"
+    gsettings set org.gnome.desktop.interface gtk-theme "WhiteSur-Dark"
+    gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
+    gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-grey-dark"
+    kvantummanager --set WhiteSur-opaqueDark
 fi
 
-# 7. Execute all the commands to re-apply the theme
-# This is the same block of commands from your other script
-echo "Applying theme with wallpaper: ${current_wallpaper}"
 wal -c
-wal ${wal_flags} -i "${current_wallpaper}"
+
+# Generate the new color scheme using wal with the determined flag
+#wal ${wal_flags} -i ${selected_wallpaper}
+wal ${wal_flags} 
+
 pywalfox update
 pkill -SIGUSR2 waybar
 swaync-client -rs

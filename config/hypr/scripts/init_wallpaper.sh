@@ -13,7 +13,7 @@ fi
 find -L "${WALLPAPER_DIR}" -type f \( -iname \*.jpg -o -iname \*.jpeg -o -iname \*.png -o -iname \*.webp \) | while read -r wallpaper_path; do
     # Get the relative path to maintain subdirectory structure in the cache
     relative_path="${wallpaper_path#${WALLPAPER_DIR}/}"
-    thumbnail_path="${CACHE_DIR}/${relative_path%.*}.png"
+    thumbnail_path="${CACHE_DIR}/thumbnails/${relative_path%.*}.png"
 
     # Create the directory in the cache if it doesn't exist
     if [ ! -d "$(dirname "${thumbnail_path}")" ]; then
@@ -39,7 +39,7 @@ executeCommand() {
     # The selected wallpaper path is passed as the first argument ($1)
     local selected_wallpaper="$1"
     local relative_path="${selected_wallpaper#${WALLPAPER_DIR}/}"
-    local selected_thumbnail_path="${CACHE_DIR}/${relative_path%.*}.png"
+    local selected_thumbnail_path="${CACHE_DIR}/thumbnails/${relative_path%.*}.png"
 
     ~/.local/bin/wal -c
 
