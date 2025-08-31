@@ -15,7 +15,7 @@ fi
 find -L "${WALLPAPER_DIR}" -type f \( -iname \*.jpg -o -iname \*.jpeg -o -iname \*.png -o -iname \*.webp \) | while read -r wallpaper_path; do
     # Get the relative path to maintain subdirectory structure in the cache
     relative_path="${wallpaper_path#${WALLPAPER_DIR}/}"
-    thumbnail_path="${CACHE_DIR}/${relative_path%.*}.png"
+    thumbnail_path="${CACHE_DIR}/thumbnails/${relative_path%.*}.png"
 
     # Create the directory in the cache if it doesn't exist
     if [ ! -d "$(dirname "${thumbnail_path}")" ]; then
@@ -46,7 +46,7 @@ executeCommand() {
     # The selected wallpaper path is passed as the first argument ($1)
     local selected_wallpaper="$1"
     local relative_path="${selected_wallpaper#${WALLPAPER_DIR}/}"
-    local selected_thumbnail_path="${CACHE_DIR}/${relative_path%.*}.png"
+    local selected_thumbnail_path="${CACHE_DIR}/thumbnails/${relative_path%.*}.png"
     mode_choice=$(echo -e "Dark Mode\0icon\x1f${THEMES_DIR}/black.png\nLight Mode\0icon\x1f${THEMES_DIR}/white.png" | rofi -dmenu -p "Select Mode" -theme "${THEMES_DIR}/dark-light-mode-select.rasi")
 
     # If the user cancels the mode selection (e.g., presses Esc), exit gracefully.
@@ -57,16 +57,28 @@ executeCommand() {
     # --- Determine the correct `wal` flag based on the choice ---
     local wal_flags=""
     if [ "$mode_choice" = "Light Mode" ]; then
-        wal_flags="-l"
+        wal_flags="-l -i ${selected_wallpaper}"
+        gsettings set org.gnome.desktop.interface gtk-theme "WhiteSur-Light"
+        gsettings set org.gnome.desktop.interface color-scheme "prefer-light"
+        gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-light"
+        kvantummanager --set WhiteSur-opaque
+    else
+        wal_flags="-i ${selected_wallpaper}"
+        gsettings set org.gnome.desktop.interface gtk-theme "WhiteSur-Dark"
+        gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
+        gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-grey-dark"
+        kvantummanager --set WhiteSur-opaqueDark
     fi
 
     wal -c
 
     # Generate the new color scheme using wal with the determined flag
-    wal ${wal_flags} -i ${selected_wallpaper}
+    #wal ${wal_flags} -i ${selected_wallpaper}
+    wal ${wal_flags} 
+    
     magick "${selected_wallpaper}" ~/.config/bg.jpg
     xwallpaper --zoom $HOME/.config/bg.jpg
-    xrdb merge  $HOME/.cache/wal/colors-dwm-xresources
+    xrdb merge $HOME/.cache/wal/colors-dwm-xresources
     xdotool key alt+shift+F5
     xrdb merge ~/.Xresources
     pywalfox update
@@ -88,7 +100,7 @@ menu() {
     # If not *.gif, display with cached thumbnail
     if [[ ! "${PICS[$i]}" == *.gif ]]; then
       relative_path="${PICS[$i]#${WALLPAPER_DIR}/}"
-      thumbnail_path="${CACHE_DIR}/${relative_path%.*}.png"
+      thumbnail_path="${CACHE_DIR}/thumbnails/${relative_path%.*}.png"
       printf "$(basename "${PICS[$i]}")\x00icon\x1f${thumbnail_path}\n"
     else
     # Displaying .gif to indicate animated images (without an icon)
@@ -149,4 +161,3 @@ if pidof rofi > /dev/null; then
 fi
 
 main
-
