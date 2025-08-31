@@ -29,7 +29,7 @@ Project started as a private repo just to reproduce my setup across different ma
 
 ---
 
-### And, of course, themes :D
+### And, of course, themes :D However built-in `ALT+W` script will give you endless themes based on the selected wallpaper.
 
 <img width="60%" height="60%" alt="screenshot-2025-08-24_17-32-25" src="https://github.com/user-attachments/assets/338bcc80-1771-44e1-a2b8-dc2a0276e9ad" />
 
