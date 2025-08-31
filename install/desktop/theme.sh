@@ -1,10 +1,13 @@
 #!/bin/bash
 sudo xbps-install -y sassc glib-devel nwg-look
 
+# Install gtk theme
 git clone https://github.com/vinceliuice/WhiteSur-gtk-theme.git --depth=1 /tmp/WhiteSur-gtk-theme
 /tmp/WhiteSur-gtk-theme/install.sh
 /tmp/WhiteSur-gtk-theme/install.sh -l
 /tmp/WhiteSur-gtk-theme/install.sh -l -c light
+
+# install icon theme
 git clone https://github.com/vinceliuice/WhiteSur-icon-theme.git /tmp/WhiteSur-icon-theme
 /tmp/WhiteSur-icon-theme/install.sh
 /tmp/WhiteSur-icon-theme/install.sh -t grey
@@ -12,9 +15,15 @@ git clone https://github.com/vinceliuice/WhiteSur-icon-theme.git /tmp/WhiteSur-i
 /tmp/WhiteSur-icon-theme/install.sh -t red
 /tmp/WhiteSur-icon-theme/install.sh -t orange
 
+# Install qt theme for Kvantum
+git clone https://github.com/vinceliuice/WhiteSur-kde /tmp/WhiteSur-kde
+/tmp/WhiteSur-kde/install.sh
+/tmp/WhiteSur-kde/install.sh --window opaque 
+
 gsettings set org.gnome.desktop.interface gtk-theme "WhiteSur-Dark"
 gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
 gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-red-dark"
+# kvantummanager --set WhiteSur-opaqueDark
 
 # Init random wallpapeper theme with wal from xbps and remove it
 source ~/.config/hypr/scripts/init_wallpaper.sh
