@@ -13,9 +13,15 @@ cp -R ~/.local/share/omvoid/config/* ~/.config/
 
 # Use default dotfiles from omvoid
 cp ~/.local/share/omvoid/default/.bashrc ~/.bashrc
+
+# Copy .bash_profile and change user
 cp ~/.local/share/omvoid/default/.bash_profile ~/.bash_profile
+sed -i "s/__USERNAME__/$USER/g" ~/.bash_profile
+
+# Copy .tmux.conf and enable plugins
 cp ~/.local/share/omvoid/default/.tmux.conf ~/.tmux.conf
 git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+
 # Ensure application directory exists for update-desktop-database
 mkdir -p ~/.local/share/applications
 
