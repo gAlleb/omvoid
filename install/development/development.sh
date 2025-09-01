@@ -26,7 +26,7 @@ sudo xbps-install -y \
 sudo xbps-install -y \
   python3-pipx 
 
-pipx install pywal16
+pipx install pywal16 waypaper
 
 xdg-user-dirs-update 
 
