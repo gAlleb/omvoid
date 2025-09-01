@@ -6,10 +6,10 @@
 
 /*****----- Configuration -----*****/
 configuration {
-	modi:                       "drun";
+   	modi:                       "drun";
     show-icons:                 false;
     display-drun:               " ";
-	drun-display-format:        "{name}";
+  	drun-display-format:        "{name}";
 }
 
 /*****----- Main Window -----*****/

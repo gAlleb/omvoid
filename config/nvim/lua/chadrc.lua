@@ -7,8 +7,8 @@ local M = {}
 
 M.base46 = {
 theme = "catppuccin",
-  integrations = { 'render-markdown', 'neogit' },
-
+integrations = { 'render-markdown', 'neogit' },
+transparancy = true,
 	-- hl_override = {
 	-- 	Comment = { italic = true },
 	-- 	["@comment"] = { italic = true },
