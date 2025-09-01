@@ -2,7 +2,7 @@
 
 /*****----- Configuration -----*****/
 configuration {
-	modi:                       "drun,run,filebrowser,window";
+  	modi:                       "drun,run,filebrowser,window";
     show-icons:                 true;
     display-drun:               "";
     display-run:                "";
@@ -11,7 +11,7 @@ configuration {
 	  drun-display-format:        "{name}";
 	  window-format:              "{w}: {c}";
     run,drun,filebrowser,window {
-           fallback-icon: "application-x-addon";
+        fallback-icon: "application-x-addon";
         }
 }
 
