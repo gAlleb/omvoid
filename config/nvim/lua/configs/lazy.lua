@@ -1,6 +1,6 @@
 return {
   defaults = { lazy = true },
-  install = { colorscheme = { "ashes" } },
+  install = { colorscheme = { "chocolate" } },
 
   ui = {
     icons = {
