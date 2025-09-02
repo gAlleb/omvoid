@@ -8,7 +8,7 @@
    
     selected_wallpaper=$1
     relative_path="${selected_wallpaper#${WALLPAPER_DIR}/}"
-    selected_thumbnail_path="${SPECIFIC_WAYPAPER_CACHE_DIR}/${relative_path%.*}.png"
+    selected_thumbnail_path="${CACHE_DIR}/thumbnails/${relative_path%.*}.png"
     
     mode_choice=$(echo -e "Dark Mode\0icon\x1f${THEMES_DIR}/black.png\nLight Mode\0icon\x1f${THEMES_DIR}/white.png" | rofi -dmenu -p "Select Mode" -theme "${THEMES_DIR}/dark-light-mode-select.rasi")
 
