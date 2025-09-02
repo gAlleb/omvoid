@@ -24,7 +24,7 @@ sudo xbps-install -y \
 
 # pipx
 sudo xbps-install -y \
-  python3-pipx 
+  python3-pipx python3-cairo-devel 
 
 pipx install pywal16 waypaper
 
