@@ -2,7 +2,7 @@
 
 # Main batch
 sudo xbps-install -y \
-  wget curl unzip fzf nano Waybar  \
+  wget curl unzip fzf nano Waybar tmux \
   make base-devel freetype-devel fontconfig-devel \
   xwallpaper xcompmgr xsetroot libX11-devel \
   libXft-devel libXinerama-devel imlib2-devel xorg xinit \
@@ -22,7 +22,7 @@ sudo xbps-install -y \
   foliate vscode obs audacity strawberry ghostty gimp chromium puddletag \
   senpai vlc mpv telegram-desktop
 
-# pipx
+# pipx; python3-cairo-devel for waypaper to work
 sudo xbps-install -y \
   python3-pipx python3-cairo-devel 
 
