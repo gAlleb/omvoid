@@ -65,6 +65,7 @@ source $OMVOID_INSTALL/desktop/theme.sh
 # # Apps
 show_logo
 show_subtext "Installing default applications [4/5]"
+source $OMVOID_INSTALL/apps/tui.sh
 source $OMVOID_INSTALL/apps/audioutils.sh
 source $OMVOID_INSTALL/apps/webapps.sh
 source $OMVOID_INSTALL/apps/xtras.sh
