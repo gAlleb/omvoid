@@ -77,6 +77,7 @@ source $OMVOID_INSTALL/apps/voidpackages.sh
 # # Reboot
 show_logo
 show_subtext "We're done, you gorgeous! Rebooting now..."
+show_subtext "✨ 🌟 ✨"
 sleep 3
 sudo ln -s /etc/sv/sddm /var/service
 sudo reboot
