@@ -1,4 +1,3 @@
-pkill -f swayosd-server
-sleep 0.5
-swayosd-server
-
+#!/bin/bash
+pkill -x swayosd-server
+setsid swayosd-server > /dev/null 2>&1

@@ -2,7 +2,6 @@
 
 # --- CONFIGURATION ---
 packages=(
-    "rofi-wayland"
     "nwg-dock-hyprland"  
     "kbdlightmac"   
     "nwg-drawer"
@@ -13,7 +12,7 @@ packages=(
     "brave-browser"
   )
 
-read -p "INITIAL setup of 'void-packages' repo. Would you like to clone void-packages repo and setup additional packages? Some of them are needed for smooth user experience, e.g. 'rofi-wayland'. Beware, it may take a while, like a really while :-). You can always return to this step later by doing everything on your own (cause you're a big boy/girl) or by running './.local/share/omvoid/install/apps/voidpackages.sh' from $HOME directory. So? (y/n) " -n 1 -r
+read -p "INITIAL setup of 'void-packages' repo. Would you like to clone void-packages repo and setup additional packages? Beware, it may take a while, like a really while :-). You can always return to this step later by doing everything on your own (cause you're a big boy/girl) or by running './.local/share/omvoid/install/apps/voidpackages.sh' from $HOME directory. So? (y/n) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     if [ ! -d ~/.local/pkgs/void-packages ]; then
