@@ -12,7 +12,7 @@ sudo xbps-install -y \
   nautilus gvfs mpd mpc mpDris2 cava SwayNotificationCenter \
   libcanberra-gtk3 libcanberra-utils sound-theme-freedesktop \
   wf-recorder satty slurp grim webp-pixbuf-loader swww \
-  neovim alacritty kitty walker gnome-keyring seahorse rmpc wlogout \
+  neovim alacritty kitty rofi walker gnome-keyring seahorse rmpc wlogout \
   caffeine-ng gnome-themes-extra xdg-user-dirs swaybg \
   SwayOSD kvantum qt5ct qt6ct evince
 
