@@ -3,3 +3,4 @@ config/rclone/*
 !config/rclone/rclone.conf
 config/senpai/*
 !config/senpai/.gitkeep
+!config/senpai/highlight
