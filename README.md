@@ -12,7 +12,7 @@
 > Turn a fresh Void Linux installation
 
 > [!CAUTION]
-> into a fully-configured, beautiful, and moder system
+> into a fully-configured, beautiful, and modern system
 
 > [!NOTE]
 > based on Hyprland by running a single command.
