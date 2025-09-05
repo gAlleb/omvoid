@@ -96,7 +96,7 @@ LAVFI = "[aid1]volume=" + str(-level) + "dB," + \
         "[a]avectorscope=size=360x360:zoom=0.1:swap=1:draw=line:rate=" + str(rate) + ",drawgrid=180:180:color=gray[z];" + \
         "[b]ebur128=video=1:meter=18[q][h];" + \
         "[q]fps=fps=" + str(rate) + ",scale=360:360[y];[z][y]hstack[w];" + \
-        "[c]aresample=50000,showfreqs=fscale=lin:cmode=separate:size=360x360,fps=fps=" + str(rate) + "," + \
+        "[c]aresample=50000:resampler=soxr,showfreqs=fscale=lin:cmode=separate:size=360x360,fps=fps=" + str(rate) + "," + \
         "drawgrid=x=0:y=0:w=72:h=180:color=gray[u];" + \
         "[d]showspectrum=overlap=0:slide=scroll:scale=5thrt:mode=combined:legend=1:fps=" + str(rate) + "," + \
         "scale=360:360[t];" + \

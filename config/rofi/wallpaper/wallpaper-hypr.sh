@@ -3,6 +3,7 @@
 CACHE_DIR="$HOME/.cache/omvoid_wallpaper"
 WALLPAPER_DIR="$HOME/.config/wallpaper"
 THEMES_DIR="$HOME/.config/rofi/wallpaper/themes"
+ROFI_DIR="$HOME/.config/rofi"
 CURRENT_WALLPAPER_PATH_FILE="${CACHE_DIR}/current_wallpaper_path"
 
 if [ ! -d "${CACHE_DIR}" ] ; then
@@ -47,7 +48,7 @@ executeCommand() {
     local selected_wallpaper="$1"
     local relative_path="${selected_wallpaper#${WALLPAPER_DIR}/}"
     local selected_thumbnail_path="${CACHE_DIR}/thumbnails/${relative_path%.*}.png"
-    mode_choice=$(echo -e "Dark Mode\0icon\x1f${THEMES_DIR}/black.png\nLight Mode\0icon\x1f${THEMES_DIR}/white.png" | rofi -dmenu -p "Select Mode" -theme "${THEMES_DIR}/dark-light-mode-select.rasi")
+    mode_choice=$(echo -e "Dark Mode\0icon\x1f${THEMES_DIR}/black.png\nLight Mode\0icon\x1f${THEMES_DIR}/white.png" | rofi -dmenu -p "Select Mode" -theme "${ROFI_DIR}/menu-style-minimal.rasi")
 
     # If the user cancels the mode selection (e.g., presses Esc), exit gracefully.
     if [[ -z "$mode_choice" ]]; then
