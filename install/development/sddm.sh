@@ -24,6 +24,10 @@ CompositorCommand=kwin_wayland --drm --no-lockscreen --no-global-shortcuts --loc
 EnableHiDPI=true
 EOF
 
+# set sddm wallpaper
+sudo ln -s ~/.config/bg.jpg /usr/share/sddm/themes/sddm-astronaut-theme/Backgrounds/background
+sudo sed -i 's/Background="Backgrounds\/astronaut.png".*/Background="Backgrounds\/background"/' /usr/share/sddm/themes/sddm-astronaut-theme/Themes/astronaut.conf
+
 #sudo ln -s /etc/sv/sddm /var/service
 
 sed -i 's|^source $OMVOID_INSTALL/development/sddm.sh\s*$|#source $OMVOID_INSTALL/development/sddm.sh|' ~/.local/share/omvoid/install.sh
