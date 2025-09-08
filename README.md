@@ -22,10 +22,13 @@
 ```bash
 curl -fsSL https://raw.githubusercontent.com/gAlleb/omvoid/refs/heads/main/boot.sh | bash
 ```
+> [!WARNING]  
+> Script will ask you for password a few times.
+> There is a known issue when accepting Hyprland repo key - just rerun `bash ~/.local/share/omvoid/install.sh` and you are good to go.
 
 ---
 
-Project started as a private repo just to reproduce my setup across different machines. But hey, sharing is caring :) Got some ideas from Omarchy project, reorganized initial scripting, tweaked some stuff. Work in progress.
+Project started as a private repo just to reproduce my setup across different machines. But hey, sharing is caring :) Got some ideas from Omarchy project and Jake@Linux, reorganized initial scripting, tweaked some stuff. Work in progress.
 
 ---
 
