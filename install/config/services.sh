@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Install packages
-sudo xbps-install -y chrony dbus elogind polkit rtkit NetworkManager dbus-elogind
+sudo xbps-install -y chrony dbus elogind polkit rtkit NetworkManager dbus-elogind cronie
 
 # Create symbolic links only if they don't exist
 if [ ! -L "/var/service/chronyd" ]; then
@@ -26,6 +26,10 @@ fi
 
 if [ ! -L "/var/service/rtkit" ]; then
     sudo ln -s /etc/sv/rtkit /var/service
+fi
+
+if [ ! -L "/var/service/cronie" ]; then
+    sudo ln -s /etc/sv/cronie /var/service
 fi
 
 # Remove dhcpcd service directory if it exists
