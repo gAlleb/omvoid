@@ -94,7 +94,7 @@
   "cpu": {
 	  	"format": " {usage}%",
 	  	"tooltip": false,
-	  	"on-click": "setsid -f alacritty -e top"
+	  	"on-click": "setsid -f alacritty --class=top -e top"
     },
 
   "custom/screenshot": {
