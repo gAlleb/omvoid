@@ -44,5 +44,6 @@ Project started as a private repo just to reproduce my setup across different ma
 
 <img width="60%" height="60%" alt="screenshot-2025-08-30_21-48-46" src="https://github.com/user-attachments/assets/420a848a-3820-4eb3-a745-5d4ba0e093a3" />
 
+<img width="60%" height="60%" alt="screenshot-2025-09-12_13-27-07" src="https://github.com/user-attachments/assets/d57b9fb5-82ed-4fe1-a6b4-2a6d15262ae0" />
 
 
