@@ -51,6 +51,7 @@ show_subtext "Installing terminal and main tools [2/5]"
 source $OMVOID_INSTALL/development/docker.sh
 source $OMVOID_INSTALL/development/hyprtime.sh
 source $OMVOID_INSTALL/development/development.sh
+source $OMVOID_INSTALL/development/omvoid-repo.sh
 source $OMVOID_INSTALL/development/sddm.sh
 source $OMVOID_INSTALL/development/pipewire.sh
 source $OMVOID_INSTALL/development/node.sh

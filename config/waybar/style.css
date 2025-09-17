@@ -66,8 +66,9 @@ window#waybar {
 #tray,
 #language,
 #pulseaudio,
+#custom-temperature,
 #clock {
-	padding: 0 6px;
+	padding: 0 4px;
 	margin: 0 0px;
 	color: @fg;
 	background-color: transparent;
