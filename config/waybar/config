@@ -7,7 +7,14 @@
 
   "modules-center": ["mpd"],
   "modules-left": ["custom/menu", "custom/sep", "hyprland/workspaces", "custom/sep", "hyprland/window"],
-  "modules-right": ["tray", "cpu", "memory", "custom/hdd", "custom/weather", "custom/updates", "battery", "hyprland/language", "custom/screenshot", "backlight", "clock", "custom/swaync", "custom/wlogout"],
+  "modules-right": ["tray", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "custom/updates", "battery", "hyprland/language", "custom/screenshot", "clock", "custom/swaync", "custom/wlogout"],
+
+  "custom/temperature": {
+      "format": "{}",
+      "interval": 30,
+      "exec": "~/.config/hypr/scripts/temp-hypr.sh",
+      "tooltip": false,
+  },
 
   "mpris": {
 	    "format": "{player_icon} {dynamic}",
