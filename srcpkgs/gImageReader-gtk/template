@@ -1,0 +1,21 @@
+# Template file for 'gImageReader-gtk'
+pkgname=gImageReader-gtk
+version=3.4.3
+revision=1
+build_style=cmake
+configure_args="-DINTERFACE_TYPE=gtk"
+hostmakedepends="git python3 python3-gobject pkg-config cmake glib-devel"
+makedepends="sane-devel djvulibre-devel libpodofo-devel libjpeg-turbo-devel intltool libzip-devel libuuid-devel libxml++3.0-devel gtkmm-devel gtkspell3-devel gtkspellmm-devel tesseract-ocr-devel gtksourceviewmm-devel cairomm-devel poppler-glib-devel json-glib-devel libxml++-devel libgomp-devel"
+depends="gtkspellmm"
+short_desc="GUI frontend for tesseract"
+maintainer="Stefan <s@omfm.ru>"
+license="GPL-2.0-only (maybe)"
+homepage="https://github.com/manisandro/gImageReader"
+distfiles="https://github.com/manisandro/gImageReader/releases/download/v${version}/gimagereader-${version}.tar.xz"
+checksum="4604b53e8d952c68ce4198d7b8d864327ef6afaf597e7909f6b31f0eb9b4c425"
+wrksrc="${pkgname}-${version}"
+
+#do_fetch() {
+#    git clone "${homepage}.git" "${wrksrc}" --recurse-submodules
+#} 
+

@@ -74,7 +74,7 @@ source $OMVOID_INSTALL/apps/mimetypes.sh
 
 show_logo
 show_subtext "Installing void-packages repo and building apps [5/5]"
-source $OMVOID_INSTALL/apps/voidpackages.sh 
+#source $OMVOID_INSTALL/apps/voidpackages.sh 
 
 # # Reboot
 show_logo
