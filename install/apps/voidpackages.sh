@@ -5,9 +5,10 @@ packages=(
     "nwg-dock-hyprland"  
     "kbdlightmac"   
     "nwg-drawer"
-    "gImageReader"
-    "far2l"
-    "freeLib"
+    "nwg-hello"
+    "nwg-look"
+    "gImageReader-gtk"
+    "gImageReader-qt5"
     "discord"
     "brave-browser"
   )
@@ -80,7 +81,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
                 local pkg_name="$1"
 
                 # Special pre-installation steps for specific packages here
-                if [[ "${pkg_name}" == "gImageReader" ]]; then
+                if [[ "${pkg_name}" == "gImageReader-gtk" ]]; then
                     echo "-> Performing pre-install steps for gImageReader..."
                     ./xbps-src pkg gtkspellmm
                     sudo xbps-install -y --repository hostdir/binpkgs gtkspellmm
@@ -88,7 +89,11 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 
                 echo "-> Building and installing ${pkg_name}..."
                 ./xbps-src pkg "${pkg_name}"
-                sudo xbps-install -y --repository hostdir/binpkgs "${pkg_name}"
+                if [[ "${pkg_name}" == "discord" ]]; then
+                   sudo xbps-install -y --repository hostdir/binpkgs/nonfree "${pkg_name}"
+                else
+                   sudo xbps-install -y --repository hostdir/binpkgs "${pkg_name}"
+                fi
                 
             }
 
