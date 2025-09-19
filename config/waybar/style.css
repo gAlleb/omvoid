@@ -66,6 +66,7 @@ window#waybar {
 #tray,
 #language,
 #pulseaudio,
+#custom-expand-icon,
 #custom-temperature,
 #clock {
 	padding: 0 4px;

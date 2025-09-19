@@ -4,8 +4,6 @@
 sudo xbps-install -y \
   wget curl unzip fzf nano Waybar tmux \
   make base-devel freetype-devel fontconfig-devel \
-  xwallpaper xcompmgr xsetroot libX11-devel \
-  libXft-devel libXinerama-devel imlib2-devel xorg xinit \
   wl-clipboard wl-clip-persist cliphist fastfetch man tldr less ufw network-manager-applet \
   ImageMagick wf-recorder brightnessctl playerctl nautilus \
   libnotify imv lazydocker inotify-tools dust \
@@ -14,7 +12,14 @@ sudo xbps-install -y \
   wf-recorder satty slurp grim webp-pixbuf-loader swww \
   neovim alacritty kitty rofi walker gnome-keyring seahorse rmpc wlogout \
   caffeine-ng gnome-themes-extra xdg-user-dirs swaybg \
-  SwayOSD kvantum qt5ct qt6ct 
+  SwayOSD kvantum qt5ct qt6ct \
+  tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng tesseract-ocr-san
+
+# X11 batch
+sudo xbps-install -y \
+  xwallpaper xcompmgr xsetroot libX11-devel picom \
+  libXft-devel libXinerama-devel imlib2-devel xorg xinit 
+
 
 # Extra batch 
 sudo xbps-install -y \
