@@ -25,7 +25,7 @@ gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
 gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-red-dark"
 # kvantummanager --set WhiteSur-opaqueDark
 
-# Init random wallpapeper theme with wal from xbps and remove it
+# Init random wallpapeper theme with wal 
 source ~/.config/hypr/scripts/init_wallpaper.sh
 
 # Setup theme links
