@@ -55,6 +55,7 @@ wal -c
 wal ${wal_flags} 
 
 pywalfox update
+omvoid-theme-set-browser wal
 pkill -SIGUSR2 waybar
 swaync-client -rs
 $HOME/.config/nwg-dock-hyprland/reload.sh &

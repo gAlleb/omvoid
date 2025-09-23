@@ -37,4 +37,11 @@ mkdir -p ~/.config/omvoid/current
 ln -snf ~/.config/omvoid/themes/redpeace ~/.config/omvoid/current/theme
 ln -snf ~/.config/omvoid/current/theme/backgrounds/redpeace.png ~/.config/omvoid/current/background
 
+# Add managed policy directories for Chromium and Brave for theme changes
+sudo mkdir -p /etc/chromium/policies/managed
+sudo chmod a+rw /etc/chromium/policies/managed
+
+sudo mkdir -p /etc/brave/policies/managed
+sudo chmod a+rw /etc/brave/policies/managed
+
 sed -i 's|^source $OMVOID_INSTALL/desktop/theme.sh\s*$|#source $OMVOID_INSTALL/desktop/theme.sh|' ~/.local/share/omvoid/install.sh

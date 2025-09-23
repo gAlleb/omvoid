@@ -83,6 +83,7 @@ executeCommand() {
     xdotool key alt+shift+F5
     xrdb merge ~/.Xresources
     pywalfox update
+    omvoid-theme-set-browser wal
     echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR/wallpaper-hyprland.conf
     echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > $CACHE_DIR/wallpaper_thumbnail
     echo "inputbar { background-image: url(\"$selected_thumbnail_path\", width); }" > $CACHE_DIR/wallpaper_thumbnail.rasi

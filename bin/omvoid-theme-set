@@ -48,13 +48,14 @@ if command -v chromium &>/dev/null; then
   else
     chromium --no-startup-window --set-color-scheme="dark"
   fi
-
-  if [[ -f ~/.config/omvoid/current/theme/chromium.theme ]]; then
-    chromium --no-startup-window --set-theme-color="$(<~/.config/omvoid/current/theme/chromium.theme)"
-  else
+  
+  omvoid-theme-set-browser
+#  if [[ -f ~/.config/omvoid/current/theme/chromium.theme ]]; then
+#    chromium --no-startup-window --set-theme-color="$(<~/.config/omvoid/current/theme/chromium.theme)"
+#  else
     # Use a default, neutral grey if theme doesn't have a color
-    chromium --no-startup-window --set-theme-color="28,32,39"
-  fi
+#    chromium --no-startup-window --set-theme-color="28,32,39"
+#  fi
 fi
 
 # run wal 
