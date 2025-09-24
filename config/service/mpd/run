@@ -3,3 +3,4 @@ export USER="__USERNAME__"
 export HOME="/home/__USERNAME__"
 export XDG_RUNTIME_DIR=/run/user/$(id -g $USER)
 exec mpd --no-daemon $HOME/.config/mpd/mpd.conf
+#exec chpst -e "$TURNSTILE_ENV_DIR" mpd --no-daemon 

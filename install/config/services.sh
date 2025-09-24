@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Install packages
-sudo xbps-install -y chrony dbus elogind polkit rtkit NetworkManager dbus-elogind cronie
+sudo xbps-install -y chrony dbus elogind polkit rtkit NetworkManager dbus-elogind cronie turnstile
 
 # Create symbolic links only if they don't exist
 if [ ! -L "/var/service/chronyd" ]; then
@@ -15,6 +15,10 @@ fi
 #if [ ! -L "/var/service/elogind" ]; then
 #    sudo ln -s /etc/sv/elogind /var/service
 #fi
+
+# if [ ! -L "/var/service/turnstiled" ]; then
+#    sudo ln -s /etc/sv/turnstiled /var/service
+# fi
 
 if [ ! -L "/var/service/polkitd" ]; then
     sudo ln -s /etc/sv/polkitd /var/service

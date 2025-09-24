@@ -68,6 +68,7 @@ window#waybar {
 #pulseaudio,
 #custom-expand-icon,
 #custom-temperature,
+#mpris,
 #clock {
 	padding: 0 4px;
 	margin: 0 0px;
