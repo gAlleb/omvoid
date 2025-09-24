@@ -40,6 +40,7 @@ source $OMVOID_INSTALL/config/config.sh
 source $OMVOID_INSTALL/config/xcompose.sh
 source $OMVOID_INSTALL/config/services.sh
 source $OMVOID_INSTALL/config/runsvdir.sh
+#source $OMVOID_INSTALL/config/turnstile.sh
 source $OMVOID_INSTALL/config/groups.sh
 source $OMVOID_INSTALL/config/rclone.sh
 source $OMVOID_INSTALL/config/power.sh

@@ -7,12 +7,12 @@ sudo xbps-install -y \
   wl-clipboard wl-clip-persist cliphist fastfetch man tldr less ufw network-manager-applet \
   ImageMagick wf-recorder brightnessctl playerctl nautilus \
   libnotify imv lazydocker inotify-tools dust \
-  nautilus gvfs mpd mpc mpDris2 cava SwayNotificationCenter \
+  nautilus gvfs mpd mpc cava SwayNotificationCenter \
   libcanberra-gtk3 libcanberra-utils sound-theme-freedesktop \
   wf-recorder satty slurp grim webp-pixbuf-loader swww \
   neovim alacritty kitty rofi walker gnome-keyring seahorse rmpc wlogout \
   caffeine-ng gnome-themes-extra xdg-user-dirs swaybg \
-  SwayOSD kvantum qt5ct qt6ct \
+  SwayOSD kvantum qt5ct qt6ct xtools \
   tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng tesseract-ocr-san
 
 # X11 batch

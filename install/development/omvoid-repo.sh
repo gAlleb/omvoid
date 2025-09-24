@@ -6,6 +6,6 @@ echo repository=https://raw.githubusercontent.com/galleb/voidlinux/repository-x8
 
 sudo xbps-install -S
 
-sudo xbps-install -y discord gImageReader-gtk nwg-dock-hyprland kbdlightmac nwg-look nwg-drawer
+sudo xbps-install -y discord gImageReader-gtk nwg-dock-hyprland kbdlightmac nwg-look nwg-drawer mpdris2-rs
 
 sed -i 's|^source $OMVOID_INSTALL/development/omvoid-repo.sh\s*$|#source $OMVOID_INSTALL/development/omvoid-repo.sh|' ~/.local/share/omvoid/install.sh

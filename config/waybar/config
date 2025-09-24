@@ -5,7 +5,7 @@
 	"width": 1525,
 	"margin-top": 5,
 
-  "modules-center": ["mpd"],
+  "modules-center": ["mpris"],
   "modules-left": ["custom/menu", "custom/sep", "hyprland/workspaces", "custom/sep", "hyprland/window"],
   "modules-right": ["tray", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "custom/updates", "battery", "hyprland/language", "custom/screenshot", "clock", "custom/swaync", "custom/wlogout"],
 
@@ -18,22 +18,24 @@
 
   "mpris": {
 	    "format": "{player_icon} {dynamic}",
-	    "format-paused": "{status_icon} <i>{dynamic}</i>",
+	    "format-paused": "{status_icon} {dynamic}",
       "max-length": 30,
-      "player": "mpd",
 	    "player-icons": {
-		      "default": "▶",
-		      "mpd": "🎵"
+		      "default": "",
+		      "mpd": "",
     	},
       "status-icons": {
-  		    "paused": "⏸"
+  		    "paused": "",
 	    },
+      "dynamic-order":[
+           "artist", "title", "album", "position", "length"
+      ],
     	"ignored-players": ["firefox","brave"],
     	"on-click": "mpc toggle",
-    	"on-click-right": "setsid -f kitty -e rmpc",
+    	"on-click-right": "setsid -f kitty --class=rmpc -o font_size=12 -e rmpc",
     	"on-click-middle": "~/.config/hypr/scripts/mpd-notify.sh",
-  },
-  
+  },  
+
   "backlight": {
       "device": "intel_backlight",
       "format": "{icon} {percent}%",
@@ -226,6 +228,8 @@
       },
   	  "scroll-step": 1,
     	"on-click": "pavucontrol",
+      "on-click-right": "omvoid-audioswitcher",
+      "on-click-middle": "omvoid-audioswitcher-precise",
       "on-scroll-up": "pactl set-sink-mute 0 false ; pactl set-sink-volume 0 -3%",
       "on-scroll-down": "pactl set-sink-mute 0 false ; pactl set-sink-volume 0 +3%",
   },
