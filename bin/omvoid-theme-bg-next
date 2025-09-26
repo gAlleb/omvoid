@@ -54,7 +54,7 @@ else
 
   echo "\$wallpaper = $CURRENT_BACKGROUND_LINK" > $CACHE_DIR/wallpaper-hyprland.conf
   echo "\$wallpaper_thumbnail = $THUMBNAIL_PATH" > $CACHE_DIR/wallpaper_thumbnail
-  echo "inputbar { background-image: url(\"$THUMBNAIL_PATH\", width); }" > $CACHE_DIR/wallpaper_thumbnail.rasi
+  echo "inputbar { background-image: url(\"$THUMBNAIL_PATH\", height); }" > $CACHE_DIR/wallpaper_thumbnail.rasi
   echo "$CURRENT_BACKGROUND_LINK" > "${CURRENT_WALLPAPER_PATH_FILE}"
   magick "$CURRENT_BACKGROUND_LINK" ~/.config/bg.jpg
 fi 
