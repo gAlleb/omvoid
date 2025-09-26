@@ -1,0 +1,3 @@
+#!/bin/sh
+SVDIR=".." sv start mpd || exit 1
+exec mpdris2-rs

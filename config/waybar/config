@@ -5,7 +5,7 @@
 	"width": 1525,
 	"margin-top": 5,
 
-  "modules-center": ["mpris"],
+  "modules-center": ["mpd"],
   "modules-left": ["custom/menu", "custom/sep", "hyprland/workspaces", "custom/sep", "hyprland/window"],
   "modules-right": ["tray", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "custom/updates", "battery", "hyprland/language", "custom/screenshot", "clock", "custom/swaync", "custom/wlogout"],
 

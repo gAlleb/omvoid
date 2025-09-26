@@ -18,7 +18,7 @@ sudo xbps-install -y \
 # X11 batch
 sudo xbps-install -y \
   xwallpaper xcompmgr xsetroot libX11-devel picom \
-  libXft-devel libXinerama-devel imlib2-devel xorg xinit 
+  libXft-devel libXinerama-devel imlib2-devel xorg xinit xsel 
 
 
 # Extra batch 
