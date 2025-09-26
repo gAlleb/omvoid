@@ -1,0 +1,5 @@
+#!/bin/sh
+export USER="__USERNAME__"
+export HOME="/home/__USERNAME__"
+export XDG_RUNTIME_DIR=/run/user/$(id -g $USER)
+exec mpd --no-daemon $HOME/.config/mpd/mpd.conf

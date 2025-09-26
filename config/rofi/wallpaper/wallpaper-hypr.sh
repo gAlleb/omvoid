@@ -85,7 +85,7 @@ executeCommand() {
     pkill -SIGUSR2 waybar
     swaync-client -rs
     echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > $CACHE_DIR/wallpaper_thumbnail
-    echo "inputbar { background-image: url(\"$selected_thumbnail_path\", width); }" > $CACHE_DIR/wallpaper_thumbnail.rasi
+    echo "inputbar { background-image: url(\"$selected_thumbnail_path\", height); }" > $CACHE_DIR/wallpaper_thumbnail.rasi
     $HOME/.config/nwg-dock-hyprland/reload.sh &
     $HOME/.config/swayosd/launch.sh &
     echo "${selected_wallpaper}" > "${CURRENT_WALLPAPER_PATH_FILE}"

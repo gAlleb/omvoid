@@ -49,7 +49,7 @@ executeCommand() {
     # Update other applications
     echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR/wallpaper-hyprland.conf
     echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > ${CACHE_DIR}/wallpaper_thumbnail
-    echo "inputbar { background-image: url(\"$selected_thumbnail_path\", width); }" > ${CACHE_DIR}/wallpaper_thumbnail.rasi
+    echo "inputbar { background-image: url(\"$selected_thumbnail_path\", height); }" > ${CACHE_DIR}/wallpaper_thumbnail.rasi
     echo "${selected_wallpaper}" > "${CURRENT_WALLPAPER_PATH_FILE}"
     magick "${selected_wallpaper}" ~/.config/bg.jpg
 }

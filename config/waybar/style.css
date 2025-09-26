@@ -98,7 +98,7 @@ background-color: @color2;
 padding: 0px 4px 0px 6px;
 margin-top: 5px;
 margin-bottom: 5px;
-
+margin-left: 6px;
 }
 #custom-sep {
 	color: rgba(0, 0, 0, 0.0);
