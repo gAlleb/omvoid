@@ -1,32 +1,20 @@
-#!/usr/bin/env bash
-# Set audio sinks before using!
-# `pactl list sinks` if on pulseaudio.
+#!/bin/sh
 
-headphones () { \
-  # wpctl set-default 184 &
-  pactl set-default-sink 'alsa_output.usb-Generic_AB13X_USB_Audio_20210726905926-00.analog-stereo' &
-  notify-send  -h string:bgcolor:#a3be8c "Audio switched to headphones!"
-}
+# Create a list of sinks with pretty names
+options=$(pactl -f json list sinks | jq -r '.[] | .description')
 
-speakers () { \
-  # wpctl set-default 36 &
-  pactl set-default-sink 'effect_input.eq10' &
-  notify-send  -h string:bgcolor:#bf616a "Audio switched to speakers!"
-}
+# Let the user select a description
+selection=$(echo "$options" | rofi -dmenu -theme ~/.config/rofi/menu-style-minimal.rasi -p "Output:")
 
-bluetooth () { \
-  # pacmd set-default-sink "SET SINK NAME" &
-  pactl set-default-sink 'alsa_output.usb-Generic_AB13X_USB_Audio_20210726905926-00.analog-stereo' &
-  notify-send  -h string:bgcolor:#88c0d0 "Audio switched to bluetooth!"
-}
+# Extract the corresponding sink name
+sink_name=$(pactl -f json list sinks | jq -r --arg sink_pretty_name "$selection" '.[] | select(.description == $sink_pretty_name) | .name')
 
-choosespeakers() { \
-  choice=$(printf "Aux\\nSpeakers\\nBluetooth" | rofi -dmenu -theme "~/.config/rofi/menu-style-minimal.rasi"  -p "Choose output: ")
-  case "$choice" in
-    Aux) headphones;;
-    Speakers) speakers;;
-    Bluetooth) bluetooth;;
-  esac
-}
+# Set the selected sink as default
+if [ -n "$sink_name" ]; then
+    pactl set-default-sink "$sink_name" && notify-send "Audio switched to: $selection"
+else
+    notify-send "Audio has not switched"
+fi
 
-choosespeakers
+
+

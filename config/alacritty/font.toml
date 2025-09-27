@@ -6,13 +6,10 @@ y = 0
 size = 14.5
 
 # Normal font style
-normal = { family = "JetBrainsMono Nerd Font", style = "Regular" }  # Default for Linux/BSD: "monospace", Regular
-
+normal = { family = "JetBrainsMono Nerd Font", style = "Regular" } 
 # Bold font style
-bold = { family = "JetBrainsMono Nerd Font", style = "Bold" }  # Inherits family from normal, Default style: Bold
-
+bold = { family = "JetBrainsMono Nerd Font", style = "Bold" } 
 # Italic font style
-italic = { family = "JetBrainsMono Nerd Font", style = "Italic" }  # Inherits family from normal, Default style: Italic
-
+italic = { family = "JetBrainsMono Nerd Font", style = "Italic" }  
 # Bold Italic font style
-bold_italic = { family = "JetBrainsMono Nerd Font", style = "Bold Italic" }  # Inherits family from normal, Default style: Bold Italice = "Bold Italic" }  # Inherits family from normal, Default style: Bold Italic
+bold_italic = { family = "JetBrainsMono Nerd Font", style = "Bold Italic" } 
