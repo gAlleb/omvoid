@@ -26,25 +26,9 @@ ln -nsf "$THEME_PATH" "$CURRENT_THEME_DIR"
 # Change gnome modes
 omvoid-theme-gnome-set
 omvoid-theme-set-browser
-# Change Chromium colors
-if command -v chromium &>/dev/null; then
-  if [[ -f ~/.config/omvoid/current/theme/light.mode ]]; then
-    chromium --no-startup-window --set-color-scheme="light"
-  else
-    chromium --no-startup-window --set-color-scheme="dark"
-  fi
-  
-#  if [[ -f ~/.config/omvoid/current/theme/chromium.theme ]]; then
-#    chromium --no-startup-window --set-theme-color="$(<~/.config/omvoid/current/theme/chromium.theme)"
-#  else
-    # Use a default, neutral grey if theme doesn't have a color
-#    chromium --no-startup-window --set-theme-color="28,32,39"
-#  fi
-fi
 
 # run wal 
-
-#wal -c 
+wal -c 
 wal --theme "$CURRENT_THEME_DIR/colors.json"
 pkill -SIGUSR2 waybar
 swaync-client -rs
