@@ -25,7 +25,8 @@ EnableHiDPI=true
 EOF
 
 # set sddm wallpaper
-(sudo crontab -l 2>/dev/null; echo "@reboot cp /home/$USER/.config/bg.jpg /usr/share/sddm/themes/sddm-astronaut-theme/Backgrounds/background") | sudo crontab -
+echo "@reboot root cp /home/$USER/.config/bg.jpg /usr/share/sddm/themes/sddm-astronaut-theme/Backgrounds/background" | sudo tee /etc/cron.d/sddm-background > /dev/null
+
 sudo sed -i 's/Background="Backgrounds\/astronaut.png".*/Background="Backgrounds\/background"/' /usr/share/sddm/themes/sddm-astronaut-theme/Themes/astronaut.conf
 
 #sudo ln -s /etc/sv/sddm /var/service
