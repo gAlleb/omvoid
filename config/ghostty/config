@@ -29,7 +29,7 @@
 # # Just for example:
 # resize-overlay-duration = 4s 200ms
 config-file = ~/.cache/wal/ghostty.conf
-font-family = JetBrainsMonoNerdFont
+font-family = "JetBrainsMono Nerd Font"
 window-padding-x = 15
 window-padding-y = 15
 background-opacity = 0.9
