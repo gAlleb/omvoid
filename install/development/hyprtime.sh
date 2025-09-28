@@ -1,9 +1,18 @@
 #!/bin/bash
+
 # Hyprland
+
+# Copy key 
+
+if [ ! -d /var/db/xbps/keys ] ; then
+    sudo mkdir -p /var/db/xbps/keys
+fi 
+
+sudo cp -R ~/.local/share/omvoid/default/repokeyes/hyprland/* /var/db/keys/
+
 echo "repository=https://raw.githubusercontent.com/Makrennel/hyprland-void/repository-x86_64-glibc" | sudo tee /etc/xbps.d/hyprland-void.conf
-sleep 3
-sudo xbps-install -S
-sudo xbps-install -y \
+
+sudo xbps-install -Sy \
   hyprland hyprland-devel xdg-desktop-portal-hyprland \
   hyprland hyprwayland-scanner hyprutils hyprlang hyprlock \
   hypridle hyprsunset hyprland-qt-support libqalculate \
