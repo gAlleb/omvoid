@@ -8,7 +8,7 @@ if [ ! -d /var/db/xbps/keys ] ; then
     sudo mkdir -p /var/db/xbps/keys
 fi 
 
-sudo cp -R ~/.local/share/omvoid/default/repokeyes/omvoid/* /var/db/keys/
+sudo cp -R ~/.local/share/omvoid/default/repokeyes/omvoid/* /var/db/xbps/keys/
 
 echo repository=https://raw.githubusercontent.com/galleb/voidlinux/repository-x86_64-glibc | sudo tee /etc/xbps.d/omvoid.conf
 
