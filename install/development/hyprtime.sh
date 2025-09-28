@@ -8,7 +8,7 @@ if [ ! -d /var/db/xbps/keys ] ; then
     sudo mkdir -p /var/db/xbps/keys
 fi 
 
-sudo cp -R ~/.local/share/omvoid/default/repokeyes/hyprland/* /var/db/keys/
+sudo cp -R ~/.local/share/omvoid/default/repokeyes/hyprland/* /var/db/xbps/keys/
 
 echo "repository=https://raw.githubusercontent.com/Makrennel/hyprland-void/repository-x86_64-glibc" | sudo tee /etc/xbps.d/hyprland-void.conf
 
