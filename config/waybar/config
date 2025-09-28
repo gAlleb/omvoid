@@ -6,7 +6,7 @@
   "margin-right": 6,
 	"margin-top": 5,
 
-  "modules-center": ["mpd"],
+  "modules-center": ["custom/screenrecording-indicator", "mpd"],
   "modules-left": ["custom/menu", "custom/sep", "hyprland/workspaces", "custom/sep", "hyprland/window"],
   "modules-right": ["tray", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "custom/updates", "battery", "hyprland/language", "custom/screenshot", "clock", "custom/swaync", "custom/wlogout"],
 
@@ -113,6 +113,13 @@
       "on-click-right": "omvoid-cmd-screenshot clipboard",
 	    "format": "",
     },
+
+  "custom/screenrecording-indicator": {
+    "on-click": "omvoid-cmd-screenrecord",
+    "exec": "~/.config/waybar/screen-recording.sh",
+    "signal": 8,
+    "return-type": "json"
+  },
 
 	"memory": {
 	  	"format": " {}%",
