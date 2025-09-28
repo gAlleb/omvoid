@@ -38,6 +38,8 @@ Project started as a private repo just to reproduce my setup across different ma
 
 <img width="60%" height="60%" alt="screenshot-2025-08-24_19-35-34" src="https://github.com/user-attachments/assets/42b7936a-778e-4a43-80ca-41dac5b11cb8" />
 
+<img width="60%" height="60%" alt="screenshot-202d-08-24_19-35-34" src="https://github.com/user-attachments/assets/a4dc3160-36d6-47a6-90cc-87fc5318fad6" />
+
 <img width="60%" height="60%" alt="screenshot-2025-08-30_21-47-08" src="https://github.com/user-attachments/assets/613dce38-bf98-48cf-8ced-e9dedffbef04" />
 
 <img width="60%" height="60%" alt="screenshot-2025-08-30_21-48-03" src="https://github.com/user-attachments/assets/ebab5570-4bd9-485e-9b83-33e0547cbdcd" />
