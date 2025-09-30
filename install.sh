@@ -39,6 +39,7 @@ source $OMVOID_INSTALL/config/identification.sh
 source $OMVOID_INSTALL/config/config.sh
 source $OMVOID_INSTALL/config/xcompose.sh
 source $OMVOID_INSTALL/config/services.sh
+source $OMVOID_INSTALL/config/intel.sh
 #source $OMVOID_INSTALL/config/runsvdir.sh
 source $OMVOID_INSTALL/config/runsvdir-local.sh
 #source $OMVOID_INSTALL/config/turnstile.sh
