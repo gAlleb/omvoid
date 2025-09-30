@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Install packages
-sudo xbps-install -y chrony dbus elogind polkit rtkit NetworkManager dbus-elogind cronie turnstile
+sudo xbps-install -y chrony dbus elogind polkit rtkit NetworkManager dbus-elogind cronie turnstile libspa-bluetooth bluez
+# bluez-deprecated bluez-hid2hci are in bluez
 
 # Create symbolic links only if they don't exist
 if [ ! -L "/var/service/chronyd" ]; then
@@ -10,6 +11,10 @@ fi
 
 if [ ! -L "/var/service/dbus" ]; then
     sudo ln -s /etc/sv/dbus /var/service
+fi
+
+if [ ! -L "/var/service/bluetoothd" ]; then
+    sudo ln -s /etc/sv/bluetoothd /var/service
 fi
 
 #if [ ! -L "/var/service/elogind" ]; then
