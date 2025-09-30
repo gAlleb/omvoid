@@ -55,6 +55,7 @@ window#waybar {
 #memory,
 #window,
 #battery,
+#network,
 #bluetooth,
 #custom-swaync,
 #custom-media,
@@ -71,6 +72,7 @@ window#waybar {
 #custom-temperature,
 #custom-screenrecording-indicator,
 #mpris,
+#custom-vpn,
 #clock {
 	padding: 0 4px;
 	margin: 0 0px;
@@ -80,6 +82,12 @@ window#waybar {
 
 #custom-screenrecording-indicator {
   font-size: 16px;
+}
+
+#custom-vpn {
+  font-size: 9px;
+  margin-left: -13px;
+  margin-bottom: -12px;
 }
 
 #tray, #custom-weather {
