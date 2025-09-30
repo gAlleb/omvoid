@@ -8,13 +8,36 @@
 
   "modules-center": ["mpd"],
   "modules-left": ["custom/menu", "custom/sep", "hyprland/workspaces", "custom/sep", "hyprland/window"],
-  "modules-right": ["tray", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "custom/updates", "battery", "hyprland/language", "custom/screenrecording-indicator", "custom/screenshot", "clock", "custom/swaync", "bluetooth", "custom/wlogout"],
+  "modules-right": ["tray", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "custom/updates", "battery", "hyprland/language", "custom/screenrecording-indicator", "custom/screenshot", "clock", "custom/swaync", "bluetooth", "network", "custom/vpn", "custom/wlogout"],
 
   "custom/temperature": {
       "format": "{}",
       "interval": 30,
-      "exec": "~/.config/hypr/scripts/temp-hypr.sh",
+      "exec": "~/.config/waybar/scripts/temp.sh",
       "tooltip": false,
+  },
+
+  "custom/vpn": {
+    "format": "{icon}",
+    "tooltip": "true",
+    "exec": "~/.config/waybar/scripts/vpn-check.sh",
+    "interval": 5,
+    "return-type": "json",
+    "format-icons": ["",""]
+  },
+
+  "network": {
+    "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
+    "format": "{icon}",
+    "format-wifi": "{icon}",
+    "format-ethernet": "󰀂",
+    "format-disconnected": "󰤮",
+    "tooltip-format-wifi": "{essid} ({frequency} GHz)\n⇣{bandwidthDownBytes}  ⇡{bandwidthUpBytes}",
+    "tooltip-format-ethernet": "⇣{bandwidthDownBytes}  ⇡{bandwidthUpBytes}",
+    "tooltip-format-disconnected": "Disconnected",
+    "interval": 3,
+    "spacing": 1,
+    "on-click": "omvoid-launch-tui nmtui"
   },
 
   "mpris": {
@@ -34,7 +57,7 @@
     	"ignored-players": ["firefox","brave"],
     	"on-click": "mpc toggle",
     	"on-click-right": "setsid -f kitty --class=rmpc -o font_size=12 -e rmpc",
-    	"on-click-middle": "~/.config/hypr/scripts/mpd-notify.sh",
+    	"on-click-middle": "~/.config/waybar/scripts/mpd-notify.sh",
   },  
 
   "backlight": {
@@ -98,7 +121,7 @@
     	"tooltip-format-disconnected": "MPD (disconnected)",
     	"on-click": "mpc toggle",
     	"on-click-right": "setsid -f kitty --class=rmpc -o font_size=12 -e rmpc",
-    	"on-click-middle": "~/.config/hypr/scripts/mpd-notify.sh",
+    	"on-click-middle": "~/.config/waybar/scripts/mpd-notify.sh",
   },
 
   "cpu": {
@@ -116,7 +139,7 @@
 
   "custom/screenrecording-indicator": {
     "on-click": "omvoid-cmd-screenrecord",
-    "exec": "~/.config/waybar/screen-recording.sh",
+    "exec": "~/.config/waybar/scripts/screen-recording.sh",
     "signal": 8,
     "return-type": "json"
   },
@@ -192,7 +215,7 @@
 	"custom/weather": {
 	    "format": "{}",
 	    "interval": 1800,
-	    "exec": "~/.config/hypr/scripts/forecast-hypr.sh",
+	    "exec": "~/.config/waybar/scripts/forecast.sh",
 	    "tooltip": false,
     	"on-click": "setsid -f alacritty -e less -Sfr $HOME/.cache/weatherreport"
 	},
@@ -200,7 +223,7 @@
   "custom/updates": {
       "format": "{}",
       "interval": 1800,
-      "exec": "~/.config/hypr/scripts/updates-void-hypr.sh",
+      "exec": "~/.config/waybar/scripts/updates-check-void.sh",
       "tooltip": false,
   },
 
@@ -212,7 +235,7 @@
   "custom/hdd": {
       "format": "{}",
       "interval": 1800,
-      "exec": "~/.config/hypr/scripts/hdd-hypr.sh",
+      "exec": "~/.config/waybar/scripts/hdd.sh",
       "tooltip": false,
   },
 
