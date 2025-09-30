@@ -55,6 +55,7 @@ window#waybar {
 #memory,
 #window,
 #battery,
+#bluetooth,
 #custom-swaync,
 #custom-media,
 #custom-cmus,
@@ -101,6 +102,12 @@ margin-bottom: 5px;
 font-size: 18px;
 }
 
+#bluetooth {
+margin-left: 5px;
+margin-right: 0px;
+font-size: 16px;
+}
+
 #custom-wlogout{
 background-color: @color2;
 padding: 0px 4px 0px 6px;
@@ -120,6 +127,7 @@ margin-left: 6px;
 	font-family: SFPRODISPLAY;
 	font-size: 30px;
 }
+
 #language {
 	min-width: 18px;
 }

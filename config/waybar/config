@@ -8,7 +8,7 @@
 
   "modules-center": ["mpd"],
   "modules-left": ["custom/menu", "custom/sep", "hyprland/workspaces", "custom/sep", "hyprland/window"],
-  "modules-right": ["tray", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "custom/updates", "battery", "hyprland/language", "custom/screenrecording-indicator", "custom/screenshot", "clock", "custom/swaync", "custom/wlogout"],
+  "modules-right": ["tray", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "custom/updates", "battery", "hyprland/language", "custom/screenrecording-indicator", "custom/screenshot", "clock", "custom/swaync", "bluetooth", "custom/wlogout"],
 
   "custom/temperature": {
       "format": "{}",
@@ -240,6 +240,14 @@
       "on-click-middle": "omvoid-audioswitcher-precise",
       "on-scroll-up": "pactl set-sink-mute 0 false ; pactl set-sink-volume 0 -3%",
       "on-scroll-down": "pactl set-sink-mute 0 false ; pactl set-sink-volume 0 +3%",
+  },
+
+    "bluetooth": {
+    "format": "",
+    "format-disabled": "󰂲",
+    "format-connected": "",
+    "tooltip-format": "Devices connected: {num_connections}",
+    "on-click": "blueman-manager"
   },
 
   "battery": { 

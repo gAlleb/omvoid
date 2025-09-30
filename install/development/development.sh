@@ -6,7 +6,7 @@ sudo xbps-install -y \
   make base-devel freetype-devel fontconfig-devel \
   wl-clipboard wl-clip-persist cliphist fastfetch man tldr less ufw network-manager-applet \
   ImageMagick wf-recorder brightnessctl playerctl nautilus \
-  libnotify imv lazydocker inotify-tools dust \
+  libnotify imv lazydocker inotify-tools dust blueman \
   nautilus gvfs mpd mpc cava SwayNotificationCenter \
   libcanberra-gtk3 libcanberra-utils sound-theme-freedesktop \
   wf-recorder satty slurp grim webp-pixbuf-loader swww \
