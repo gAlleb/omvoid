@@ -90,7 +90,6 @@ executeCommand() {
     $HOME/.config/swayosd/launch.sh &
     echo "${selected_wallpaper}" > "${CURRENT_WALLPAPER_PATH_FILE}"
     magick "${selected_wallpaper}" ~/.config/bg.jpg
-    source ~/.config/rofi/wallpaper/chrome_pywal.sh
 }
 
 # Show the images
