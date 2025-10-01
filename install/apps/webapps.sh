@@ -1,6 +1,6 @@
 #!/bin/bash
 
-omvoid-webapp-install "omFM" https://omfm.ru/ https://main.omfm.ru/logo-omfm.png
+omvoid-webapp-install "omFM" https://omfm.ru/ omFM.png
 # omvoid-webapp-install "Google Photos" https://photos.google.com/ https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/google-photos.png
 # omvoid-webapp-install "Google Contacts" https://contacts.google.com/ https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/google-contacts.png
 # omvoid-webapp-install "Google Messages" https://messages.google.com/web/conversations https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/google-messages.png
