@@ -25,9 +25,6 @@ gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
 gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-red-dark"
 # kvantummanager --set WhiteSur-opaqueDark
 
-# Init random wallpapeper theme with wal 
-source ~/.config/hypr/scripts/init_wallpaper.sh
-
 # Setup theme links
 mkdir -p ~/.config/omvoid/themes
 for f in ~/.local/share/omvoid/themes/*; do ln -nfs "$f" ~/.config/omvoid/themes/; done
@@ -43,5 +40,8 @@ sudo chmod a+rw /etc/chromium/policies/managed
 
 sudo mkdir -p /etc/brave/policies/managed
 sudo chmod a+rw /etc/brave/policies/managed
+
+# Init random wallpapeper theme with wal 
+source ~/.config/hypr/scripts/init_wallpaper.sh
 
 sed -i 's|^source $OMVOID_INSTALL/desktop/theme.sh\s*$|#source $OMVOID_INSTALL/desktop/theme.sh|' ~/.local/share/omvoid/install.sh
