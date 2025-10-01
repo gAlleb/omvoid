@@ -1,4 +1,5 @@
 #!/bin/bash
 
-omvoid-tui-install "Disk Usage" "bash -c 'dust -r; read -n 1 -s'" float https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/qdirstat.png
+ICON_DIR="$HOME/.local/share/applications/icons"
 
+omvoid-tui-install "Disk Usage" "bash -c 'dust -r; read -n 1 -s'" float "$ICON_DIR/Disk Usage.png"
