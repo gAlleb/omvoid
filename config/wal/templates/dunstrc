@@ -1,0 +1,33 @@
+[global]
+class = Dunst
+frame_color = "{color3}"
+background = "{color0}"
+separator_color= frame
+font = JetbrainsMono Nerd font 12
+corner_radius = 10
+transparency = 10
+min_icon_size = 100
+max_icon_size = 100
+offset = (8, 42)
+width = (350, 500)
+
+[urgency_low]
+transparency = 10
+background = "{color0}"
+foreground = "{foreground}"
+timeout = 5 
+
+[urgency_normal]
+transparency = 10
+background = "{color0}"
+foreground = "{foreground}"
+timeout = 5 
+
+[urgency_critical]
+transparency = 10
+background = "{color0}"
+foreground = "{foreground}"
+frame_color = "#fb4934"
+timeout = 15
+
+

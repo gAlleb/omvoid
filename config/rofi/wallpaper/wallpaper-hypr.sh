@@ -132,7 +132,7 @@ main() {
     # Find the directory where this script is located
     SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
     # Execute the other script and exit
-    "$HOME/.config/rofi/wallpaper/wallpaper-switch-theme.sh"
+    "$HOME/.config/rofi/wallpaper/wallpaper-switch-theme-hypr.sh"
     exit 0
   # --- END OF NEW SECTION ---
 

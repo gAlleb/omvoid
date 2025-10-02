@@ -26,17 +26,18 @@ configuration {
 
 /* Main Window ------------------------------------------------ */
 window {
-    width:                       100%;
-    height:                      115%;
+    width:                       90%;
+    height:                      90%;
     margin:                      0px;
-    padding:                     50px;
+    padding:                     0px;
     margin-top:			             0px;
     fullscreen:                  false;
     transparency:                "real";
     cursor:                      "default";
-    background-color:            black / 12%;
+    background-color:            black / 30%;
     border:                      0px;
     border-color:                @selected;
+    border-radius:               36px;
 }
 
 /* Main Box --------------------------------------------------- */
@@ -110,14 +111,14 @@ element {
 
     spacing:                     0px;
     margin:                      0px;
-    padding:                     20px;
+    padding:                     10px;
 }
 
 element-icon {
     expand:                      false;
     background-color:            transparent;
     text-color:                  inherit;
-    size:                        23%;
+    size:                        20%;
     cursor:                      inherit;
 }
 

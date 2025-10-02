@@ -132,7 +132,7 @@
 
   "custom/screenshot": {
 	    "on-click": "omvoid-cmd-screenshot",
-      "on-click-middle": "setsid -f alacritty -e omvoid-cmd-screenrecord region audio",
+      "on-click-middle": "omvoid-cmd-screenrecord region audio",
       "on-click-right": "omvoid-cmd-screenshot clipboard",
 	    "format": "",
     },

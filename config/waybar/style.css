@@ -90,11 +90,19 @@ window#waybar {
   margin-bottom: -12px;
 }
 
-#tray, #custom-weather {
-background-color: @color3_70;
-padding: 0px 6px;
-margin-top: 5px;
-margin-bottom: 5px;
+#tray {
+  background-color: @color3_70;
+  padding: 0px 6px;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+#custom-weather {
+  background-color: @color3_70;
+  padding: 0px 6px;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  color: @bg;
 }
 
 #custom-menu {
@@ -107,21 +115,22 @@ margin-bottom: 5px;
 }
 
 #custom-screenshot {
-font-size: 18px;
+  font-size: 18px;
 }
 
 #bluetooth {
-margin-left: 5px;
-margin-right: 0px;
-font-size: 16px;
+  margin-left: 5px;
+  margin-right: 0px;
+  font-size: 16px;
 }
 
 #custom-wlogout{
-background-color: @color2;
-padding: 0px 4px 0px 6px;
-margin-top: 5px;
-margin-bottom: 5px;
-margin-left: 6px;
+  background-color: @color2;
+  padding: 0px 4px 0px 6px;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  margin-left: 6px;
+  color: @bg;
 }
 
 #custom-sep {
@@ -141,7 +150,8 @@ margin-left: 6px;
 }
 
 #clock {
-        margin-top: 5px;
-        margin-bottom: 5px;
-        background-color: @color2;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  background-color: @color2;
+  color: @bg;
 }
