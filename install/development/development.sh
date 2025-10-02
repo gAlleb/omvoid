@@ -4,7 +4,7 @@
 sudo xbps-install -y \
   wget curl unzip fzf nano Waybar tmux \
   make base-devel freetype-devel fontconfig-devel \
-  wl-clipboard wl-clip-persist cliphist fastfetch man tldr less ufw network-manager-applet \
+  wl-clipboard wl-clip-persist cliphist fastfetch man tldr less ufw \
   ImageMagick wf-recorder brightnessctl playerctl nautilus \
   libnotify imv lazydocker inotify-tools dust blueman \
   nautilus gvfs mpd mpc cava SwayNotificationCenter \
@@ -12,20 +12,21 @@ sudo xbps-install -y \
   wf-recorder satty slurp grim webp-pixbuf-loader swww \
   neovim alacritty kitty rofi walker gnome-keyring seahorse rmpc wlogout \
   caffeine-ng gnome-themes-extra xdg-user-dirs swaybg \
-  SwayOSD kvantum qt5ct qt6ct xtools \
+  SwayOSD kvantum qt5ct qt6ct xtools libinput-gestures \
   tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng tesseract-ocr-san
 
 # X11 batch
 sudo xbps-install -y \
-  xwallpaper xcompmgr xsetroot libX11-devel picom \
-  libXft-devel libXinerama-devel imlib2-devel xorg xinit xsel 
+  xwallpaper xcompmgr xsetroot libX11-devel picom xautolock \
+  libXft-devel libXinerama-devel imlib2-devel xorg xinit xsel \
+  xdotool
 
 
 # Extra batch 
 sudo xbps-install -y \
   remmina flacon filezilla transmission transmission-qt gnome-calculator \
   foliate vscode obs audacity strawberry ghostty gimp chromium puddletag \
-  senpai vlc mpv telegram-desktop papers
+  senpai vlc mpv telegram-desktop papers faba-icon-theme
 
 # pipx; python3-cairo-devel for waypaper to work
 sudo xbps-install -y \

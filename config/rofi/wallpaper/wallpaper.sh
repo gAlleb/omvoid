@@ -40,7 +40,7 @@ randomChoice="[${#PICS[@]}] Random"
 
 themeSwitchChoice="🎨 Switch Theme" # <-- ADD THIS LINE
 # Rofi command
-rofiCommand="rofi -show -dmenu -theme ${THEMES_DIR}/wallpaper-select.rasi"
+rofiCommand="rofi -show -dmenu -DPI 0.5 -theme ${THEMES_DIR}/wallpaper-select.rasi"
 
 # Execute command according the wallpaper manager
 executeCommand() {
@@ -79,12 +79,15 @@ executeCommand() {
     
     magick "${selected_wallpaper}" ~/.config/bg.jpg
     xwallpaper --zoom $HOME/.config/bg.jpg
-    xrdb merge $HOME/.cache/wal/colors-dwm-xresources
+    xrdb -merge ~/.Xresources
+    xrdb -merge $HOME/.cache/wal/colors-dwm-xresources
     xdotool key alt+shift+F5
     pkill -SIGUSR1 dwmblocks
-    xrdb merge ~/.Xresources
     pywalfox update
     omvoid-theme-set-browser wal
+    ln -sf ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc 
+    dunstctl reload
+    pkill dunst
     echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR/wallpaper-hyprland.conf
     echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > $CACHE_DIR/wallpaper_thumbnail
     echo "inputbar { background-image: url(\"$selected_thumbnail_path\", height); }" > $CACHE_DIR/wallpaper_thumbnail.rasi
@@ -132,7 +135,7 @@ main() {
     # Find the directory where this script is located
     SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
     # Execute the other script and exit
-    "$HOME/.config/rofi/wallpaper/wallpaper-switch-theme.sh"
+    "$HOME/.config/rofi/wallpaper/wallpaper-switch-theme-dwm.sh"
     exit 0
   # --- END OF NEW SECTION ---
 
