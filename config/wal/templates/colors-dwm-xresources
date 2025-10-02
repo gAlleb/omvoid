@@ -6,7 +6,7 @@ dwm.normfloatcolor: {color8}
 dwm.selfgcolor: {color15}
 dwm.selbgcolor: {color2}
 dwm.selbordercolor: {color3}
-dwm.selfloatcolor: {color15}
+dwm.selfloatcolor: {color3}
 
 dwm.titlenormfgcolor: {color15}
 dwm.titlenormbgcolor: {color0}
