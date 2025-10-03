@@ -5,7 +5,7 @@ configuration {
     show-icons:                  true;
   	drun-display-format:         "{name}";
     hover-select:                true;
-    font:                        "Noto Font 10";
+    font: "Noto Font 10";
 }
 /* Config and colors ----------------------------------------------- */
 
@@ -34,7 +34,7 @@ window {
     fullscreen:                  false;
     transparency:                "real";
     cursor:                      "default";
-    background-color:            black / 30%;
+    background-color:            black / 45%;
     border:                      0px;
     border-color:                @selected;
     border-radius:               36px;

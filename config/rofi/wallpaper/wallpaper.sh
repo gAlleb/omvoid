@@ -10,6 +10,10 @@ if [ ! -d "${CACHE_DIR}" ] ; then
     mkdir -p "${CACHE_DIR}"
 fi
 
+if [ ! -d ~/.config/dunst ] ; then
+    mkdir -p ~/.config/dunst
+fi
+
 # Create thumbnails for all wallpapers if they don't exist in the cache.
 # This makes Rofi load much faster.
 # Note: Requires 'imagemagick' to be installed.
@@ -86,8 +90,7 @@ executeCommand() {
     pywalfox update
     omvoid-theme-set-browser wal
     ln -sf ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc 
-    dunstctl reload
-    pkill dunst
+    pkill -e --signal SIGKILL dunst
     echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR/wallpaper-hyprland.conf
     echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > $CACHE_DIR/wallpaper_thumbnail
     echo "inputbar { background-image: url(\"$selected_thumbnail_path\", height); }" > $CACHE_DIR/wallpaper_thumbnail.rasi
