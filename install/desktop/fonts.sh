@@ -5,6 +5,7 @@ font_urls=(
     "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/CascadiaMono.tar.xz" 
     "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.tar.xz"
     "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/FiraCode.tar.xz"
+    "https://github.com/gAlleb/SFProDisplay/releases/download/v1.0.0/SFProDisplay.tar.xz"
 )
 
 font_dest_dir="$HOME/.local/share/fonts"
@@ -29,14 +30,14 @@ for url in "${font_urls[@]}"; do
 done
 
 
-font_src_dir="$HOME/.local/share/omvoid/fonts"
+#font_src_dir="$HOME/.local/share/omvoid/fonts"
 
-for font_archive in "$font_src_dir"/*.tar.xz; do
-    font_name=$(basename "$font_archive" .tar.xz)
-    dest_dir="$font_dest_dir/$font_name"
-    mkdir -p "$dest_dir"
-    tar -xf "$font_archive" -C "$dest_dir"
-done
+#for font_archive in "$font_src_dir"/*.tar.xz; do
+#    font_name=$(basename "$font_archive" .tar.xz)
+#    dest_dir="$font_dest_dir/$font_name"
+#    mkdir -p "$dest_dir"
+#    tar -xf "$font_archive" -C "$dest_dir"
+#done
 
 fc-cache -f -v
 
