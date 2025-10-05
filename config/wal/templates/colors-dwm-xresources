@@ -1,6 +1,6 @@
 dwm.normfgcolor: {color15}
 dwm.normbgcolor: {color0}
-dwm.normbordercolor: {color1}
+dwm.normbordercolor: {color0}
 dwm.normfloatcolor: {color8}
 
 dwm.selfgcolor: {color15}
@@ -9,7 +9,7 @@ dwm.selbordercolor: {color3}
 dwm.selfloatcolor: {color3}
 
 dwm.titlenormfgcolor: {color15}
-dwm.titlenormbgcolor: {color0}
+dwm.titlenormbgcolor: {color1}
 dwm.titlenormbordercolor: {color1}
 dwm.titlenormfloatcolor: {color1}
 

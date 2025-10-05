@@ -2,7 +2,7 @@
 
 # Main batch
 sudo xbps-install -y \
-  wget curl unzip fzf nano Waybar tmux \
+  wget curl unzip fzf nano Waybar tmux xmlstarlet \
   make base-devel freetype-devel fontconfig-devel \
   wl-clipboard wl-clip-persist cliphist fastfetch man tldr less ufw \
   ImageMagick wf-recorder brightnessctl playerctl nautilus \
