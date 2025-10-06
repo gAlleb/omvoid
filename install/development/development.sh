@@ -2,17 +2,15 @@
 
 # Main batch
 sudo xbps-install -y \
-  wget curl unzip fzf nano Waybar tmux xmlstarlet \
+  wget curl unzip fzf nano tmux xmlstarlet libqalculate \
   make base-devel freetype-devel fontconfig-devel \
-  wl-clipboard wl-clip-persist cliphist fastfetch man tldr less ufw \
-  ImageMagick wf-recorder brightnessctl playerctl nautilus \
-  libnotify imv lazydocker inotify-tools dust blueman \
-  nautilus gvfs mpd mpc cava SwayNotificationCenter \
+  fastfetch man tldr less ufw ImageMagick brightnessctl \
+  playerctl nautilus libnotify imv lazydocker inotify-tools \
+  dust blueman nautilus gvfs mpd mpc cava polkit-gnome \
   libcanberra-gtk3 libcanberra-utils sound-theme-freedesktop \
-  wf-recorder satty slurp grim webp-pixbuf-loader swww \
-  neovim alacritty kitty rofi walker gnome-keyring seahorse rmpc wlogout \
-  caffeine-ng gnome-themes-extra xdg-user-dirs swaybg \
-  SwayOSD kvantum qt5ct qt6ct xtools libinput-gestures \
+  webp-pixbuf-loader neovim alacritty kitty rofi gnome-keyring \
+  seahorse rmpc caffeine-ng gnome-themes-extra xdg-user-dirs  \
+  kvantum qt5ct qt6ct xtools libinput-gestures mesa-dri \
   tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng tesseract-ocr-san
 
 # X11 batch
@@ -21,6 +19,11 @@ sudo xbps-install -y \
   libXft-devel libXinerama-devel imlib2-devel xorg xinit xsel \
   xdotool
 
+# Solo Wayland batch 
+sudo xbps-install -y \
+  Waybar wl-clipboard wl-clip-persist cliphist wf-recorder \
+  SwayNotificationCenter satty slurp grim swww walker \
+  wlogout swaybg SwayOSD 
 
 # Extra batch 
 sudo xbps-install -y \

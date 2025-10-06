@@ -33,7 +33,7 @@ if [[ -n "$font_name" && "$font_name" != "CNCLD" ]]; then
     fi    
 
     if [[ -f ~/.config/rofi/menu-style.rasi ]]; then
-      sed -i "s/font: \".*\"/font: \"$font_name 14\"/g" ~/.config/rofi/menu-style.rasi
+      sed -i "s/font: \".*\"/font: \"$font_name 12\"/g" ~/.config/rofi/menu-style.rasi
 
     fi
     

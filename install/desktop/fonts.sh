@@ -43,11 +43,28 @@ fc-cache -f -v
 
 sudo xbps-install -y noto-fonts-ttf noto-fonts-ttf-extra liberation-fonts-ttf noto-fonts-emoji fonts-roboto-ttf dejavu-fonts-ttf noto-fonts-cjk nerd-fonts-symbols-ttf 
 
-sudo ln -sf /usr/share/fontconfig/conf.avail/11-lcdfilter-default.conf /etc/fonts/conf.d/
-sudo ln -sf /usr/share/fontconfig/conf.avail/10-hinting-slight.conf /etc/fonts/conf.d/
-sudo ln -sf /usr/share/fontconfig/conf.avail/10-sub-pixel-rgb.conf /etc/fonts/conf.d/
-sudo ln -sf /usr/share/fontconfig/conf.avail/50-user.conf /etc/fonts/conf.d/
-sudo ln -sf /usr/share/fontconfig/conf.avail/60-latin.conf /etc/fonts/conf.d/
-sudo ln -sf /usr/share/fontconfig/conf.avail/70-no-bitmaps-except-emoji.conf /etc/fonts/conf.d/ 
+if [[ -f /usr/share/fontconfig/conf.avail/11-lcdfilter-default.conf ]]; then 
+  sudo ln -sf /usr/share/fontconfig/conf.avail/11-lcdfilter-default.conf /etc/fonts/conf.d/
+fi 
+
+if [[ -f /usr/share/fontconfig/conf.avail/10-hinting-slight.conf ]]; then 
+  sudo ln -sf /usr/share/fontconfig/conf.avail/10-hinting-slight.conf /etc/fonts/conf.d/
+fi 
+
+if [[ -f /usr/share/fontconfig/conf.avail/10-sub-pixel-rgb.conf ]]; then 
+    sudo ln -sf /usr/share/fontconfig/conf.avail/10-sub-pixel-rgb.conf /etc/fonts/conf.d/
+fi 
+
+if [[ -f /usr/share/fontconfig/conf.avail/50-user.conf ]]; then 
+    sudo ln -sf /usr/share/fontconfig/conf.avail/50-user.conf /etc/fonts/conf.d/
+fi 
+
+if [[ -f /usr/share/fontconfig/conf.avail/60-latin.conf ]]; then 
+    sudo ln -sf /usr/share/fontconfig/conf.avail/60-latin.conf /etc/fonts/conf.d/
+fi 
+
+if [[ -f /usr/share/fontconfig/conf.avail/70-no-bitmaps-except-emoji.conf ]]; then 
+    sudo ln -sf /usr/share/fontconfig/conf.avail/70-no-bitmaps-except-emoji.conf /etc/fonts/conf.d/ 
+fi 
 
 sed -i 's|^source $OMVOID_INSTALL/desktop/fonts.sh\s*$|#source $OMVOID_INSTALL/desktop/fonts.sh|' ~/.local/share/omvoid/install.sh

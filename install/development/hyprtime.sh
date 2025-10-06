@@ -15,9 +15,10 @@ echo "repository=https://raw.githubusercontent.com/Makrennel/hyprland-void/repos
 sudo xbps-install -Sy \
   hyprland hyprland-devel xdg-desktop-portal-hyprland \
   hyprland hyprwayland-scanner hyprutils hyprlang hyprlock \
-  hypridle hyprsunset hyprland-qt-support libqalculate \
-  polkit-gnome hyprland-qtutils hyprland-devel hyprgraphics\
-  xdg-desktop-portal-gtk xdg-desktop-portal-wlr mesa-dri
+  hypridle hyprsunset hyprland-qt-support \
+  hyprland-qtutils hyprland-devel hyprgraphics\
+  xdg-desktop-portal-gtk xdg-desktop-portal-wlr 
+
 sudo sed -i 's/Exec=Hyprland/Exec=dbus-run-session Hyprland/' /usr/share/wayland-sessions/hyprland.desktop
 
 sed -i 's|^source $OMVOID_INSTALL/development/hyprtime.sh\s*$|#source $OMVOID_INSTALL/development/hyprtime.sh|' ~/.local/share/omvoid/install.sh
