@@ -1,6 +1,6 @@
 dwm.normfgcolor: {color15}
 dwm.normbgcolor: {color0}
-dwm.normbordercolor: {color0}
+dwm.normbordercolor: {color1}
 dwm.normfloatcolor: {color8}
 
 dwm.selfgcolor: {color15}
@@ -37,3 +37,6 @@ dwm.urgfgcolor: {color15}
 dwm.urgbgcolor: {color0}
 dwm.urgbordercolor: {color1}
 dwm.urgfloatcolor: {color1}
+
+dwm.ltsymbolfgcolor: {color0}
+dwm.ltsymbolbgcolor: {color3}

@@ -15,9 +15,9 @@ sudo xbps-install -y \
 
 # X11 batch
 sudo xbps-install -y \
-  xwallpaper xcompmgr xsetroot libX11-devel picom xautolock \
+  xwallpaper xsetroot libX11-devel picom xautolock \
   libXft-devel libXinerama-devel imlib2-devel xorg xinit xsel \
-  xdotool
+  xdotool xclip slop maim clipmenu slock
 
 # Solo Wayland batch 
 sudo xbps-install -y \
