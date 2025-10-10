@@ -1,5 +1,5 @@
-#!/bin/sh
-
+#!/bin/bash
+source ~/.cache/wal/dwmblocks
 # Displays today's precipication chance (☔), and daily low (🥶) and high (🌞).
 # Usually intended for the statusbar.
 LOCATION=Moscow
@@ -35,20 +35,14 @@ readfile() { weatherdata="$(cat "$weatherreport")" ;}
 showweather() {
 	readfile
 	# printf " 🌂 %s 🥶 %s° 🌞 %s° \n " $(getprecipchance) $(getdailyhighlow)
-	printf " %s°   %s°\n" $(getdailyhighlow)
+	printf " %s° %s° ^d^\n" $(getdailyhighlow)
 }
-
-case $BLOCK_BUTTON in
-	1) setsid -f st -e less -Sfr "$weatherreport" ;;
-	2) getforecast && showweather ;;
-	3) notify-send "🌈 Weather module" "\- Left click for full forecast.
-- Middle click to update forecast.
-☂️: Chance of rain/snow
-🥶: Daily low
-🌞: Daily high" ;;
-	6) setsid -f "$TERMINAL" -e "$EDITOR" "$0" ;;
-esac
 
 checkforecast || getforecast
 
-showweather
+# showweather 
+get_new_forecast() {
+curl -sf wttr.in/$LOCATION?format='%c%t' | sed -e 's/ //' -e 's/\ +//'
+}
+
+get_new_forecast 
