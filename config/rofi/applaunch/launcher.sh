@@ -5,5 +5,4 @@ theme='my-style'
 
 rofi \
     -show drun \
-    -DPI 1.5 \
     -theme ${dir}/${theme}.rasi

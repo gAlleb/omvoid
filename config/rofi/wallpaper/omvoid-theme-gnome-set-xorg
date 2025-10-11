@@ -5,6 +5,15 @@ GTK3_THEME="$1"
 GTK3_ICONS="$2"
 PREFER_DARK_THEME="$3" # New variable for the dark theme preference
 
+gsettings set org.gnome.desktop.interface gtk-theme $GTK3_THEME
+gsettings set org.gnome.desktop.interface icon-theme $GTK3_ICONS
+
+if [ "$PREFER_DARK_THEME" = "0" ]; then
+gsettings set org.gnome.desktop.interface color-scheme "prefer-light"
+else
+gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
+fi
+
 mkdir -p ~/.config/gtk-3.0/
 mkdir -p ~/.config/gtk-4.0/ # Ensure gtk-4.0 directory also exists
 
@@ -37,11 +46,6 @@ sed -i -e "/^gtk-theme-name=/d" \
        ~/.config/gtk-4.0/settings.ini
 
 # --- ~/.gtkrc-2.0 ---
-# For .gtkrc-2.0, you are only changing gtk-icon-theme-name and gtk-theme-name
-# The current script has a small typo here where both are set to gtk-icon-theme-name.
-# I'll correct that for gtk-theme-name, and leave gtk-application-prefer-dark-theme out
-# as it's not typically a GTK2 setting.
-
 # Update gtk-icon-theme-name in ~/.gtkrc-2.0
 sed -i "s/^gtk-icon-theme-name=\".*\"/gtk-icon-theme-name=\"$GTK3_ICONS\"/" ~/.gtkrc-2.0
 # Update gtk-theme-name in ~/.gtkrc-2.0 (corrected from your original script)
