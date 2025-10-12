@@ -1,6 +1,6 @@
 /*****----- Global Properties -----*****/
 * {
-    font: "JetBrains Mono Nerd Font 13";
+    font: "CaskaydiaMono Nerd Font 12";
 }
 @import "~/.cache/wal/colors-rofi.rasi"
 
