@@ -19,7 +19,7 @@ configuration {
 @import  "~/.cache/wal/colors-rofi.rasi"
 
 * {
-    font: "CaskaydiaMono Nerd Font 12";
+    font: "CaskaydiaMono Nerd Font 14";
 }
 
 /*****----- Main Window -----*****/
@@ -82,7 +82,7 @@ textbox-prompt-colon {
 }
 entry {
     enabled:                     true;
-    expand:                      false;
+    expand:                      true;
     width:                       170px;
     padding:                     12px 12px;
     border-radius:               100%;
