@@ -36,18 +36,12 @@ fi
 local wal_flags=""
 if [ "$mode_choice" = "Light Mode" ]; then
     wal_flags="-l -i ${current_wallpaper}"
-    gsettings set org.gnome.desktop.interface gtk-theme "WhiteSur-Light"
-    gsettings set org.gnome.desktop.interface color-scheme "prefer-light"
-    gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-light"
     kvantummanager --set WhiteSur-opaque
-    ~/.config/rofi/wallpaper/omvoid-theme-gnome-set-xorg "WhiteSur-Light" "WhiteSur-light" "0"
+    omvoid-theme-gnome-set-xorg "WhiteSur-Light" "WhiteSur-light" "0"
 else
     wal_flags="-i ${current_wallpaper}"
-    gsettings set org.gnome.desktop.interface gtk-theme "WhiteSur-Dark"
-    gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
-    gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-grey-dark"
     kvantummanager --set WhiteSur-opaqueDark
-    ~/.config/rofi/wallpaper/omvoid-theme-gnome-set-xorg "WhiteSur-Dark" "WhiteSur-grey-dark" "1"
+    omvoid-theme-gnome-set-xorg "WhiteSur-Dark" "WhiteSur-grey-dark" "1"
 fi
 
 wal -c

@@ -64,11 +64,11 @@ executeCommand() {
     if [ "$mode_choice" = "Light Mode" ]; then
         wal_flags="-l -i ${selected_wallpaper}"
         kvantummanager --set WhiteSur-opaque
-        ~/.config/rofi/wallpaper/omvoid-theme-gnome-set-xorg "WhiteSur-Light" "WhiteSur-light" "0"
+        omvoid-theme-gnome-set-xorg "WhiteSur-Light" "WhiteSur-light" "0"
     else
         wal_flags="-i ${selected_wallpaper}"
         kvantummanager --set WhiteSur-opaqueDark        
-        ~/.config/rofi/wallpaper/omvoid-theme-gnome-set-xorg "WhiteSur-Dark" "WhiteSur-grey-dark" "1"
+        omvoid-theme-gnome-set-xorg "WhiteSur-Dark" "WhiteSur-grey-dark" "1"
     fi
 
     wal -c

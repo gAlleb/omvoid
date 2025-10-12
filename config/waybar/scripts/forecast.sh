@@ -42,7 +42,7 @@ checkforecast || getforecast
 
 # showweather 
 get_new_forecast() {
-curl -sf wttr.in/$LOCATION?format='%c%t' | sed -e 's/ //' -e 's/\ +//'
+curl -sf wttr.in/$LOCATION?format='%c%t' | sed -e 's/+//' -e 's/\ //'
 }
 
 get_new_forecast 

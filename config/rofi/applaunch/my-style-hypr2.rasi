@@ -19,7 +19,7 @@ configuration {
 @import  "~/.cache/wal/colors-rofi.rasi"
 
 * {
-    font: "SF Pro Dislay Medium 12";
+    font: "CaskaydiaMono Nerd Font 12";
 }
 
 /*****----- Main Window -----*****/
@@ -130,7 +130,7 @@ listview {
     fixed-columns:               true;
     padding:                     15px;
     spacing:                     10px;
-    background-color:            @background;
+    background-color:            @background70;
     text-color:                  @foreground;
     cursor:                      "default";
 }
