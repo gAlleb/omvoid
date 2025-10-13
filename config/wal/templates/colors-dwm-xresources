@@ -34,7 +34,7 @@ dwm.hidselfgcolor: {color3}
 dwm.hidselbgcolor: {color8}
 
 dwm.urgfgcolor: {color15}
-dwm.urgbgcolor: {color0}
+dwm.urgbgcolor: {color4}
 dwm.urgbordercolor: {color1}
 dwm.urgfloatcolor: {color1}
 
