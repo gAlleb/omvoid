@@ -12,6 +12,6 @@ sudo cp -R ~/.local/share/omvoid/default/repokeyes/omvoid/* /var/db/xbps/keys/
 
 echo repository=https://raw.githubusercontent.com/galleb/voidlinux/repository-x86_64-glibc | sudo tee /etc/xbps.d/omvoid.conf
 
-sudo xbps-install -Sy discord gImageReader-gtk nwg-dock-hyprland kbdlightmac nwg-look nwg-drawer mpdris2-rs
+sudo xbps-install -Sy discord gImageReader-gtk nwg-dock-hyprland kbdlightmac nwg-drawer mpdris2-rs
 
 sed -i 's|^source $OMVOID_INSTALL/development/omvoid-repo.sh\s*$|#source $OMVOID_INSTALL/development/omvoid-repo.sh|' ~/.local/share/omvoid/install.sh

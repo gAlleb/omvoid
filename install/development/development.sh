@@ -3,7 +3,7 @@
 # Main batch
 sudo xbps-install -y \
   wget curl unzip fzf nano tmux xmlstarlet libqalculate \
-  make base-devel freetype-devel fontconfig-devel \
+  make base-devel freetype-devel fontconfig-devel nwg-look \
   fastfetch man tldr less ufw ImageMagick brightnessctl \
   playerctl nautilus libnotify imv lazydocker inotify-tools \
   dust blueman nautilus gvfs mpd mpc cava polkit-gnome \
