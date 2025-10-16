@@ -19,7 +19,7 @@ configuration {
 @import  "~/.cache/wal/colors-rofi.rasi"
 
 * {
-    font: "CaskaydiaMono Nerd Font 19";
+    font: "CaskaydiaMono Nerd Font 18";
 }
 
 /*****----- Main Window -----*****/
@@ -29,7 +29,7 @@ window {
     location:                    center;
     anchor:                      center;
     fullscreen:                  false;
-    width:                       1000px;
+    width:                       900px;
     x-offset:                    0px;
     y-offset:                    0px;
 
@@ -64,7 +64,7 @@ listbox {
 /*****----- Inputbar -----*****/
 inputbar {
     enabled:                     true;
-    spacing:                     100px;
+    spacing:                     120px;
     padding:                     30px 30px;
     background-color:            transparent;
     text-color:                  @foreground;
@@ -120,7 +120,7 @@ button selected {
 listview {
     enabled:                     true;
     columns:                     4;
-    lines:                       4;
+    lines:                       3;
     cycle:                       true;
     dynamic:                     true;
     scrollbar:                   false;
@@ -173,7 +173,7 @@ element selected.active {
 element-icon {
     background-color:            transparent;
     text-color:                  inherit;
-    size:                        80px;
+    size:                        100px;
     cursor:                      inherit;
 }
 element-text {
