@@ -44,7 +44,7 @@ randomChoice="[${#PICS[@]}] Random"
 
 themeSwitchChoice="🎨 Switch Theme" # <-- ADD THIS LINE
 # Rofi command
-rofiCommand="rofi -show -dmenu -DPI 0.5 -theme ${THEMES_DIR}/wallpaper-select.rasi"
+rofiCommand="rofi -show -dmenu -DPI 0.5 -i -theme ${THEMES_DIR}/wallpaper-select-xorg.rasi"
 
 # Execute command according the wallpaper manager
 executeCommand() {

@@ -51,6 +51,10 @@ if [[ -n "$font_name" && "$font_name" != "CNCLD" ]]; then
       sed -i "s/font: \".*\"/font: \"$font_name 10\"/g" ~/.config/rofi/wallpaper/themes/wallpaper-select.rasi
     fi 
 
+    if [[ -f ~/.config/rofi/wallpaper/themes/wallpaper-select-xorg.rasi ]]; then
+      sed -i "s/font: \".*\"/font: \"$font_name 8\"/g" ~/.config/rofi/wallpaper/themes/wallpaper-select-xorg.rasi
+    fi
+
     if [[ -f ~/.config/rofi/applaunch/my-style.rasi ]]; then
       sed -i "s/font: \".*\"/font: \"$font_name 19\"/g" ~/.config/rofi/applaunch/my-style.rasi
 
