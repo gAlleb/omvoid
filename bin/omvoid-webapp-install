@@ -52,10 +52,6 @@ cat >"$DESKTOP_FILE" <<EOF
 Version=1.0
 Name=$APP_NAME
 Comment=$APP_NAME
-# Consider adding env vars
-# GOOGLE_API_KEY="no"
-# GOOGLE_DEFAULT_CLIENT_ID="no"
-# GOOGLE_DEFAULT_CLIENT_SECRET="no"
 Exec=$EXEC_COMMAND
 Terminal=false
 Type=Application

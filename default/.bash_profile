@@ -1,7 +1,7 @@
 # .bash_profile
 export EDITOR=nvim
 export MOZ_USE_XINPUT2=1
-export BROWSER=brave-browser
+export BROWSER=zen
 export TERMINAL=alacritty
 export SVDIR=~/.config/service
 export OMVOID_PATH=$HOME/.local/share/omvoid 
