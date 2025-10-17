@@ -6,9 +6,8 @@
 [[ $- != *i* ]] && return
 
 alias ls='ls --color=auto'
-alias xi='sudo xbps-install'
-alias xr='sudo xbps-remove'
 alias n='nvim'
+alias ..="cd .."
 
 PS1="\[\033[1;33m\] \[\e[01;37m\] \[\e[01;34m\]\w \[\e[1;33m\]󰅂 \[\e[0;37m\]"
 
