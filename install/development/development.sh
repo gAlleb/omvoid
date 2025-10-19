@@ -9,7 +9,7 @@ sudo xbps-install -y \
   dust blueman nautilus gvfs mpd mpc cava polkit-gnome \
   libcanberra-gtk3 libcanberra-utils sound-theme-freedesktop \
   webp-pixbuf-loader neovim alacritty kitty rofi gnome-keyring \
-  seahorse rmpc caffeine-ng gnome-themes-extra xdg-user-dirs  \
+  seahorse rmpc caffeine-ng gnome-themes-extra xdg-user-dirs \
   kvantum qt5ct qt6ct xtools libinput-gestures mesa-dri \
   tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng tesseract-ocr-san \
   gearlever mpdris2-rs
