@@ -11,7 +11,8 @@ sudo xbps-install -y \
   webp-pixbuf-loader neovim alacritty kitty rofi gnome-keyring \
   seahorse rmpc caffeine-ng gnome-themes-extra xdg-user-dirs  \
   kvantum qt5ct qt6ct xtools libinput-gestures mesa-dri \
-  tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng tesseract-ocr-san
+  tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng tesseract-ocr-san \
+  gearlever
 
 # X11 batch
 sudo xbps-install -y \
