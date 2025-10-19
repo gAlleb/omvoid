@@ -33,7 +33,7 @@ dwm.hidnormbgcolor: {color0}
 dwm.hidselfgcolor: {color3}
 dwm.hidselbgcolor: {color8}
 
-dwm.urgfgcolor: {color15}
+dwm.urgfgcolor: {color0}
 dwm.urgbgcolor: {color4}
 dwm.urgbordercolor: {color1}
 dwm.urgfloatcolor: {color1}
