@@ -7,7 +7,8 @@
 
 alias ls='ls --color=auto'
 alias n='nvim'
-alias ..="cd .."
+alias ..='cd ..'
+alias xr='sudo xbps-remove'
 
 ex ()
 {

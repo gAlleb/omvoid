@@ -3,7 +3,6 @@
 	border-radius: 16;
 	border: none;
 	font-family: SF Pro Display, Symbols Nerd Font;
-	
 	font-size: 14px;
 	padding: 0px 0px;
 	margin: 0px 5px;
@@ -140,7 +139,7 @@ window#waybar {
 	background-color: transparent;
 	color: @cyan;
 	font-weight: bold;
-	font-family: SFPRODISPLAY;
+	font-family: 'CaskaydiaMono Nerd Font';
 	font-size: 30px;
 }
 

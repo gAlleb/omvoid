@@ -14,7 +14,8 @@ function send_notification {
   kbdbacklight=$(get_kbdbacklight)
   bar=$(awk "BEGIN {printf \"%.2f\", $kbdbacklight/100}")
 
-  swayosd-client --custom-icon=preferences-desktop-keyboard --custom-progress-text="$kbdbacklight%" --custom-progress=${bar}
+  # swayosd-client --custom-icon=preferences-desktop-keyboard --custom-progress-text="$kbdbacklight%" --custom-progress=${bar}
+  swayosd-client --custom-icon=preferences-desktop-keyboard --custom-progress=${bar}
 
 }
 

@@ -6,7 +6,7 @@
   "margin-right": 6,
 	"margin-top": 5,
 
-  "modules-center": ["mpd"],
+  "modules-center": ["mpris"],
   "modules-left": ["custom/menu", "custom/sep", "hyprland/workspaces", "custom/sep", "hyprland/window"],
   "modules-right": ["tray", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "custom/updates", "battery", "hyprland/language", "custom/screenrecording-indicator", "custom/screenshot", "clock", "custom/swaync", "bluetooth", "network", "custom/vpn", "custom/wlogout"],
 
@@ -52,12 +52,12 @@
   		    "paused": "",
 	    },
       "dynamic-order":[
-           "artist", "title", "album", "position", "length"
+           "artist", "title",
       ],
-    	"ignored-players": ["firefox","brave"],
-    	"on-click": "mpc toggle",
+    	"ignored-players": [],
+      "on-click": "~/.config/waybar/scripts/playerctl/playerctl-waybar-on-click.sh",
     	"on-click-right": "setsid -f kitty --class=rmpc -o font_size=12 -e rmpc",
-    	"on-click-middle": "~/.config/waybar/scripts/mpd-notify.sh",
+    	"on-click-middle": "~/.config/waybar/scripts/playerctl/playerctl-notify.sh",
   },  
 
   "backlight": {

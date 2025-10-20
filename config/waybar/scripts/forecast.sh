@@ -35,7 +35,7 @@ readfile() { weatherdata="$(cat "$weatherreport")" ;}
 showweather() {
 	readfile
 	# printf " 🌂 %s 🥶 %s° 🌞 %s° \n " $(getprecipchance) $(getdailyhighlow)
-	printf " %s° %s° ^d^\n" $(getdailyhighlow)
+	printf "^c$color0^^b$color4^ %s° %s° ^d^\n" $(getdailyhighlow)
 }
 
 checkforecast || getforecast
