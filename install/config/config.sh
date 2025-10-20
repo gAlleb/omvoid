@@ -13,6 +13,7 @@ cp -R ~/.local/share/omvoid/config/* ~/.config/
 
 # Use default dotfiles from omvoid
 cp ~/.local/share/omvoid/default/.bashrc ~/.bashrc
+cp ~/.local/share/omvoid/default/.gtkrc-2.0 ~/.gtkrc-2.0
 
 # Copy .bash_profile and change user
 cp ~/.local/share/omvoid/default/.bash_profile ~/.bash_profile

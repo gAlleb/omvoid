@@ -28,6 +28,12 @@ if [[ -n "$font_name" && "$font_name" != "CNCLD" ]]; then
       pkill -e --signal SIGKILL dunst
     fi
 
+    if [[ -f ~/.config/mako/config  ]]; then
+      sed -i "s/font=.*/font=$font_name/g" ~/.config/mako/config
+      makoctl reload
+      pkill -e --signal SIGKILL mako
+    fi
+
     if [[ -f ~/.config/rofi/style.rasi ]]; then
       sed -i "s/font: \".*\"/font: \"$font_name 16\"/g" ~/.config/rofi/style.rasi
     fi    

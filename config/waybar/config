@@ -68,7 +68,7 @@
   },
 
   "custom/wlogout": {
-      "format": "{icon}{}",
+      "format": "{icon}",
       "on-click": "wlogout",
       "format-icons": "󰍃",
   },
@@ -159,7 +159,7 @@
 	"custom/menu": {
 	  	"format": "{icon}",
   		"format-icons": "",
-	  	"on-click": "~/.config/rofi/applaunch/launcher-hypr.sh",
+	  	"on-click": "omvoid-app-menu",
 	  	"escape": true,
   		"tooltip": false
 	},
