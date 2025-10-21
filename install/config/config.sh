@@ -22,6 +22,7 @@ sed -i "s/__USERNAME__/$USER/g" ~/.bash_profile
 # Copy .tmux.conf and enable plugins
 cp ~/.local/share/omvoid/default/.tmux.conf ~/.tmux.conf
 git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+~/.tmux/plugins/tpm/bin/install_plugins
 
 # Ensure application directory exists for update-desktop-database
 mkdir -p ~/.local/share/applications
