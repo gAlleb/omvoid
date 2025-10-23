@@ -1,4 +1,8 @@
 return {
+--  {
+--    "folke/which-key.nvim",
+--     lazy = false,
+--  },
   {
     "stevearc/conform.nvim",
     -- event = 'BufWritePre', -- uncomment for format on save
@@ -95,8 +99,8 @@ return {
     -- suggested keymap
     { "<leader>pp", "<cmd>PasteImage<cr>", desc = "Paste image from system clipboard" },
     },
- },
- {
+  },
+  {
     -- The plugin location on GitHub
     "vimwiki/vimwiki",
     -- The event that triggers the plugin
@@ -118,8 +122,8 @@ return {
      vim.g.vimwiki_global_ext = 0
      --vim.g.vimwiki_ext2syntax = {}
   end,
-},
-{
+  },
+  {
    "folke/zen-mode.nvim",
    keys = {
    -- suggested keymap

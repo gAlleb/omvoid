@@ -49,11 +49,11 @@ main() {
     case $choice in
     Quit)
         end_radio
-        pkill -f http
+        pkill -f "mpv --volume"
         exit
         ;;
     *)
-        pkill -f http || echo "mpv not running."
+        pkill -f "mpv --volume" || echo "mpv not running."
         start_radio "$choice"
         exec mpv --volume="${RADIOVOLUME:-100}" "${radio_stations["${choice}"]}"
         return        
