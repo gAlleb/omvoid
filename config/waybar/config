@@ -8,7 +8,7 @@
 
   "modules-center": ["mpris"],
   "modules-left": ["custom/menu", "custom/sep", "hyprland/workspaces", "custom/sep", "hyprland/window"],
-  "modules-right": ["tray", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "custom/updates", "battery", "hyprland/language", "custom/screenrecording-indicator", "custom/screenshot", "clock", "custom/swaync", "bluetooth", "network", "custom/vpn", "custom/wlogout"],
+  "modules-right": ["group/tray-expander", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "group/updates-expander", "battery", "hyprland/language", "custom/screenrecording-indicator", "custom/screenshot", "clock", "custom/swaync", "bluetooth", "network", "custom/vpn", "custom/wlogout"],
 
   "custom/temperature": {
       "format": "{}",
@@ -301,8 +301,23 @@
     },
     "modules": ["custom/expand-icon", "tray"]
   },
+
    "custom/expand-icon": {
-    "format": " ",
+    "format": "",
+    "tooltip": false
+  },
+
+  "group/updates-expander": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 600,
+      "children-class": "updates-group-item"
+    },
+    "modules": ["custom/updates-icon", "custom/updates"]
+  },
+
+  "custom/updates-icon": {
+    "format": "",
     "tooltip": false
   },
 }

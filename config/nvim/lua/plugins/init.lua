@@ -38,14 +38,6 @@ return {
     },
   },
   {
-    'uZer/pywal16.nvim',
-    -- for local dev replace with:
-    -- dir = '~/your/path/pywal16.nvim',
-    config = function()
-    vim.cmd.colorscheme("pywal16")
-    end,
-  },
-  {
     "NeogitOrg/neogit",
     dependencies = {
       "nvim-lua/plenary.nvim",         -- required
@@ -167,27 +159,6 @@ return {
       },
    },
   },
--- {
---    "junegunn/goyo.vim",
---    lazy = false,
---    config = function()
---      -- Configuration options for goyo.vim
---      -- Example
---      vim.g.goyo_width = "80%" -- Set the content width to 80%
---    end
---  },
-  -- test new blink
-  -- { import = "nvchad.blink.lazyspec" },
-
-  -- {
-  -- 	"nvim-treesitter/nvim-treesitter",
-  -- 	opts = {
-  -- 		ensure_installed = {
-  -- 			"vim", "lua", "vimdoc",
-  --      "html", "css"
-  -- 		},
-  -- 	},
-  -- },
   vim.treesitter.language.register('markdown', 'vimwiki') 
 }
 

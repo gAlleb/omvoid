@@ -41,8 +41,6 @@ end)
 -- Set 2 langs 
 vim.opt.spell = true -- Enable spellchecking
 vim.opt.spelllang = { "en", "ru" } -- Set languages
---local pywal16 = require('pywal16')
---pywal16.setup()
---vim.cmd("colorscheme pywal16")
+
 vim.opt.relativenumber = true
 

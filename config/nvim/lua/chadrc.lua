@@ -54,10 +54,19 @@ buttons = {
   "",
   }
 }
--- M.ui = {
+M.ui = {
 --       tabufline = {
 --          lazyload = false
 --      }
---}
+      statusline = {
+      enabled = true,
+      theme = "default", -- default/vscode/vscode_colored/minimal
+      -- default/round/block/arrow separators work only for default statusline theme
+      -- round and block will work for minimal theme only
+      separator_style = "round",
+      order = nil,
+      modules = nil,
+    },
+}
 
 return M

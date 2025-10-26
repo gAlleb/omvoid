@@ -68,6 +68,7 @@ window#waybar {
 #language,
 #pulseaudio,
 #custom-expand-icon,
+#custom-updates-icon,
 #custom-temperature,
 #custom-screenrecording-indicator,
 #mpris,
@@ -79,6 +80,10 @@ window#waybar {
 	background-color: transparent;
 }
 
+#custom-updates-icon {
+  margin-right: -5px;
+}
+
 #custom-screenrecording-indicator {
   font-size: 16px;
 }
@@ -87,6 +92,13 @@ window#waybar {
   font-size: 9px;
   margin-left: -13px;
   margin-bottom: -12px;
+}
+
+#custom-expand-icon {
+  background-color: @color3_70;
+  padding: 0px 4px;
+  margin-top: 5px;
+  margin-bottom: 5px;
 }
 
 #tray {
@@ -107,7 +119,7 @@ window#waybar {
 	background-color: transparent;
 	color: @cyan;
 	padding: 0px 0px;
-	margin-left: 10px;
+	margin-left: 6px;
 	margin-top: 1px;
 	font-size: 20px;
 }
@@ -128,6 +140,7 @@ window#waybar {
   margin-top: 5px;
   margin-bottom: 5px;
   margin-left: 6px;
+  margin-right: 6px;
   color: @bg;
 }
 
