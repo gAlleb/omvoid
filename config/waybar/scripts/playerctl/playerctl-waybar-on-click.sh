@@ -31,7 +31,7 @@ radio() {
     MPV_STATUS=$(playerctl --player=mpv status 2>/dev/null)
     SHORTWAVE=$(playerctl --player=de.haeckerfelix.Shortwave status 2>/dev/null)
     if [ "$MPV_STATUS" = "Playing" ]; then
-       pkill -f http    
+       pkill -f "mpv --volume"    
        notify-send "Stopping radio" "You have quit radio. 🎶"
     elif [ "$SHORTWAVE" = "Playing" ]; then
        shortwave
