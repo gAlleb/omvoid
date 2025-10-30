@@ -3,6 +3,8 @@
 # Hyprland
 
 # Copy key 
+# Makrennel 30:93:47:9e:1f:55:c5:c5:07:b1:9a:e6:8b:10:5b:4b.plist 
+# Encoded14 1d:c2:cf:d4:08:97:4c:47:5d:88:4c:fd:e9:a5:d0:9a.plist
 
 if [ ! -d /var/db/xbps/keys ] ; then
     sudo mkdir -p /var/db/xbps/keys
@@ -10,7 +12,8 @@ fi
 
 sudo cp -R ~/.local/share/omvoid/default/repokeyes/hyprland/* /var/db/xbps/keys/
 
-echo "repository=https://raw.githubusercontent.com/Makrennel/hyprland-void/repository-x86_64-glibc" | sudo tee /etc/xbps.d/hyprland-void.conf
+#echo "repository=https://raw.githubusercontent.com/Makrennel/hyprland-void/repository-x86_64-glibc" | sudo tee /etc/xbps.d/hyprland-void.conf
+echo repository=https://github.com/Encoded14/void-user-repository/releases/latest/download | sudo tee /etc/xbps.d/20-void-user-repository.conf
 
 sudo xbps-install -Sy \
   hyprland hyprland-devel xdg-desktop-portal-hyprland \

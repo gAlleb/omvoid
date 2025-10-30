@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>public-key</key>
+	<data>LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUE1S2VWb29FNWEyN1FsRjNYb09lVAorakZMN3JoczRTamZPaFJ2dmlMcTNrSGZCOWx3RmdnWGN0WW4yY1RhRW1jV2dWREhoNUVONm9FYTFkNVhFa1RSCmp5Q1ViVUwxSjdQeHF1cFpTVkRLaEQ3bFN2UmFqYThlUUovcS9wTnc1ZlZ3NXJQZkxRYlpHMzM4N1ZyTzlFTXEKYTNsUm03T291RmN3VEdHUmE1OGRIQzNXb0d2Z25MSm03amtHWUtMdjFja0xxNEU5dk1ScFdpTGMrOFlmZDNuMAoyejVvUmlmUXU4akRJeGdDeUhFbUpIZ2UxMXRzdDFqSStrSFp1NGFWSDFwcU5wVWVrejduZ3hNcDJaKzdVMzZrCnpuVEJScTdkazdRZWZFZXNiNXhQVlhTZmQrcDVWUm1Pb1FrNzl1TEt0ZlU2UWp2MWhBQjhoZGR1d2dLRUZaV28Kb1FJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==</data>
+	<key>public-key-size</key>
+	<integer>2048</integer>
+	<key>signature-by</key>
+	<string>Encoded14 &lt;linusken@tuta.io&gt;</string>
+</dict>
+</plist>
