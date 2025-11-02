@@ -153,7 +153,7 @@
   		"format": "{class}",
   		"separate-outputs": false,
 	  	"icon": true,
-	  	"icon-size": 25,
+	  	"icon-size": 20,
   },
 
 	"custom/menu": {
@@ -166,7 +166,7 @@
 
 	"hyprland/workspaces": {
 		  "format": "{icon}",
-	  	"icon-size": 20,
+	  	"icon-size": 16,
 	  	"on-click": "activate",
 	  	"format-icons": {
 		    	"1": "1",
