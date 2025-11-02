@@ -86,6 +86,7 @@ executeCommand() {
     pywalfox update
     omvoid-theme-set-browser wal
     ln -sf ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc 
+    dunstctl reload
     pkill -e --signal SIGKILL dunst
     echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR/wallpaper-hyprland.conf
     echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > $CACHE_DIR/wallpaper_thumbnail

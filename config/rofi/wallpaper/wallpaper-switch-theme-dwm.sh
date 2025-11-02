@@ -58,6 +58,6 @@ pywalfox update
 omvoid-theme-set-browser wal
 ln -sf ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc 
 dunstctl reload
-pkill dunst
+pkill -e --signal SIGKILL dunst
 
 exit 0

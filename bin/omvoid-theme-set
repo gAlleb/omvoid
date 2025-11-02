@@ -32,6 +32,9 @@ wal -c
 wal --theme "$CURRENT_THEME_DIR/colors.json"
 pkill -SIGUSR2 waybar
 swaync-client -rs
+dunstctl reload
+makoctl reload 
+pkill -e --signal SIGKILL dunst
 $HOME/.config/nwg-dock-hyprland/reload.sh &
 $HOME/.config/swayosd/launch.sh &
 

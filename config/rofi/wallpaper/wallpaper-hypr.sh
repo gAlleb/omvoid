@@ -84,6 +84,9 @@ executeCommand() {
     echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR/wallpaper-hyprland.conf
     pkill -SIGUSR2 waybar
     swaync-client -rs
+    makoctl reload
+    dunstctl reload
+    pkill -e --signal SIGKILL dunst
     echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > $CACHE_DIR/wallpaper_thumbnail
     echo "inputbar { background-image: url(\"$selected_thumbnail_path\", height); }" > $CACHE_DIR/wallpaper_thumbnail.rasi
     $HOME/.config/nwg-dock-hyprland/reload.sh &
