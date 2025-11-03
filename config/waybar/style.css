@@ -96,7 +96,7 @@ window#waybar {
 
 #custom-expand-icon {
   background-color: @color3_70;
-  padding: 0px 3px;
+  padding: 0px 3px 0px 3px;
   margin-top: 5px;
   margin-bottom: 5px;
 }
