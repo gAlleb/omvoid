@@ -120,13 +120,13 @@ button selected {
 listview {
     enabled:                     true;
     columns:                     1;
-    lines:                       6;
+    lines:                       8;
     cycle:                       true;
     dynamic:                     true;
     scrollbar:                   false;
     layout:                      vertical;
     reverse:                     false;
-    fixed-height:                false;
+    fixed-height:                true;
     fixed-columns:               true;
     fixed-lines:                 false;
     padding:                     15px;
