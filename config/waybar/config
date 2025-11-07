@@ -12,9 +12,10 @@
 
   "custom/temperature": {
       "format": "{}",
-      "interval": 30,
+      "interval": 20,
       "exec": "~/.config/waybar/scripts/temp.sh",
       "tooltip": false,
+      "on-click": "~/.config/waybar/scripts/temp.sh",
   },
 
   "custom/vpn": {

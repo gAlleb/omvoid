@@ -18,7 +18,7 @@ echo repository=https://github.com/Encoded14/void-user-repository/releases/lates
 sudo xbps-install -Sy \
   hyprland hyprland-devel xdg-desktop-portal-hyprland \
   hyprland hyprwayland-scanner hyprutils hyprlang hyprlock \
-  hypridle hyprsunset hyprland-qt-support \
+  hypridle hyprsunset hyprland-qt-support hyprcursor hyprpicker \
   hyprland-qtutils hyprland-devel hyprgraphics\
   xdg-desktop-portal-gtk xdg-desktop-portal-wlr 
 

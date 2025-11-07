@@ -13,7 +13,7 @@ xdg-mime default imv.desktop image/tiff
 # Open PDFs with the Document Viewer
 xdg-mime default org.gnome.Papers.desktop application/pdf
 
-# Use Zen as the default browser. Leave webapps tto Chromium
+# Use Zen as the default browser. Leave webapps to Chromium
 xdg-settings set default-web-browser zen.desktop
 xdg-mime default zen.desktop x-scheme-handler/http
 xdg-mime default zen.desktop x-scheme-handler/https
