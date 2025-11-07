@@ -73,6 +73,7 @@ window#waybar {
 #custom-screenrecording-indicator,
 #mpris,
 #custom-vpn,
+#custom-playerctl,
 #clock {
 	padding: 0 4px;
 	margin: 0 0px;

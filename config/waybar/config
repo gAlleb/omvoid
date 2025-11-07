@@ -6,7 +6,7 @@
   "margin-right": 6,
 	"margin-top": 5,
 
-  "modules-center": ["mpris"],
+  "modules-center": ["custom/playerctl"],
   "modules-left": ["custom/menu", "custom/sep", "hyprland/workspaces", "custom/sep", "hyprland/window"],
   "modules-right": ["group/tray-expander", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "group/updates-expander", "battery", "hyprland/language", "custom/screenrecording-indicator", "custom/screenshot", "clock", "custom/swaync", "bluetooth", "network", "custom/vpn", "custom/wlogout"],
 
@@ -39,6 +39,16 @@
     "interval": 3,
     "spacing": 1,
     "on-click": "omvoid-launch-tui nmtui"
+  },
+
+  "custom/playerctl": {
+      "format": "{}",
+      "max-length": 30,
+      "exec": "~/.config/waybar/scripts/playerctl/playerctl-waybar.sh",
+      "on-click": "~/.config/waybar/scripts/playerctl/playerctl-waybar-on-click.sh",
+    	"on-click-right": "setsid -f kitty --class=rmpc -o font_size=12 -e rmpc",
+    	"on-click-middle": "~/.config/waybar/scripts/playerctl/playerctl-notify.sh",
+      "signal": 9,
   },
 
   "mpris": {
