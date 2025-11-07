@@ -3,7 +3,7 @@
 # browser and mpv should never display if paused.
 if [ -z "$MUSIC_PLAYING_PLAYERS" ]; then
 	# if MUSIC_PLAYING_PLAYERS is not set, use the default players
-	MUSIC_PLAYING_PLAYERS="firefox chromium de.haeckerfelix.Shortwave strawberry mpd mpv"
+	MUSIC_PLAYING_PLAYERS="firefox brave chromium de.haeckerfelix.Shortwave strawberry mpd mpv"
 fi
 
 # Flag to check if we've displayed anything playing
