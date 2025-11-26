@@ -136,7 +136,7 @@ window#waybar {
 }
 
 #custom-wlogout{
-  background-color: @color2;
+  background-color: @color3_70;
   padding: 0px 4px 0px 6px;
   margin-top: 4px;
   margin-bottom: 4px;
@@ -165,6 +165,6 @@ window#waybar {
   padding: 0px 6px;
   margin-top: 4px;
   margin-bottom: 4px;
-  background-color: @color2;
+  background-color: @color3_70;
   color: @bg;
 }
