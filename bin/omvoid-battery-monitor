@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Designed to be run by systemd timer every 30 seconds and alerts if battery is low
+# Designed to be run by "while true" loop every 30 seconds and alerts if battery is low
 
 BATTERY_THRESHOLD_MIN=20
 BATTERY_THRESHOLD_MAX=80
