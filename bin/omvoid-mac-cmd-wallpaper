@@ -1,10 +1,8 @@
 #!/bin/bash
 
-# --- CONFIGURATION ---
-# Use absolute path (replace /Users/yourname if $HOME fails in AppleScript)
 export PATH="/Library/Frameworks/Python.framework/Versions/3.14/bin:${PATH}"
 WALL_DIR="$HOME/.config/wallpaper"
-# --- MAIN ---
+
 main() {
     # check if dir exists
     if [ ! -d "$WALL_DIR" ]; then
@@ -12,11 +10,6 @@ main() {
         exit 1
     fi
 
-    # 1. Open the Native File Picker
-    # 'default location': opens exactly in your folder
-    # 'of type': restricts files to images only (no hidden system files)
-    # 'invisibles': false hides dotfiles
-    
     FILE_PATH=$(osascript -e "
         set wallPath to POSIX file \"$WALL_DIR\"
         try
@@ -32,12 +25,10 @@ main() {
         end try
     ")
 
-    # 2. Check if user cancelled
     if [ "$FILE_PATH" = "false" ] || [ -z "$FILE_PATH" ]; then
         exit 0
     fi
 
-    # 3. Set the Wallpaper
     osascript -e "tell application \"System Events\"
         set picture of every desktop to POSIX file \"$FILE_PATH\"
     end tell"
