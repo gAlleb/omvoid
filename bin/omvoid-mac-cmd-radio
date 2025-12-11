@@ -1,0 +1,112 @@
+#!/bin/bash
+
+export PATH="/usr/local/bin:$PATH"
+
+set -euo pipefail
+
+RADIOVOLUME="100"
+
+# --- CONFIGURATION ---
+# Since macOS Bash (v3.2) doesn't support Associative Arrays (Key/Value),
+# we use a string format: "Name|URL"
+# MAKE SURE there are no pipes (|) inside the station names or URLs.
+STATIONS=(
+    "omFM Main Stream|https://stream.omfm.ru:8443/stream"
+    "Rock @ omFM|https://stream.omfm.ru:8443/rock"
+    "Coma @ omFM|https://stream.omfm.ru:8443/coma"
+    "Core @ omFM|https://stream.omfm.ru:8443/core"
+    "Terra @ omFM|https://stream.omfm.ru:8443/terra"
+    "Chill @ omFM|https://stream.omfm.ru:8443/chill"
+    "Cafe De Paris @ omFM|https://stream.omfm.ru:8443/cdp"
+    "Total Rock|https://s3.citrus3.com:8056/stream"
+)
+
+# --- FUNCTIONS ---
+
+# Native macOS Notification
+notify() {
+    osascript -e "display notification \"$2\" with title \"$1\" sound name \"default\""
+}
+
+start_radio() {
+    notify "Starting radio" "Playing station: $1 🎶"
+}
+
+end_radio() {
+    notify "Stopping radio" "You have quit radio. 🎶"
+}
+
+# Native macOS Menu (AppleScript)
+show_menu() {
+    # 1. Build the list of names for AppleScript
+    # We loop through STATIONS and take everything before the "|"
+    local list_items=""
+    local first="true"
+
+    # Add "Quit" as the first option
+    list_items="\"Quit\""
+
+    for entry in "${STATIONS[@]}"; do
+        # Extract name (substring before |)
+        name="${entry%%|*}" 
+        # Append to the AppleScript list string
+        list_items="$list_items, \"$name\""
+    done
+
+    # 2. Call AppleScript to show the list
+    # 'choose from list' returns "false" on cancel, or the selected text
+    osascript -e "tell application \"System Events\"
+        activate
+        set myList to {$list_items}
+        choose from list myList with prompt \"Choose radio station:\" with title \"Radio Streamer\"
+    end tell"
+}
+
+# --- MAIN ---
+
+main() {
+    # Get choice from AppleScript
+    choice=$(show_menu)
+
+    # Check if user cancelled (AppleScript returns 'false')
+    if [ "$choice" = "false" ]; then
+        exit 0
+    fi
+
+    # Handle Choice
+    case $choice in
+    "Quit")
+        end_radio
+        pkill -f "mpv --volume"
+        exit
+        ;;
+    *)
+        # 1. Find the URL matching the choice
+        selected_url=""
+        for entry in "${STATIONS[@]}"; do
+            name="${entry%%|*}"
+            url="${entry#*|}"
+            
+            if [ "$name" == "$choice" ]; then
+                selected_url="$url"
+                break
+            fi
+        done
+
+        # 2. If valid URL found, play it
+        if [ -n "$selected_url" ]; then
+            # Kill previous instance
+            pkill -f "mpv --volume" || true
+            
+            start_radio "$choice"
+            
+            # Run mpv in background or replace shell
+            exec mpv --volume="${RADIOVOLUME:-100}" "$selected_url" --no-terminal
+        else
+            echo "Error: Could not find URL for station."
+        fi
+        ;;
+    esac
+}
+
+main
