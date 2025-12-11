@@ -1,109 +1,94 @@
-#!/bin/bash
+#!/opt/local/bin/bash
 
-export PATH="/usr/local/bin:$PATH"
+# ^ IMPORTANT: This points to your new MacPorts bash.
+# If 'which bash' gave you a different path, change this line!
+
+# Add standard paths just in case
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
 set -euo pipefail
 
 RADIOVOLUME="100"
 
 # --- CONFIGURATION ---
-# Since macOS Bash (v3.2) doesn't support Associative Arrays (Key/Value),
-# we use a string format: "Name|URL"
-# MAKE SURE there are no pipes (|) inside the station names or URLs.
-STATIONS=(
-    "omFM Main Stream|https://stream.omfm.ru:8443/stream"
-    "Rock @ omFM|https://stream.omfm.ru:8443/rock"
-    "Coma @ omFM|https://stream.omfm.ru:8443/coma"
-    "Core @ omFM|https://stream.omfm.ru:8443/core"
-    "Terra @ omFM|https://stream.omfm.ru:8443/terra"
-    "Chill @ omFM|https://stream.omfm.ru:8443/chill"
-    "Cafe De Paris @ omFM|https://stream.omfm.ru:8443/cdp"
-    "Total Rock|https://s3.citrus3.com:8056/stream"
+# Define the path to mpv explicitly to avoid Aerospace errors
+# Use the symlink we made, or the full path to the .app
+MPV_BIN="/usr/local/bin/mpv" 
+
+# Clean Associative Array (Thanks to Bash 5!)
+declare -A radio_stations
+radio_stations=(
+    ["omFM Main Stream"]="https://stream.omfm.ru:8443/stream"
+    ["Rock @ omFM"]="https://stream.omfm.ru:8443/rock"
+    ["Coma @ omFM"]="https://stream.omfm.ru:8443/coma"
+    ["Core @ omFM"]="https://stream.omfm.ru:8443/core"
+    ["Terra @ omFM"]="https://stream.omfm.ru:8443/terra"
+    ["Chill @ omFM"]="https://stream.omfm.ru:8443/chill"
+    ["Cafe De Paris @ omFM"]="https://stream.omfm.ru:8443/cdp"
+    ["Total Rock"]="https://s3.citrus3.com:8056/stream"
 )
 
 # --- FUNCTIONS ---
 
-# Native macOS Notification
 notify() {
+    # Using 'display notification' via AppleScript
     osascript -e "display notification \"$2\" with title \"$1\" sound name \"default\""
 }
 
-start_radio() {
-    notify "Starting radio" "Playing station: $1 🎶"
-}
-
-end_radio() {
-    notify "Stopping radio" "You have quit radio. 🎶"
-}
-
-# Native macOS Menu (AppleScript)
 show_menu() {
-    # 1. Build the list of names for AppleScript
-    # We loop through STATIONS and take everything before the "|"
-    local list_items=""
-    local first="true"
+    # 1. Get all Keys (Station Names) and sort them
+    # mapfile is a Bash 4+ feature that reads output into an array
+    mapfile -t sorted_names < <(printf "%s\n" "${!radio_stations[@]}" | sort)
 
-    # Add "Quit" as the first option
-    list_items="\"Quit\""
-
-    for entry in "${STATIONS[@]}"; do
-        # Extract name (substring before |)
-        name="${entry%%|*}" 
-        # Append to the AppleScript list string
+    # 2. Build the AppleScript list string: "Name 1", "Name 2", "Name 3"
+    local list_items="\"Quit\"" # Always add Quit first
+    for name in "${sorted_names[@]}"; do
         list_items="$list_items, \"$name\""
     done
 
-    # 2. Call AppleScript to show the list
-    # 'choose from list' returns "false" on cancel, or the selected text
+    # 3. Open the Dialog
     osascript -e "tell application \"System Events\"
         activate
         set myList to {$list_items}
-        choose from list myList with prompt \"Choose radio station:\" with title \"Radio Streamer\"
+        choose from list myList with prompt \"Select Station:\" with title \"Radio Streamer\"
     end tell"
 }
 
-# --- MAIN ---
-
 main() {
-    # Get choice from AppleScript
+    # Check if MPV exists before starting
+    if [ ! -x "$MPV_BIN" ]; then
+        notify "Error" "Cannot find mpv at $MPV_BIN"
+        exit 1
+    fi
+
     choice=$(show_menu)
 
-    # Check if user cancelled (AppleScript returns 'false')
-    if [ "$choice" = "false" ]; then
+    if [ "$choice" = "false" ] || [ -z "$choice" ]; then
         exit 0
     fi
 
-    # Handle Choice
     case $choice in
     "Quit")
-        end_radio
+        notify "Stopping radio" "Goodbye! 🎶"
         pkill -f "mpv --volume"
         exit
         ;;
     *)
-        # 1. Find the URL matching the choice
-        selected_url=""
-        for entry in "${STATIONS[@]}"; do
-            name="${entry%%|*}"
-            url="${entry#*|}"
-            
-            if [ "$name" == "$choice" ]; then
-                selected_url="$url"
-                break
-            fi
-        done
+        # Look up the URL directly from the array using the name
+        url="${radio_stations[$choice]}"
 
-        # 2. If valid URL found, play it
-        if [ -n "$selected_url" ]; then
-            # Kill previous instance
+        if [ -n "$url" ]; then
             pkill -f "mpv --volume" || true
+            notify "Starting radio" "Playing: $choice 🎶"
             
-            start_radio "$choice"
-            
-            # Run mpv in background or replace shell
-            exec mpv --volume="${RADIOVOLUME:-100}" "$selected_url" --no-terminal
+            # Run MPV silently
+            exec "$MPV_BIN" \
+                --volume="${RADIOVOLUME:-100}" \
+                --no-video \
+                --no-terminal \
+                "$url" > /dev/null 2>&1
         else
-            echo "Error: Could not find URL for station."
+            notify "Error" "Could not find URL for station."
         fi
         ;;
     esac
