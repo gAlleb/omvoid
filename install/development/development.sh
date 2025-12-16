@@ -6,7 +6,7 @@ sudo xbps-install -y \
   make base-devel freetype-devel fontconfig-devel nwg-look \
   fastfetch man tldr less ufw ImageMagick brightnessctl \
   playerctl nautilus libnotify imv lazydocker inotify-tools \
-  dust blueman nautilus gvfs mpd mpc cava polkit-gnome \
+  dust blueman nautilus gvfs mpd mpc cava polkit-gnome bsdtar \
   libcanberra-gtk3 libcanberra-utils sound-theme-freedesktop \
   webp-pixbuf-loader neovim alacritty kitty rofi gnome-keyring \
   seahorse rmpc caffeine-ng gnome-themes-extra xdg-user-dirs \
