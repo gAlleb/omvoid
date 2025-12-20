@@ -13,13 +13,13 @@ fi
 sudo cp ~/.local/share/omvoid/default/repokeyes/hyprland/1d:c2:cf:d4:08:97:4c:47:5d:88:4c:fd:e9:a5:d0:9a.plist  /var/db/xbps/keys/
 
 #echo "repository=https://raw.githubusercontent.com/Makrennel/hyprland-void/repository-x86_64-glibc" | sudo tee /etc/xbps.d/hyprland-void.conf
-echo repository=https://github.com/Encoded14/void-user-repository/releases/latest/download | sudo tee /etc/xbps.d/20-void-user-repository.conf
+echo repository=https://raw.githubusercontent.com/Encoded14/void-extra/repository-x86_64 | sudo tee /etc/xbps.d/20-repository-extra.conf
 
 sudo xbps-install -Sy \
   hyprland hyprland-devel xdg-desktop-portal-hyprland \
   hyprland hyprwayland-scanner hyprutils hyprlang hyprlock \
-  hypridle hyprsunset hyprland-qt-support hyprcursor hyprpicker \
-  hyprland-qtutils hyprland-devel hyprgraphics\
+  hypridle hyprsunset hyprcursor hyprpicker \
+  hyprland-devel hyprgraphics\
   xdg-desktop-portal-gtk xdg-desktop-portal-wlr 
 
 sudo sed -i 's/Exec=Hyprland/Exec=dbus-run-session Hyprland/' /usr/share/wayland-sessions/hyprland.desktop
