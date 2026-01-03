@@ -19,7 +19,7 @@ sudo xbps-install -Sy \
   hyprland hyprland-devel xdg-desktop-portal-hyprland \
   hyprland hyprwayland-scanner hyprutils hyprlang hyprlock \
   hypridle hyprsunset hyprcursor hyprpicker \
-  hyprland-devel hyprgraphics\
+  hyprland-devel hyprgraphics \
   xdg-desktop-portal-gtk xdg-desktop-portal-wlr 
 
 sudo sed -i 's/Exec=Hyprland/Exec=dbus-run-session Hyprland/' /usr/share/wayland-sessions/hyprland.desktop
