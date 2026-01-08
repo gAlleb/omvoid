@@ -19,9 +19,9 @@ sudo xbps-install -Sy \
   hyprland hyprland-devel xdg-desktop-portal-hyprland \
   hyprland hyprwayland-scanner hyprutils hyprlang hyprlock \
   hypridle hyprsunset hyprcursor hyprpicker \
-  hyprland-devel hyprgraphics \
+  hyprland-devel hyprgraphics hyprland-guiutils \
   xdg-desktop-portal-gtk xdg-desktop-portal-wlr 
 
-sudo sed -i 's/Exec=Hyprland/Exec=dbus-run-session Hyprland/' /usr/share/wayland-sessions/hyprland.desktop
+sudo sed -i 's|Exec=/usr/bin/start-hyprland|Exec=dbus-run-session /usr/bin/start-hyprland|' /usr/share/wayland-sessions/hyprland.desktop
 
 sed -i 's|^source $OMVOID_INSTALL/development/hyprtime.sh\s*$|#source $OMVOID_INSTALL/development/hyprtime.sh|' ~/.local/share/omvoid/install.sh
