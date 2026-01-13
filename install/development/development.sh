@@ -10,7 +10,7 @@ sudo xbps-install -y \
   libcanberra-gtk3 libcanberra-utils sound-theme-freedesktop \
   webp-pixbuf-loader neovim alacritty kitty rofi gnome-keyring \
   seahorse rmpc caffeine-ng gnome-themes-extra xdg-user-dirs \
-  kvantum qt5ct qt6ct xtools libinput-gestures mesa-dri yq \
+  kvantum qt5ct qt6ct xtools libinput-gestures mesa-dri yq lm_sensors \
   tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng tesseract-ocr-san \
   gearlever mpdris2-rs fuzzypkg yazi python3-watchdog libxkbcommon-tools
 
