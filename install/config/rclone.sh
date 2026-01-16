@@ -27,6 +27,10 @@ sudo tee /etc/autofs/auto.mymounts <<'EOF'
 #
 # EXAMPLE MOUNTPOINTS:
 #
+# NTFS DRIVES
+#
+#win11-data -fstype=ntfs-3g,uid=1000,gid=1000,windows_names :/dev/nvme0n1p4
+#
 # CIFS:
 #music -fstype=cifs,rw,credentials=/etc/autofs/credentials,noperm ://192.168.1.14/music
 #nextcloud -fstype=cifs,rw,credentials=/etc/autofs/credentials,noperm ://192.168.1.14/nextcloud
