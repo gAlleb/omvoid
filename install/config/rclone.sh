@@ -1,5 +1,5 @@
 #!/bin/bash
-sudo xbps-install -y rclone fuse3 autofs nfs-utils sv-netmount cifs-utils smbclient 
+sudo xbps-install -y rclone fuse3 autofs nfs-utils sv-netmount cifs-utils smbclient ntfs-3g 
 sudo ln -sf /usr/bin/rclone /sbin/mount.rclone
 sudo ln -sf /usr/bin/rclone /usr/bin/rclonefs
 
