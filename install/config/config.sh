@@ -19,6 +19,8 @@ cp ~/.local/share/omvoid/default/.gtkrc-2.0 ~/.gtkrc-2.0
 cp ~/.local/share/omvoid/default/.bash_profile ~/.bash_profile
 sed -i "s/__USERNAME__/$USER/g" ~/.bash_profile
 
+sudo xbps-install -y tmux
+
 # Copy .tmux.conf and enable plugins
 cp ~/.local/share/omvoid/default/.tmux.conf ~/.tmux.conf
 git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
