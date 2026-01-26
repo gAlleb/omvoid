@@ -2,38 +2,27 @@
 window#osd {
   border-radius: 999px;
   border: none;
-  background: @color3_70;
-
-  #container {
-    margin: 16px;
-  }
-
-  image,
-  label {
-    color: @color3_70;
-  }
-
-  progressbar:disabled,
-  image:disabled {
-    opacity: 0.5;
-  }
-
-  progressbar {
-    min-height: 6px;
+  background: @background70; }
+  window#osd #container {
+    margin: 16px; }
+  window#osd image,
+  window#osd label {
+    color: @color3; }
+  window#osd progressbar:disabled,
+  window#osd image:disabled {
+    opacity: 0.8; }
+  window#osd progressbar {
+    min-height: 10px;
     border-radius: 999px;
     background: transparent;
-    border: none;
-  }
-  trough {
+    border: none; }
+  window#osd trough {
     min-height: inherit;
     border-radius: inherit;
     border: none;
-    background: @background70;
-  }
-  progress {
+    background: @color3_70; }
+  window#osd progress {
     min-height: inherit;
     border-radius: inherit;
     border: none;
-    background: @color3_70;
-  }
-}
+    background: @color3; }
