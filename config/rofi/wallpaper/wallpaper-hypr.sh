@@ -10,6 +10,10 @@ if [ ! -d "${CACHE_DIR}" ] ; then
     mkdir -p "${CACHE_DIR}"
 fi
 
+if [ ! -d ~/.config/dunst ] ; then
+    mkdir -p ~/.config/dunst
+fi 
+
 # Create thumbnails for all wallpapers if they don't exist in the cache.
 # This makes Rofi load much faster.
 # Note: Requires 'imagemagick' to be installed.
@@ -85,6 +89,7 @@ executeCommand() {
     pkill -SIGUSR2 waybar
     swaync-client -rs
     makoctl reload
+    ln -sf ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc
     dunstctl reload
     pkill -e --signal SIGKILL dunst
     echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > $CACHE_DIR/wallpaper_thumbnail
