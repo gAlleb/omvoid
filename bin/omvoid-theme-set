@@ -35,6 +35,7 @@ swaync-client -rs
 dunstctl reload
 makoctl reload 
 pkill -e --signal SIGKILL dunst
+wal-telegram --wal
 $HOME/.config/nwg-dock-hyprland/reload.sh &
 $HOME/.config/swayosd/launch.sh &
 
