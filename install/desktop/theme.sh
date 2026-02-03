@@ -41,6 +41,12 @@ sudo chmod a+rw /etc/chromium/policies/managed
 sudo mkdir -p /etc/brave/policies/managed
 sudo chmod a+rw /etc/brave/policies/managed
 
+# Add telegram pywal theme 
+git clone --depth 1 https://github.com/galleb/wal-telegram ~/.wal-telegram
+cd ~/.wal-telegram
+sudo make install
+cd && rm -rf ~/.wal-telegram
+
 # Init random wallpapeper theme with wal 
 source ~/.config/hypr/scripts/init_wallpaper.sh
 

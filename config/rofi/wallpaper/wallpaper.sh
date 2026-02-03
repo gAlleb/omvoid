@@ -88,6 +88,7 @@ executeCommand() {
     ln -sf ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc 
     dunstctl reload
     pkill -e --signal SIGKILL dunst
+    wal-telegram --wal
     echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR/wallpaper-hyprland.conf
     echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > $CACHE_DIR/wallpaper_thumbnail
     echo "inputbar { background-image: url(\"$selected_thumbnail_path\", height); }" > $CACHE_DIR/wallpaper_thumbnail.rasi
