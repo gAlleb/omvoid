@@ -4,7 +4,7 @@
 sudo xbps-install -y \
   wget curl unzip fzf nano tmux xmlstarlet libqalculate \
   make base-devel freetype-devel fontconfig-devel nwg-look \
-  fastfetch man tldr less ufw ImageMagick brightnessctl \
+  fastfetch man tldr less ufw ImageMagick brightnessctl zip \
   playerctl nautilus libnotify imv lazydocker inotify-tools \
   dust blueman nautilus gvfs mpd mpc cava polkit-gnome bsdtar \
   libcanberra-gtk3 libcanberra-utils sound-theme-freedesktop \
