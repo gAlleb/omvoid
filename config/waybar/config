@@ -6,9 +6,17 @@
   "margin-right": 6,
 	"margin-top": 5,
 
-  "modules-center": ["custom/playerctl"],
+  "modules-center": ["image#album_art","custom/playerctl"],
   "modules-left": ["custom/menu", "custom/sep", "hyprland/workspaces", "custom/sep", "hyprland/window"],
   "modules-right": ["group/tray-expander", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "group/updates-expander", "battery", "hyprland/language", "backlight", "custom/screenrecording-indicator", "custom/screenshot", "clock", "custom/swaync", "bluetooth", "network", "custom/vpn", "custom/wlogout"],
+
+  "image#album_art": {
+      "exec": "~/.config/waybar/scripts/playerctl/cover.sh",
+      "size": 32,    
+      "on-click": "~/.config/waybar/scripts/playerctl/playerctl-notify.sh",
+      "interval": 1800,
+      "signal": 10,
+  },
 
   "custom/temperature": {
       "format": "{}",
