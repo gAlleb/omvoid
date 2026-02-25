@@ -44,7 +44,7 @@ else
   ln -nsf "$NEW_BACKGROUND" "$CURRENT_BACKGROUND_LINK"
 
   swww img --transition-type any --transition-angle 45 "$CURRENT_BACKGROUND_LINK"
-  
+  wal-telegram --background "$CURRENT_BACKGROUND_LINK" 
   # Create thumbnail
   CURRENT_BACKGROUND_DIR=$(dirname "$CURRENT_BACKGROUND_LINK")
   CURRENT_BACKGROUND_BASENAME=$(basename "$CURRENT_BACKGROUND_LINK")
