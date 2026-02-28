@@ -15,6 +15,13 @@ sudo cp ~/.local/share/omvoid/default/repokeyes/hyprland/1d:c2:cf:d4:08:97:4c:47
 #echo "repository=https://raw.githubusercontent.com/Makrennel/hyprland-void/repository-x86_64-glibc" | sudo tee /etc/xbps.d/hyprland-void.conf
 echo repository=https://raw.githubusercontent.com/Encoded14/void-extra/repository-x86_64 | sudo tee /etc/xbps.d/20-repository-extra.conf
 
+# a bug in package - installing tomlplusplus and tomlplusplus-devel separately 
+sudo xbps-install -Sy \
+  tomlplusplus
+
+sudo xbps-install -Sy \
+  tomlplusplus-devel
+
 sudo xbps-install -Sy \
   hyprland hyprland-devel xdg-desktop-portal-hyprland \
   hyprland hyprwayland-scanner hyprutils hyprlang hyprlock \
