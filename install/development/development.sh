@@ -12,7 +12,8 @@ sudo xbps-install -y \
   seahorse rmpc caffeine-ng gnome-themes-extra xdg-user-dirs libXrandr-devel \
   kvantum qt5ct qt6ct xtools libinput-gestures mesa-dri yq lm_sensors \
   tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng tesseract-ocr-san \
-  gearlever mpdris2-rs fuzzypkg yazi python3-watchdog libxkbcommon-tools
+  gearlever mpdris2-rs fuzzypkg yazi python3-watchdog libxkbcommon-tools \
+  bind-utils
 
 # X11 batch
 sudo xbps-install -y \
