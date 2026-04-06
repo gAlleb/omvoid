@@ -13,8 +13,7 @@ fi
 sudo cp ~/.local/share/omvoid/default/repokeyes/hyprland/1d:c2:cf:d4:08:97:4c:47:5d:88:4c:fd:e9:a5:d0:9a.plist  /var/db/xbps/keys/
 
 #echo "repository=https://raw.githubusercontent.com/Makrennel/hyprland-void/repository-x86_64-glibc" | sudo tee /etc/xbps.d/hyprland-void.conf
-echo repository=https://raw.githubusercontent.com/Encoded14/void-extra/repository-x86_64 | sudo tee /etc/xbps.d/20-repository-extra.conf
-
+echo repository=https://github.com/Encoded14/void-extra/releases/download/repository-x86_64 | sudo tee /etc/xbps.d/20-repository-extra.conf
 # a bug in package - installing tomlplusplus and tomlplusplus-devel separately 
 sudo xbps-install -Sy \
   tomlplusplus
