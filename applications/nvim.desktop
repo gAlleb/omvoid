@@ -2,7 +2,9 @@
 Name=Neovim
 GenericName=Text Editor
 Comment=Edit text files
-Exec=alacritty --class=nvim --title=nvim -e bash -i -c "nvim %F" -- %F
+# Это баг/ограничение самого xdg-open на Void — он не умеет правильно обрабатывать пути с пробелами через desktop-файлы. Поэтому через wrapper - omvoid-nvim-open
+#Exec=alacritty --class=nvim --title=nvim -e bash -i -c "nvim %F" -- %F
+Exec=alacritty --class=nvim --title=nvim -e omvoid-nvim-open %F
 Terminal=false
 Type=Application
 Keywords=Text;editor;

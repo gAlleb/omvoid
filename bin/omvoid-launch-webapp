@@ -4,7 +4,15 @@ browser=$(xdg-settings get default-web-browser)
 
 case $browser in
 google-chrome* | brave-browser* | microsoft-edge* | opera* | vivaldi*) ;;
-*) browser="chromium.desktop" ;;
+*) 
+        if [[ -f ~/.local/share/applications/brave-browser.desktop ]] || \
+           [[ -f ~/.nix-profile/share/applications/brave-browser.desktop ]] || \
+           [[ -f /usr/share/applications/brave-browser.desktop ]]; then
+            browser="brave-browser.desktop"
+        else
+            browser="chromium.desktop"
+        fi
+        ;;
 esac
 
 if [[ $browser = "chromium.desktop" ]]; then

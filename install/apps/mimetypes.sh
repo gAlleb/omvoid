@@ -17,6 +17,9 @@ xdg-mime default org.gnome.Papers.desktop application/pdf
 xdg-settings set default-web-browser brave-browser.desktop
 xdg-mime default brave-browser.desktop x-scheme-handler/http
 xdg-mime default brave-browser.desktop x-scheme-handler/https
+#xdg-settings set default-web-browser zen.desktop
+#xdg-mime default zen.desktop x-scheme-handler/http
+#xdg-mime default zen.desktop x-scheme-handler/https
 
 # Open video files with mpv
 # xdg-mime default mpv.desktop video/mp4
