@@ -2,7 +2,7 @@
 # Get metadata from playerctl
 if [ -z "$MUSIC_PLAYING_PLAYERS" ]; then
 	# if MUSIC_PLAYING_PLAYERS is not set, use the default players
-	MUSIC_PLAYING_PLAYERS="brave chromium de.haeckerfelix.Shortwave strawberry audacious mpd mpv"
+	MUSIC_PLAYING_PLAYERS="brave chromium firefox spotify de.haeckerfelix.Shortwave strawberry audacious mpd mpv"
 fi
 
 # Flag to check if we've displayed anything playing

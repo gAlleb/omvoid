@@ -21,7 +21,7 @@ fi
 
 if [ -z "$MUSIC_PLAYING_PLAYERS" ]; then
 	# if MUSIC_PLAYING_PLAYERS is not set, use the default players
-	MUSIC_PLAYING_PLAYERS="firefox brave chromium de.haeckerfelix.Shortwave strawberry mpd mpv"
+	MUSIC_PLAYING_PLAYERS="firefox brave chromium spotify de.haeckerfelix.Shortwave strawberry mpd mpv"
 fi 
 for PLAYER in $MUSIC_PLAYING_PLAYERS; do
 # if the player is not playing, continue to the next player, until we find one that is playing
