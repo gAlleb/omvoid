@@ -82,7 +82,7 @@ executeCommand() {
     wal ${wal_flags} 
 
     # Update other applications
-    swww img --transition-type any --transition-angle 45 "${selected_wallpaper}"
+    awww img --transition-type any --transition-angle 45 "${selected_wallpaper}"
     pywalfox update
     omvoid-theme-set-browser wal
     echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR/wallpaper-hyprland.conf
