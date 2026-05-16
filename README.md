@@ -17,6 +17,8 @@
 > [!NOTE]
 > with MangoWC by running a single command.
 
+<img width="600"  alt="изображение" src="https://github.com/user-attachments/assets/84fafa82-67e5-40d6-bc7b-3d9a25952dab" />
+
 ### To start enter following command on a new bare Void Linux installation within your new user shell:
 
 ```bash
