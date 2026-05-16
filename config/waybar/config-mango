@@ -7,7 +7,7 @@
 	"margin-top": 5,
 
   "modules-center": ["image#album_art","custom/playerctl"],
-  "modules-left": ["custom/menu", "custom/sep", "ext/workspaces", "custom/sep", "dwl/window#layout", "custom/sep", "dwl/window#title"],
+  "modules-left": ["custom/menu", "custom/sep", "ext/workspaces", "custom/sep", "dwl/window"],
   "modules-right": ["group/tray-expander", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "group/updates-expander", "battery", "custom/screenrecording-indicator", "backlight", "custom/screenshot", "pulseaudio", "clock", "custom/swaync", "bluetooth", "network", "custom/vpn", "custom/wlogout"],
 
   "image#album_art": {
@@ -185,13 +185,9 @@
   "dwl/tags": {
     "num-tags": 9
   },
-  "dwl/window#layout": {
-    "format": "[{layout}]"
+  "dwl/window": {
+    "format": "[{layout}]     {title}"
   },
-  "dwl/window#title": {
-    "format": "{title}"
-  },
-
 	"tray": {
 		  "icon-size": 16,
 		  "spacing": 0,

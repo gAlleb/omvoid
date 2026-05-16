@@ -159,6 +159,7 @@ window#waybar {
 	font-weight: bold;
 	font-family: 'CaskaydiaMono Nerd Font';
 	font-size: 20px;
+  margin-left: -20px;
 }
 
 #language {
