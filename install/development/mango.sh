@@ -1,7 +1,7 @@
 #!/bin/bash
 
 sudo xbps-install -Sy \
-  mango swaylock
+  mangowc swaylock
 
 sudo xbps-install -Sy \
   xdg-desktop-portal-gtk xdg-desktop-portal-wlr 
