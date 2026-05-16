@@ -24,7 +24,7 @@ sudo xbps-install -y \
 # Solo Wayland batch 
 sudo xbps-install -y \
   Waybar wl-clipboard wl-clip-persist cliphist wf-recorder \
-  SwayNotificationCenter satty slurp grim swww walker \
+  SwayNotificationCenter satty slurp grim awww walker \
   wlogout swaybg SwayOSD 
 
 # Extra batch 
