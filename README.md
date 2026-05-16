@@ -15,7 +15,7 @@
 > into a fully-configured, beautiful, and modern system
 
 > [!NOTE]
-> based on Hyprland by running a single command.
+> with MangoWC by running a single command.
 
 ### To start enter following command on a new bare Void Linux installation within your new user shell:
 
