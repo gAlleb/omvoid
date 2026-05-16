@@ -48,6 +48,6 @@ sudo make install
 cd && rm -rf ~/.wal-telegram
 
 # Init random wallpapeper theme with wal 
-source ~/.config/hypr/scripts/init_wallpaper.sh
+source ~/.local/share/omvoid/bin/omvoid-init-wallpaper
 
 sed -i 's|^source $OMVOID_INSTALL/desktop/theme.sh\s*$|#source $OMVOID_INSTALL/desktop/theme.sh|' ~/.local/share/omvoid/install.sh
