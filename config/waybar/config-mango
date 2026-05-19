@@ -186,7 +186,9 @@
     "num-tags": 9
   },
   "dwl/window": {
-    "format": "[{layout}]     {title}"
+    "format": "-{layout}-     {title}",
+    "icon": true,
+    "icon-size": 24,
   },
 	"tray": {
 		  "icon-size": 16,
