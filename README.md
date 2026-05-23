@@ -8,6 +8,9 @@
         1101100 110011 110011 1110100 100000 1100101 
        1100100 1101001 1110100 1101001 1101111 1101110
 ```
+
+🥭🥭🥭
+
 > [!TIP]
 > Turn a fresh Void Linux installation
 
@@ -16,6 +19,10 @@
 
 > [!NOTE]
 > with MangoWC by running a single command.
+
+🥭🥭🥭
+
+<img width="600" alt="изображение" src="https://github.com/user-attachments/assets/f1365202-4072-4d47-bda1-6e4ab52785e3" />
 
 <img width="600" alt="изображение" src="https://github.com/user-attachments/assets/f6433d09-9e01-449a-90fa-59db75ccd051" />
 
