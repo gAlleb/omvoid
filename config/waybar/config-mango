@@ -8,7 +8,15 @@
 
   "modules-center": ["image#album_art","custom/playerctl"],
   "modules-left": ["custom/menu", "custom/sep", "ext/workspaces", "custom/sep", "dwl/window"],
-  "modules-right": ["group/tray-expander", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "group/updates-expander", "battery", "custom/screenrecording-indicator", "backlight", "custom/screenshot", "pulseaudio", "clock", "custom/swaync", "bluetooth", "network", "custom/vpn", "custom/wlogout"],
+  "modules-right": ["group/tray-expander", "idle_inhibitor", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "group/updates-expander", "battery", "custom/screenrecording-indicator", "backlight", "custom/screenshot", "pulseaudio", "clock", "custom/swaync", "bluetooth", "network", "custom/vpn", "custom/wlogout"],
+
+  "idle_inhibitor": {
+       "format": "{icon}",
+       "format-icons": {
+        "activated": "☕",
+        "deactivated": "󰒲"
+      }
+  },
 
   "image#album_art": {
       "exec": "~/.config/waybar/scripts/playerctl/cover.sh",
