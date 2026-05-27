@@ -80,11 +80,16 @@ window#waybar {
 #mpris,
 #custom-vpn,
 #custom-playerctl,
+#idle_inhibitor,
 #clock {
 	padding: 0 4px;
 	margin: 0 0px;
 	color: @fg;
 	background-color: transparent;
+}
+
+#idle_inhibitor {
+  margin-top: 2px;
 }
 
 #custom-updates-icon {
