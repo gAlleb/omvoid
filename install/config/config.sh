@@ -21,10 +21,9 @@ sed -i "s/__USERNAME__/$USER/g" ~/.bash_profile
 
 sudo xbps-install -y tmux
 
-# Copy .tmux.conf and enable plugins
-cp ~/.local/share/omvoid/default/.tmux.conf ~/.tmux.conf
-git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-~/.tmux/plugins/tpm/bin/install_plugins
+# tmux enable plugins
+git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
+~/.config/tmux/plugins/tpm/bin/install_plugins
 
 # Ensure application directory exists for update-desktop-database
 mkdir -p ~/.local/share/applications
