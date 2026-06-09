@@ -10,4 +10,4 @@ if INTEL_GPU=$(lspci | grep -iE 'vga|3d|display' | grep -i 'intel'); then
   fi
 fi
 
-sed -i 's|^source $OMVOID_INSTALL/config/identification.sh\s*$|#source $OMVOID_INSTALL/config/intel.sh|' ~/.local/share/omvoid/install.sh
+sed -i 's|^source $OMVOID_INSTALL/config/intel.sh\s*$|#source $OMVOID_INSTALL/config/intel.sh|' ~/.local/share/omvoid/install.sh
