@@ -55,5 +55,3 @@ if [ -d ~/.config/GIMP ]; then
 fi
 
 cp -r /tmp/PhotoGIMP/.config/GIMP ~/.config/
-
-sed -i 's|^source $OMVOID_INSTALL/development/development.sh\s*$|#source $OMVOID_INSTALL/development/development.sh|' ~/.local/share/omvoid/install.sh

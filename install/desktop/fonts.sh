@@ -66,5 +66,3 @@ fi
 if [[ -f /usr/share/fontconfig/conf.avail/70-no-bitmaps-except-emoji.conf ]]; then 
     sudo ln -sf /usr/share/fontconfig/conf.avail/70-no-bitmaps-except-emoji.conf /etc/fonts/conf.d/ 
 fi
-
-sed -i 's|^source $OMVOID_INSTALL/desktop/fonts.sh\s*$|#source $OMVOID_INSTALL/desktop/fonts.sh|' ~/.local/share/omvoid/install.sh

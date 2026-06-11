@@ -1,4 +1,6 @@
 #!/bin/bash
-sudo xbps-install -Su -y
 
-sed -i 's|^source $OMVOID_INSTALL/preflight/update.sh\s*$|#source $OMVOID_INSTALL/preflight/update.sh|' ~/.local/share/omvoid/install.sh
+# On Void, update the package manager itself before a full system update —
+# a stale xbps (common on older install ISOs) can otherwise fail mid-sync.
+sudo xbps-install -Suy xbps
+sudo xbps-install -Suy

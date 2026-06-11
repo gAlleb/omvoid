@@ -22,7 +22,9 @@ sed -i "s/__USERNAME__/$USER/g" ~/.bash_profile
 sudo xbps-install -y tmux
 
 # tmux enable plugins
-git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
+if [ ! -d ~/.config/tmux/plugins/tpm ]; then
+  git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
+fi
 ~/.config/tmux/plugins/tpm/bin/install_plugins
 
 # Ensure application directory exists for update-desktop-database
@@ -49,5 +51,3 @@ if [[ -n "${OMVOID_USER_CITY//[[:space:]]/}" ]]; then
   sed -i "s/^LOCATION=.*/LOCATION=$OMVOID_USER_CITY/" ~/.config/waybar/scripts/forecast.sh
   sed -i "s/^LOCATION=.*/LOCATION=$OMVOID_USER_CITY/" ~/.tmux.conf
 fi
-
-sed -i 's|^source $OMVOID_INSTALL/config/config.sh\s*$|#source $OMVOID_INSTALL/config/config.sh|' ~/.local/share/omvoid/install.sh

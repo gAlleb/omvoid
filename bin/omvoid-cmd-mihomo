@@ -4,7 +4,7 @@
 # Allow your user to link the config files
 # yourusername ALL=(ALL) NOPASSWD: /usr/bin/ln -sf /path/to/mihomo/config/*
 # --- CONFIGURATION ---
-CONF_DIR="/opt/clashtui/mihomo/config"
+CONF_DIR="/etc/mihomo"
 SERVICE_NAME="mihomo"
 AUTH="sudo" # or "doas"
 

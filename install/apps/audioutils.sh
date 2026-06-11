@@ -128,5 +128,3 @@ EOF
 
 chmod +x ~/.local/bin/spec
 chmod +x ~/.local/bin/audiometer
-
-sed -i 's|^source $OMVOID_INSTALL/apps/audioutils.sh\s*$|#source $OMVOID_INSTALL/apps/audioutils.sh|' ~/.local/share/omvoid/install.sh

@@ -146,5 +146,3 @@ else
   #powerprofilesctl set performance || true
   echo "Desktop PC! Wow" || true
 fi
-
-sed -i 's|^source $OMVOID_INSTALL/config/power.sh\s*$|#source $OMVOID_INSTALL/config/power.sh|' ~/.local/share/omvoid/install.sh

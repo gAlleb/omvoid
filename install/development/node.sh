@@ -13,5 +13,3 @@ nvm current # Should print "v22.18.0".
 
 # Verify npm version:
 npm -v # Should print "10.9.3".
-
-sed -i 's|^source $OMVOID_INSTALL/development/node.sh\s*$|#source $OMVOID_INSTALL/development/node.sh|' ~/.local/share/omvoid/install.sh

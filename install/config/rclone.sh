@@ -65,5 +65,3 @@ fi
 if [ ! -L "/var/service/statd/" ]; then
    sudo ln -s /etc/sv/statd /var/service/ 
 fi 
-
-sed -i 's|^source $OMVOID_INSTALL/config/rclone.sh\s*$|#source $OMVOID_INSTALL/config/rclone.sh|' ~/.local/share/omvoid/install.sh
