@@ -15,7 +15,7 @@ fi
 
 # AMD/ATI: Mesa Gallium drivers cover VA-API and VDPAU
 if echo "$GPU" | grep -qiE 'amd|ati|radeon'; then
-  sudo xbps-install -y mesa-vaapi mesa-vdpau
+  sudo xbps-install -y mesa-vaapi libvdpau-va-gl
 fi
 
 # NVIDIA: proprietary driver lives in the nonfree repo and needs manual setup

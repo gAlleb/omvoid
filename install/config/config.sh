@@ -49,5 +49,5 @@ fi
 
 if [[ -n "${OMVOID_USER_CITY//[[:space:]]/}" ]]; then
   sed -i "s/^LOCATION=.*/LOCATION=$OMVOID_USER_CITY/" ~/.config/waybar/scripts/forecast.sh
-  sed -i "s/^LOCATION=.*/LOCATION=$OMVOID_USER_CITY/" ~/.tmux.conf
+  sed -i "s/^LOCATION=.*/LOCATION=$OMVOID_USER_CITY/" ~/.config/tmux/tmux.conf
 fi

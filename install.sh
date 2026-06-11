@@ -86,6 +86,7 @@ run_step development/sddm.sh
 run_step development/pipewire.sh
 run_step development/node.sh
 run_step development/mihomo.sh
+run_step development/brave-repo.sh
 
 
 # Desktop
@@ -115,7 +116,7 @@ show_subtext "✨ 🌟 ✨"
 if [ ! -L "/var/service/sddm" ]; then
   sudo ln -s /etc/sv/sddm /var/service
 fi
-if gum confirm "Reboot now to finish?"; then
+if gum confirm "Reboot now to finish?" 2>/dev/tty; then
   sudo reboot
 else
   echo "Reboot skipped. Reboot manually when ready: sudo reboot"

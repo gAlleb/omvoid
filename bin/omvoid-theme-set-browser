@@ -6,7 +6,7 @@ else
   CHROMIUM_THEME=~/.config/omvoid/current/theme/chromium.theme
 fi
 
-if omvoid-cmd-present chromium || omvoid-cmd-present brave-browser-stable || omvoid-cmd-present brave-origin-stable; then
+if omvoid-cmd-present chromium || omvoid-cmd-present brave-browser-stable || omvoid-cmd-present brave-origin-stable || omvoid-cmd-present brave-origin-nightly; then
 
   if [[ -f $CHROMIUM_THEME ]]; then
     rgb=$(<$CHROMIUM_THEME)
@@ -21,7 +21,7 @@ if omvoid-cmd-present chromium || omvoid-cmd-present brave-browser-stable || omv
     chromium --refresh-platform-policy --no-startup-window
   fi 
   
-  if omvoid-cmd-present brave-browser-stable || omvoid-cmd-present brave-origin-stable; then 
+  if omvoid-cmd-present brave-browser-stable || omvoid-cmd-present brave-origin-stable || omvoid-cmd-present brave-origin-nightly; then 
     echo "{\"BrowserThemeColor\": \"$THEME_HEX_COLOR\"}" | tee "/etc/brave/policies/managed/color.json" >/dev/null
     brave-browser-stable --refresh-platform-policy --no-startup-window
     brave-origin-stable --refresh-platform-policy --no-startup-window

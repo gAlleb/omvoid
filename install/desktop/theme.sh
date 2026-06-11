@@ -2,6 +2,7 @@
 sudo xbps-install -y sassc glib-devel nwg-look
 
 # Install gtk theme
+# Commenting out the install_shelly call in install_themes (inside libs/lib-install.sh) allows the installation to complete successfully.
 git clone https://github.com/vinceliuice/WhiteSur-gtk-theme.git --depth=1 /tmp/WhiteSur-gtk-theme
 /tmp/WhiteSur-gtk-theme/install.sh
 /tmp/WhiteSur-gtk-theme/install.sh -l
