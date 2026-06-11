@@ -12,7 +12,8 @@ ansi_art='
 
 clear
 echo -e "\n$ansi_art\n"
-
+sudo xbps-install -Suy xbps
+sudo xbps-install -Suy
 sudo xbps-install -y git
 
 OMVOID_REPO="${OMVOID_REPO:-galleb/omvoid}"
