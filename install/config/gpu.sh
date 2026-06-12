@@ -14,9 +14,9 @@ if echo "$GPU" | grep -qi 'intel'; then
 fi
 
 # AMD/ATI: Mesa Gallium drivers cover VA-API and VDPAU
-if echo "$GPU" | grep -qiE 'amd|ati|radeon'; then
-  sudo xbps-install -y mesa-vaapi libvdpau-va-gl
-fi
+#if echo "$GPU" | grep -qiE 'amd|ati|radeon'; then
+#  sudo xbps-install -y mesa-vaapi libvdpau-va-gl
+#fi
 
 # NVIDIA: proprietary driver lives in the nonfree repo and needs manual setup
 if echo "$GPU" | grep -qi 'nvidia'; then
