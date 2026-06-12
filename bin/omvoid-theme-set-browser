@@ -23,9 +23,9 @@ if omvoid-cmd-present chromium || omvoid-cmd-present brave-browser-stable || omv
   
   if omvoid-cmd-present brave-browser-stable || omvoid-cmd-present brave-origin-stable || omvoid-cmd-present brave-origin-nightly; then 
     echo "{\"BrowserThemeColor\": \"$THEME_HEX_COLOR\"}" | tee "/etc/brave/policies/managed/color.json" >/dev/null
-    brave-browser-stable --refresh-platform-policy --no-startup-window || true
-    brave-origin-stable --refresh-platform-policy --no-startup-window || true
-    brave-origin-nightly --refresh-platform-policy --no-startup-window || true
+      brave-browser-stable --refresh-platform-policy --no-startup-window 2>/dev/null || true
+      brave-origin-stable --refresh-platform-policy --no-startup-window 2>/dev/null || true
+      brave-origin-nightly --refresh-platform-policy --no-startup-window 2>/dev/null || true
   fi
   
 fi 
