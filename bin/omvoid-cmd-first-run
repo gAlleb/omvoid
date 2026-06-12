@@ -11,7 +11,7 @@ if [[ -f "$FIRST_RUN_MODE" ]]; then
   rm -f "$FIRST_RUN_MODE"
   sed -i '/^exec-once=omvoid-cmd-first-run\s*$/d' ~/.config/mango/conf/autostart.conf
   omvoid-font-set "CaskaydiaMono Nerd Font"
-  omvoid-theme-set redpeace
+  omvoid-theme-set rain-world
   #$OMVOID_PATH/install/first-run/battery-monitor.sh
   #$OMVOID_PATH/install/first-run/firewall.sh
 fi
