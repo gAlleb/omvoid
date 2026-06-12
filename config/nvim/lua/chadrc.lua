@@ -6,10 +6,10 @@
 local M = {}
 
 M.base46 = {
-theme = "chocolate",
+theme = "chadwal",
 integrations = { 'render-markdown', 'neogit' },
 transparency = true,
-theme_toggle = { "chocolate", "catppuccin" },
+theme_toggle = { "chadwal", "chocolate" },
 	-- hl_override = {
 	-- 	Comment = { italic = true },
 	-- 	["@comment"] = { italic = true },
