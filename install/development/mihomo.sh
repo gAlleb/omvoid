@@ -33,12 +33,42 @@ rm -rf "$tmp"
 # Config dir referenced by the service (left for the user to populate)
 sudo mkdir -p /etc/mihomo
 
+# Stub config so the service can start on a fresh box.
+# Only written if no config exists yet — never clobber a real one.
+if [ ! -e /etc/mihomo/config.yaml ]; then
+  stub_tmp=$(mktemp)
+  cat > "$stub_tmp" <<'EOF'
+mixed-port: 7897
+mode: rule
+log-level: info
+external-controller: 127.0.0.1:9090
+secret: ""
+external-ui: /etc/mihomo/ui
+external-ui-url: https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip
+dns:
+  enable: true
+  nameserver:
+    - 1.1.1.1
+    - 8.8.8.8
+proxies: []
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies:
+      - DIRECT
+rules:
+  - MATCH,DIRECT
+EOF
+  sudo install -m 0644 "$stub_tmp" /etc/mihomo/config.yaml
+  rm -f "$stub_tmp"
+fi 
+
 # Create runit service (not linked into /var/service — done by hand)
 run_tmp=$(mktemp)
 cat > "$run_tmp" <<'EOF'
 #!/bin/sh
 exec 2>&1
-exec /usr/local/bin/mihomo -d /opt/clashtui/mihomo/config
+exec /usr/local/bin/mihomo -d /etc/mihomo/config
 EOF
 sudo mkdir -p /etc/sv/mihomo
 sudo install -m 0755 "$run_tmp" /etc/sv/mihomo/run
