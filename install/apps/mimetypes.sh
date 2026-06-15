@@ -15,9 +15,9 @@ xdg-mime default org.gnome.Papers.desktop application/pdf
 
 # Use the default browser. Leave webapps to Chromium
 # brave may not be installed yet at this stage; don't let a non-zero exit abort install.sh (set -e)
-xdg-settings set default-web-browser brave-origin.desktop || true
-xdg-mime default brave-origin.desktop x-scheme-handler/http || true
-xdg-mime default brave-origin.desktop x-scheme-handler/https || true
+xdg-settings set default-web-browser brave-origin-nightly.desktop || true
+xdg-mime default brave-origin-nightly.desktop x-scheme-handler/http || true
+xdg-mime default brave-origin-nightly.desktop x-scheme-handler/https || true
 #xdg-settings set default-web-browser zen.desktop
 #xdg-mime default zen.desktop x-scheme-handler/http
 #xdg-mime default zen.desktop x-scheme-handler/https
