@@ -1,0 +1,7 @@
+#!/bin/sh
+gpgconf --kill gpg-agent 2>/dev/null
+pass show Stefan >/dev/null
+while true; do
+    mailsync
+    sleep 10m  # Wait 10 minutes before syncing again
+done
