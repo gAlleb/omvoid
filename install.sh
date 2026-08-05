@@ -64,8 +64,10 @@ show_logo
 show_subtext "Let's install OMVOID! [1/5]"
 run_step config/identification.sh
 run_step config/config.sh
+run_step config/swap.sh
 run_step config/xcompose.sh
 run_step config/services.sh
+run_step config/cron.sh
 run_step config/gpu.sh
 #run_step config/runsvdir.sh
 run_step config/runsvdir-local.sh
