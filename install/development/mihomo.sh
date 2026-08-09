@@ -68,7 +68,7 @@ run_tmp=$(mktemp)
 cat > "$run_tmp" <<'EOF'
 #!/bin/sh
 exec 2>&1
-exec /usr/local/bin/mihomo -d /etc/mihomo/config
+exec /usr/local/bin/mihomo -d /etc/mihomo
 EOF
 sudo mkdir -p /etc/sv/mihomo
 sudo install -m 0755 "$run_tmp" /etc/sv/mihomo/run
