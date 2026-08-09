@@ -8,6 +8,10 @@ if [[ -z "$1" && "$1" != "CNCLD" ]]; then
   exit 1
 fi
 
+if [ ! -d ~/.config/dunst ] ; then
+    mkdir -p ~/.config/dunst
+fi 
+
 THEMES_DIR="$HOME/.config/omvoid/themes/"
 CURRENT_THEME_DIR="$HOME/.config/omvoid/current/theme"
 
@@ -32,6 +36,7 @@ wal -c
 wal --theme "$CURRENT_THEME_DIR/colors.json"
 pkill -SIGUSR2 waybar
 swaync-client -rs
+ln -sf ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc
 dunstctl reload
 makoctl reload 
 pkill -e --signal SIGKILL dunst

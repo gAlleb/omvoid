@@ -10,6 +10,10 @@ if [ ! -d "${CACHE_DIR}" ] ; then
     mkdir -p "${CACHE_DIR}"
 fi
 
+if [ ! -d ~/.config/dunst ] ; then
+    mkdir -p ~/.config/dunst
+fi 
+
 find -L "${WALLPAPER_DIR}" -type f \( -iname \*.jpg -o -iname \*.jpeg -o -iname \*.png -o -iname \*.webp \) | while read -r wallpaper_path; do
     # Get the relative path to maintain subdirectory structure in the cache
     relative_path="${wallpaper_path#${WALLPAPER_DIR}/}"
@@ -50,6 +54,7 @@ executeCommand() {
     omvoid-theme-set-browser wal
     wal-telegram --wal
     echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR/wallpaper-hyprland.conf
+    ln -sf ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc
     echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > ${CACHE_DIR}/wallpaper_thumbnail
     echo "inputbar { background-image: url(\"$selected_thumbnail_path\", height); }" > ${CACHE_DIR}/wallpaper_thumbnail.rasi
     echo "${selected_wallpaper}" > "${CURRENT_WALLPAPER_PATH_FILE}"
