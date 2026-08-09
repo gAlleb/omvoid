@@ -15,7 +15,7 @@ sudo xbps-install -y \
   gearlever mpdris2-rs fuzzypkg yazi python3-watchdog libxkbcommon-tools \
   bind-utils ripdrag keepassxc gajim exfat-utils fuse-exfat bat fd \
   neomutt msmtp pass gettext isync goimapnotify pam-gnupg lynx notmuch \
-  urlview abook w3m
+  urlview abook w3m mesa-vulkan-intel vulkan-loader
 
 # X11 batch
 sudo xbps-install -y \
