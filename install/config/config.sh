@@ -5,11 +5,19 @@
 if [ ! -d ~/.config ] ; then
     mkdir -p ~/.config
 fi
+
 if [ ! -d ~/.local/bin ] ; then
     mkdir -p ~/.local/bin
 fi 
 
+if [ ! -d ~/.gnupg ] ; then
+    mkdir -p ~/.gnupg
+fi 
+
 cp -R ~/.local/share/omvoid/config/* ~/.config/
+
+# Copy default gpg-agent.conf
+cp ~/.local/share/omvoid/default/gnupg/gpg-agent.conf ~/.gnupg/
 
 # Use default dotfiles from omvoid
 cp ~/.local/share/omvoid/default/.bashrc ~/.bashrc
