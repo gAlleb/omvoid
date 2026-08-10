@@ -16,7 +16,7 @@ sudo xbps-install -y \
   bind-utils ripdrag keepassxc gajim exfat-utils fuse-exfat bat fd \
   neomutt msmtp pass gettext isync goimapnotify pam-gnupg lynx notmuch \
   urlview abook w3m mesa-vulkan-intel vulkan-loader mesa-vulkan-lavapipe \
-  ripgrep
+  ripgrep pinentry-qt
 
 # X11 batch
 sudo xbps-install -y \
