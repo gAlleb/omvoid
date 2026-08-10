@@ -28,7 +28,7 @@ sudo xbps-install -y \
   Waybar wl-clipboard wl-clip-persist cliphist wf-recorder \
   SwayNotificationCenter satty slurp grim awww walker \
   wlogout swaybg SwayOSD crystal-dock wlr-randr wlopm swaylock \
-  swayidle
+  swayidle qt5-wayland
 
 # Extra batch 
 sudo xbps-install -y \
