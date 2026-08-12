@@ -48,7 +48,7 @@ executeCommand() {
     ~/.local/bin/wal -c
 
     # Generate the new color scheme using wal with the determined flag
-    ~/.local/bin/wal ${wal_flags} -i ${selected_wallpaper}
+    ~/.local/bin/wal -i ${selected_wallpaper}
 
     # Update other applications
     omvoid-theme-set-browser wal
