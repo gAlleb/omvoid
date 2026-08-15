@@ -1,6 +1,72 @@
 #!/bin/bash
-playerctl --all-players --follow metadata --format '{{status}} {{title}} {{artist}}' | while read -r line; do
-    # When playerctl detects a change in status or title it sends pkill to waybar
-   pkill -RTMIN+9 waybar >/dev/null
-   pkill -RTMIN+10 waybar >/dev/null
-done
+# Notify waybar when playback state actually changes.
+#
+# playerctl --follow emits on EVERY MPRIS PropertiesChanged. Spotify fires these
+# many times per second during playback, which floods waybar with realtime
+# signals and freezes its main thread.
+#
+# So: drop duplicate lines, and coalesce bursts down to at most one
+# notification per 250ms. Note this is a *trailing edge* debounce - an event
+# that arrives too soon is deferred, not dropped, and gets sent as soon as the
+# stream goes quiet. Nothing is ever lost, so a fast burst of track skips still
+# leaves the bar showing the final track.
+
+MIN_INTERVAL_US=250000   # не чаще одного уведомления за 250 мс
+QUIET_TIMEOUT=0.25       # столько ждём тишины, чтобы досл��ть отложенное
+
+notify() {
+	pkill -RTMIN+9  waybar >/dev/null 2>&1
+	pkill -RTMIN+10 waybar >/dev/null 2>&1
+}
+
+last_line=""
+last_us=0
+pending=0
+
+while :; do
+	# Пока ничего не отложено - блокируемся насовсем (нулевой CPU).
+	# Если есть отложенное - просыпаемся, чтобы его дослать.
+	if (( pending )); then
+		IFS= read -r -t "$QUIET_TIMEOUT" line
+	else
+		IFS= read -r line
+	fi
+	rc=$?
+
+	if (( rc == 0 )); then
+		# Ничего значимого не изменилось - это шум от позиции/громкости
+		[ "$line" = "$last_line" ] && continue
+
+		last_line=$line
+		pending=1
+
+		now_us=${EPOCHREALTIME//[.,]/}   # в некоторых локалях разделитель - запятая
+		if (( now_us - last_us >= MIN_INTERVAL_US )); then
+			notify
+			pending=0
+			last_us=$now_us
+		fi
+
+	elif (( rc > 128 )); then
+		# Таймаут: поток затих - досылаем то, что отложили
+		if (( pending )); then
+			notify
+			pending=0
+			last_us=${EPOCHREALTIME//[.,]/}
+		fi
+
+	else
+		break   # EOF: playerctl завершился
+	fi
+done < <(playerctl --all-players --follow metadata \
+             --format '{{status}} {{title}} {{artist}}' 2>/dev/null)
+
+# Поток кончился, а что-то осталось отложенным - дослать
+(( pending )) && notify
+
+# playerctl --all-players --follow metadata --format '{{status}} {{title}} {{artist}}' | while read -r line; do
+#     # When playerctl detects a change in status or title it sends pkill to waybar
+#    pkill -RTMIN+9 waybar >/dev/null
+#    pkill -RTMIN+10 waybar >/dev/null
+# done
+
