@@ -111,7 +111,7 @@ work_once() {
 	# Дёргаем waybar только если реально есть что перерисовать.
 	# Иначе получилась бы бесконечная петля сигналов.
 	if [ "$new_path" != "$old_path" ] || [ "$downloaded" = 1 ]; then
-		pkill -RTMIN+10 waybar >/dev/null 2>&1
+		pkill -RTMIN+10 -x waybar >/dev/null 2>&1
 	fi
 }
 
