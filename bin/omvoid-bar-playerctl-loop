@@ -15,8 +15,8 @@ MIN_INTERVAL_US=250000   # не чаще одного уведомления з�
 QUIET_TIMEOUT=0.25       # столько ждём тишины, чтобы досл��ть отложенное
 
 notify() {
-	pkill -RTMIN+9  waybar >/dev/null 2>&1
-	pkill -RTMIN+10 waybar >/dev/null 2>&1
+	pkill -RTMIN+9 -x waybar >/dev/null 2>&1
+	pkill -RTMIN+10 -x waybar >/dev/null 2>&1
 }
 
 last_line=""
