@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONFIG_FILE="$HOME/.config/mango/effects.conf"
+CONFIG_FILE="$HOME/.config/mango/conf/effects.conf"
 
 # Функция для применения настроек Mango через родную утилиту
 reload_mango() {
@@ -14,6 +14,8 @@ if pgrep -x "waybar" > /dev/null; then
     # 1. Останавливаем текущие процессы
     pkill waybar
     pkill -f omvoid-bar-playerctl-loop
+    pkill -f layout-switcher-mango
+    pkill mmsg
 
     # 2. Правим конфиг (blur 1 -> 0)
     sed -i 's/blur_layer=1/blur_layer=0/' "$CONFIG_FILE"
