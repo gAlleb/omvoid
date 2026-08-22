@@ -83,6 +83,7 @@ executeCommand() {
 
     # Update other applications
     awww img --transition-type any --transition-angle 45 "${selected_wallpaper}"
+    mmsg dispatch reload_config
     pywalfox update
     omvoid-theme-set-browser wal
     echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR/wallpaper-hyprland.conf

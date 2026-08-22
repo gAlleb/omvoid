@@ -35,6 +35,7 @@ omvoid-theme-set-browser
 wal -c 
 wal --theme "$CURRENT_THEME_DIR/colors.json"
 pkill -SIGUSR2 waybar
+mmsg dispatch reload_config
 swaync-client -rs
 ln -sf ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc
 dunstctl reload
