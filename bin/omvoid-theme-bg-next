@@ -57,4 +57,13 @@ else
   echo "inputbar { background-image: url(\"$THUMBNAIL_PATH\", height); }" > $CACHE_DIR/wallpaper_thumbnail.rasi
   echo "$CURRENT_BACKGROUND_LINK" > "${CURRENT_WALLPAPER_PATH_FILE}"
   magick "$CURRENT_BACKGROUND_LINK" ~/.config/bg.jpg
+  if pgrep -x "noctalia" > /dev/null; then
+    echo "Noctalia is running. Updating wallpaper..."
+    
+    # 3. Pass the path argument. 
+    # Note: Double quotes are critical to preserve spaces in file paths.
+    noctalia msg wallpaper-set "$CURRENT_BACKGROUND_LINK"
+  else
+    echo "Noctalia is not running. Falling back to alternative setter."
+  fi
 fi 
