@@ -2,6 +2,7 @@
 
 CONFIG_FILE_EFFECTS="$HOME/.config/mango/conf/effects.conf"
 CONFIG_FILE_KEYBINDINGS="$HOME/.config/mango/conf/keybindings.conf"
+CONFIG_FILE_AUTOSTART="$HOME/.config/mango/conf/autostart.conf"
 
 # Функция для применения настроек Mango через родную утилиту
 reload_mango() {
@@ -22,6 +23,8 @@ if pgrep -x "waybar" > /dev/null; then
     # 2. Правим конфиг (blur 1 -> 0)
     sed -i 's/blur_layer=1/blur_layer=0/' "$CONFIG_FILE_EFFECTS"
     sed -i 's/bind=ALT,l,spawn,swaylock/bind=ALT,l,spawn,noctalia msg session lock/' "$CONFIG_FILE_KEYBINDINGS"
+    sed -i 's%exec-once=waybar -c ~/.config/waybar/config-mango -s ~/.config/waybar/style-mango.css%exec-once=noctalia%' "$CONFIG_FILE_AUTOSTART"
+    sed -i 's%exec-once=swayidle -w%#exec-once=swayidle -w%' "$CONFIG_FILE_AUTOSTART"
 
     # 3. Применяем настройки Mango
     reload_mango
@@ -40,6 +43,8 @@ else
     # 2. Правим конфиг (blur 0 -> 1)
     sed -i 's/blur_layer=0/blur_layer=1/' "$CONFIG_FILE_EFFECTS"
     sed -i 's/bind=ALT,l,spawn,noctalia msg session lock/bind=ALT,l,spawn,swaylock/' "$CONFIG_FILE_KEYBINDINGS"
+    sed -i 's%exec-once=noctalia%exec-once=waybar -c ~/.config/waybar/config-mango -s ~/.config/waybar/style-mango.css%' "$CONFIG_FILE_AUTOSTART"
+    sed -i 's%#exec-once=swayidle -w%exec-once=swayidle -w%' "$CONFIG_FILE_AUTOSTART"
 
     # 3. Применяем настройки Mango
     reload_mango
