@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Раскладывает скиллы из репозитория по каталогам, где их ищут агенты.
+# Симлинками, а не копиями: правка в репозитории действует сразу, без переустановки.
+#
+# Запускать можно сколько угодно раз -- ln -sfn перезаписывает свою же ссылку.
+
+set -euo pipefail
+
+SKILLS_DIR="${OMVOID_PATH:-$HOME/.local/share/omvoid}/default/agents/skills"
+
+if [[ ! -d $SKILLS_DIR ]]; then
+  echo "omvoid-link-skills: нет каталога $SKILLS_DIR" >&2
+  exit 1
+fi
+
+# ~/.agents/skills -- общее место, куда смотрят несколько агентов; остальные свои.
+TARGETS=(
+  "$HOME/.agents/skills"
+  "$HOME/.claude/skills"
+  "$HOME/.codex/skills"
+  "$HOME/.gemini/config/skills"
+)
+
+linked=0
+for skill in "$SKILLS_DIR"/*/; do
+  [[ -d $skill ]] || continue
+  name=$(basename "$skill")
+  for target in "${TARGETS[@]}"; do
+    mkdir -p "$target"
+    # Чужой каталог с тем же именем не трогаем: там может лежать скилл,
+    # поставленный руками или другим инструментом.
+    if [[ -e "$target/$name" && ! -L "$target/$name" ]]; then
+      echo "omvoid-link-skills: $target/$name существует и это не ссылка -- пропускаю" >&2
+      continue
+    fi
+    ln -sfn "${skill%/}" "$target/$name"
+  done
+  echo "связан скилл: $name"
+  linked=$((linked + 1))
+done
+
+((linked)) || echo "в $SKILLS_DIR нет ни одного скилла"

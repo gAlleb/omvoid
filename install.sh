@@ -87,6 +87,7 @@ run_step development/omvoid-repo.sh
 run_step development/sddm.sh
 run_step development/pipewire.sh
 run_step development/mise.sh
+run_step development/agent-skills.sh
 # ЗАКОММЕНТИРОВАНО: node ставится через mise (см. development/mise.sh)
 #run_step development/node.sh
 run_step development/mihomo.sh
