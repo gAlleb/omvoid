@@ -72,4 +72,19 @@ status=0
 for pid in "${pids[@]}"; do
   wait "$pid" || status=1
 done
+
+# Записи без коллектора. Диспетчер идёт от коллекторов к записям, поэтому
+# удалённый коллектор оставлял бы свою запись лежать вечно, и бар продолжал бы
+# показывать агента, которого в системе больше нет. Подчищаем с той стороны.
+# Только при полном обходе: с фильтром по агентам "лишними" выглядели бы все
+# остальные.
+if ((${#only[@]} == 0)); then
+  for record in "$USAGE_DIR"/*.json; do
+    [[ -e $record ]] || continue
+    agent="${record##*/}"
+    agent="${agent%.json}"
+    [[ -x "$OMVOID_BIN/omvoid-agent-usage-$agent" ]] || rm -f "$record"
+  done
+fi
+
 exit $status

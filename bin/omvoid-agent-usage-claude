@@ -263,11 +263,32 @@ def probe_limits(token: str) -> dict:
     return {"ok": True, "limits": limits}
 
 
+def window_open(entry: dict) -> bool:
+    """Окно лимита ещё не сбросилось?
+
+    Просроченный процент нельзя показывать как есть: окно на пять часов, которое
+    уже прокрутилось, обнулило расход, а сохранённые 78% рассказывали бы про
+    период, которого больше нет. Запись без времени сброса или с неразборчивым
+    временем оставляем -- нечитаемая метка не повод выбрасывать настоящее число.
+    """
+    raw = str(entry.get("resetsAt") or "")
+    if not raw:
+        return True
+    try:
+        resets = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except Exception:
+        return True
+    if resets.tzinfo is None:
+        resets = resets.replace(tzinfo=dt.timezone.utc)
+    return resets > dt.datetime.now(dt.timezone.utc)
+
+
 def collect_limits(force: bool) -> dict:
     token, expires_ms, plan = oauth_login()
     cache_path = cache_dir() / "claude-limits.json"
     cached = read_json(cache_path) or {}
     fallback = cached.get("limits") if isinstance(cached.get("limits"), list) else []
+    fallback = [entry for entry in fallback if isinstance(entry, dict) and window_open(entry)]
 
     if not token:
         return {"plan": plan, "limits": fallback, "status": "нет авторизации"}

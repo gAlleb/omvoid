@@ -130,6 +130,13 @@ def main() -> int:
             except Exception:
                 continue
 
+    # Подстраховка: запись без лимитов и без расхода за неделю не заслуживает
+    # места в баре, кто бы её ни написал.
+    records = [
+        record for record in records
+        if (record.get("limits") or int(record.get("weekTokens") or 0) > 0)
+    ]
+
     if not records:
         # Ни одного агента -- модуль не занимает место в баре.
         print(json.dumps({"text": "", "tooltip": "", "class": "empty"}))
@@ -149,12 +156,10 @@ def main() -> int:
         else:
             parts.append((record.get("id") or "?", human(int((record.get("today") or {}).get("tokens") or 0))))
 
-    # С одним агентом имя в баре лишнее -- и так понятно, чьё число. С двумя и
-    # больше без имени не разобрать, какой из процентов чей.
-    if len(parts) == 1:
-        text = f"󰚩 {parts[0][1]}"
-    else:
-        text = "󰚩 " + " · ".join(f"{name} {value}" for name, value in parts)
+    # Только числа, без имён -- в баре место дорогое. Порядок тот же, в котором
+    # агенты идут в подсказке (по имени записи), так что расшифровка в одном
+    # наведении мыши.
+    text = "󰚩 " + " · ".join(value for _, value in parts)
 
     if worst >= 0.95:
         css = "critical"

@@ -325,6 +325,13 @@ def main() -> int:
 
     limits = fetch_limits(force)
 
+    # Каталог ~/.codex появляется от первого же запуска, задолго до того, как в
+    # нём заведётся хоть какой-то расход. Агент без единого токена за неделю и
+    # без лимитов -- это агент, которым не пользуются: он занимал бы место в
+    # баре строкой "codex 0". Молчим, как будто его нет.
+    if not limits["limits"] and not any(day["tokens"] for day in recent):
+        return 0
+
     record = {
         "id": "codex",
         "name": "Codex",
