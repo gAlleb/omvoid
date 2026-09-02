@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# Запускает все коллекторы omvoid-agent-usage-* параллельно и раскладывает их
+# записи по файлам в ~/.local/state/omvoid/agents/usage/. Панель следит за этим
+# каталогом и больше ни о чём не знает: добавить агента -- значит положить рядом
+# исполняемый файл, который печатает JSON. Сюда лезть не придётся.
+
+set -uo pipefail
+
+USAGE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omvoid/agents/usage"
+OMVOID_BIN="${OMVOID_PATH:-$HOME/.local/share/omvoid}/bin"
+mkdir -p "$USAGE_DIR"
+
+flags=()
+only=()
+
+while (($# > 0)); do
+  case "$1" in
+  --force) flags+=("$1") ;;
+  *) only+=("$1") ;;
+  esac
+  shift
+done
+
+wanted() {
+  ((${#only[@]} == 0)) && return 0
+  local candidate
+  for candidate in "${only[@]}"; do
+    [[ $candidate == "$1" ]] && return 0
+  done
+  return 1
+}
+
+collect() {
+  local collector="$1" agent="$2" record status tmp
+
+  record=$("$collector" "${flags[@]}")
+  status=$?
+
+  # Пустой вывод при нулевом коде -- это "агента на машине нет": он не
+  # установлен или в него не заходили. Не ошибка. Такой коллектор можно держать
+  # заранее, он молчит до тех пор, пока агентом не начнут пользоваться. Заодно
+  # убираем оставшуюся с прошлого раза запись, иначе бар показывал бы числа
+  # агента, которого больше нет.
+  if ((status == 0)) && [[ -z $record ]]; then
+    rm -f "$USAGE_DIR/$agent.json"
+    return 0
+  fi
+
+  # Запись подменяется целиком и только если она разобралась как JSON: панель
+  # читает файл в произвольный момент и не должна поймать половину.
+  if ((status != 0)) || ! jq -e . >/dev/null 2>&1 <<<"$record"; then
+    echo "omvoid-agent-usage-update: коллектор $agent не отработал" >&2
+    return 1
+  fi
+  tmp=$(mktemp "$USAGE_DIR/.$agent.XXXXXX") || return 1
+  printf '%s\n' "$record" >"$tmp"
+  mv "$tmp" "$USAGE_DIR/$agent.json"
+}
+
+pids=()
+for collector in "$OMVOID_BIN"/omvoid-agent-usage-*; do
+  [[ -x $collector ]] || continue
+  agent="${collector##*/omvoid-agent-usage-}"
+  [[ $agent == "update" ]] && continue
+  wanted "$agent" || continue
+  collect "$collector" "$agent" &
+  pids+=($!)
+done
+
+status=0
+for pid in "${pids[@]}"; do
+  wait "$pid" || status=1
+done
+exit $status

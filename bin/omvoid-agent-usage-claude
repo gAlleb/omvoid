@@ -1,0 +1,353 @@
+#!/usr/bin/env python3
+"""Собирает одну JSON-запись о расходе Claude Code.
+
+Два источника, независимых друг от друга:
+
+  * локальные транскрипты ~/.claude/projects -- работают всегда, сети не
+    требуют. Отсюда токены по дням и по моделям.
+  * OAuth-эндпоинт Anthropic -- отсюда официальные проценты до лимита. Требует
+    живого токена, а его обновляет только терминальный claude при запуске.
+    Десктопное приложение держит свою сессию отдельно и этот файл не трогает,
+    так что на машине, где CLI не запускают, эта половина будет молчать.
+
+Печатает запись в stdout. Ничего никуда не пишет, кроме кэша.
+"""
+
+import datetime as dt
+import json
+import os
+import sys
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+USAGE_ENDPOINT = "https://api.anthropic.com/api/oauth/usage"
+PROBE_MIN_INTERVAL = 60.0  # не чаще раза в минуту, даже если бар опрашивают чаще
+RECENT_DAYS = 7
+
+
+def claude_dir() -> Path:
+    return Path(os.environ.get("CLAUDE_CONFIG_DIR") or (Path.home() / ".claude"))
+
+
+def cache_dir() -> Path:
+    root = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache"))
+    return root / "omvoid" / "agent-usage"
+
+
+def local_day(value) -> str:
+    """ISO-время из транскрипта -> локальная дата. Сутки считаем по своему
+    часовому поясу, иначе вечерняя работа уезжает во вчера."""
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    try:
+        parsed = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except Exception:
+        return ""
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt.timezone.utc)
+    return parsed.astimezone().date().isoformat()
+
+
+def read_json(path: Path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def write_json(path: Path, payload) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(payload), encoding="utf-8")
+    tmp.replace(path)
+
+
+# ------------------------------------------------------------ транскрипты
+
+def scan_file(path: Path) -> dict:
+    """{дата: {модель: [in, out, cache_read, cache_write, сообщений]}} для файла.
+
+    Одно сообщение приходит в транскрипт несколькими записями подряд -- по мере
+    того, как ответ стримится, -- и в каждой лежит полный usage. Без дедупликации
+    по message.id расход завышается больше чем вдвое (в замере: 180 записей на 82
+    сообщения)."""
+    days: dict = {}
+    seen: set = set()
+    with path.open("r", encoding="utf-8", errors="replace") as handle:
+        for line in handle:
+            # Дешёвый отсев до разбора JSON: строк без расхода в файле большинство.
+            if '"usage":' not in line:
+                continue
+            try:
+                entry = json.loads(line)
+            except Exception:
+                continue
+
+            message = entry.get("message")
+            message = message if isinstance(message, dict) else {}
+            if entry.get("type") != "assistant" and message.get("role") != "assistant":
+                continue
+            usage = message.get("usage") or entry.get("usage")
+            if not isinstance(usage, dict):
+                continue
+
+            key = str(message.get("id") or entry.get("requestId") or entry.get("uuid") or "")
+            if key:
+                if key in seen:
+                    continue
+                seen.add(key)
+
+            def n(*names) -> int:
+                for name in names:
+                    value = usage.get(name)
+                    if isinstance(value, (int, float)):
+                        return int(value)
+                return 0
+
+            counts = [
+                n("input_tokens", "inputTokens"),
+                n("output_tokens", "outputTokens"),
+                n("cache_read_input_tokens", "cacheReadInputTokens"),
+                n("cache_creation_input_tokens", "cacheCreationInputTokens"),
+            ]
+            if sum(counts) <= 0:
+                continue
+
+            day = local_day(entry.get("timestamp") or message.get("timestamp"))
+            if not day:
+                continue
+            model = str(message.get("model") or entry.get("model") or "claude")
+
+            bucket = days.setdefault(day, {}).setdefault(model, [0, 0, 0, 0, 0])
+            for i in range(4):
+                bucket[i] += counts[i]
+            bucket[4] += 1
+    return days
+
+
+def scan_projects() -> dict:
+    """Разбирает транскрипты, переиспользуя кэш для неизменившихся файлов.
+
+    Файлов у активного пользователя десятки, а суммарно они весят сотни
+    мегабайт -- перечитывать всё раз в минуту нельзя. Меняются при этом один-два
+    (текущие сессии), поэтому кэш ключуется размером и mtime: тронутый файл
+    перечитывается целиком, остальные берутся из кэша."""
+    projects = claude_dir() / "projects"
+    cache_path = cache_dir() / "claude-scan.json"
+    cached = read_json(cache_path) or {}
+    old_files = cached.get("files") if isinstance(cached.get("files"), dict) else {}
+
+    new_files: dict = {}
+    if projects.is_dir():
+        for path in projects.rglob("*.jsonl"):
+            try:
+                stat = path.stat()
+            except OSError:
+                continue
+            key = str(path)
+            previous = old_files.get(key)
+            if (
+                isinstance(previous, dict)
+                and previous.get("size") == stat.st_size
+                and previous.get("mtime") == int(stat.st_mtime)
+                and isinstance(previous.get("days"), dict)
+            ):
+                new_files[key] = previous
+                continue
+            try:
+                days = scan_file(path)
+            except Exception as exc:
+                print(f"пропускаю нечитаемый файл {path}: {exc}", file=sys.stderr)
+                continue
+            new_files[key] = {"size": stat.st_size, "mtime": int(stat.st_mtime), "days": days}
+
+    try:
+        write_json(cache_path, {"version": 1, "files": new_files})
+    except Exception:
+        pass  # кэш -- ускорение, а не условие работы
+
+    merged: dict = {}
+    for record in new_files.values():
+        for day, models in record.get("days", {}).items():
+            target = merged.setdefault(day, {})
+            for model, counts in models.items():
+                bucket = target.setdefault(model, [0, 0, 0, 0, 0])
+                for i in range(5):
+                    bucket[i] += counts[i]
+    return merged
+
+
+# ----------------------------------------------------------------- лимиты
+
+def oauth_login() -> tuple:
+    data = read_json(claude_dir() / ".credentials.json")
+    login = (data or {}).get("claudeAiOauth")
+    if not isinstance(login, dict):
+        return "", 0, ""
+    tier = str(login.get("rateLimitTier") or "")
+    subscription = str(login.get("subscriptionType") or "")
+    plan = ""
+    if "max" in tier.lower():
+        plan = "Max"
+    elif subscription:
+        plan = subscription[:1].upper() + subscription[1:]
+    expires = login.get("expiresAt")
+    return str(login.get("accessToken") or ""), int(expires or 0), plan
+
+
+def probe_limits(token: str) -> dict:
+    request = urllib.request.Request(
+        USAGE_ENDPOINT,
+        headers={
+            "Authorization": "Bearer " + token,
+            "anthropic-beta": "oauth-2025-04-20",
+            "Accept": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            payload = json.loads(response.read().decode("utf-8", errors="replace"))
+    except urllib.error.HTTPError as error:
+        return {"ok": False, "status": f"эндпоинт ответил {error.code}"}
+    except Exception:
+        return {"ok": False, "status": "эндпоинт недоступен"}
+
+    def bucket(name):
+        value = payload.get(name)
+        return value if isinstance(value, dict) else None
+
+    session = bucket("five_hour")
+    weekly = bucket("seven_day_oauth_apps") or bucket("seven_day")
+
+    raw = [b.get("utilization") for b in (session, weekly) if b]
+    entries = payload.get("limits")
+    if isinstance(entries, list):
+        raw += [e.get("percent") for e in entries if isinstance(e, dict)]
+
+    def as_float(value):
+        try:
+            return float(str(value).strip().replace("%", ""))
+        except Exception:
+            return float("nan")
+
+    # Эндпоинт отдаёт то проценты (37.0), то доли (0.37). Если в ответе есть
+    # хоть одно значение >= 1, значит вся эта запись в процентах -- иначе 1.0
+    # прочиталось бы как 100%.
+    percent_scale = any(as_float(v) >= 1 for v in raw)
+
+    def percent(value):
+        number = as_float(value)
+        if not (number >= 0):
+            return -1.0
+        if percent_scale or number > 1:
+            return min(1.0, number / 100.0)
+        return min(1.0, number)
+
+    limits = []
+    for label, source in (("Сессия (5 ч)", session), ("Неделя (7 дн)", weekly)):
+        if not source:
+            continue
+        value = percent(source.get("utilization"))
+        if value >= 0:
+            limits.append({
+                "label": label,
+                "percent": value,
+                "resetsAt": str(source.get("resets_at") or ""),
+            })
+
+    if not limits:
+        return {"ok": False, "status": "эндпоинт не вернул лимитов"}
+    return {"ok": True, "limits": limits}
+
+
+def collect_limits(force: bool) -> dict:
+    token, expires_ms, plan = oauth_login()
+    cache_path = cache_dir() / "claude-limits.json"
+    cached = read_json(cache_path) or {}
+    fallback = cached.get("limits") if isinstance(cached.get("limits"), list) else []
+
+    if not token:
+        return {"plan": plan, "limits": fallback, "status": "нет авторизации"}
+
+    if expires_ms and expires_ms <= time.time() * 1000:
+        # Токен освежает только терминальный claude при запуске. Показываем
+        # последние известные числа, но честно говорим, что они несвежие.
+        return {"plan": plan, "limits": fallback, "status": "сессия CLI истекла"}
+
+    fetched = float(cached.get("fetchedAt") or 0)
+    if fallback and not force and time.time() - fetched < PROBE_MIN_INTERVAL:
+        return {"plan": plan, "limits": fallback, "status": ""}
+
+    probe = probe_limits(token)
+    if probe["ok"]:
+        try:
+            write_json(cache_path, {"fetchedAt": time.time(), "limits": probe["limits"]})
+        except Exception:
+            pass
+        return {"plan": plan, "limits": probe["limits"], "status": ""}
+    return {"plan": plan, "limits": fallback, "status": probe["status"]}
+
+
+# ------------------------------------------------------------------ вывод
+
+def main() -> int:
+    force = "--force" in sys.argv
+
+    days = scan_projects()
+    today = dt.date.today()
+    recent_dates = [(today - dt.timedelta(days=i)).isoformat() for i in range(RECENT_DAYS - 1, -1, -1)]
+
+    def totals(models: dict) -> list:
+        out = [0, 0, 0, 0, 0]
+        for counts in models.values():
+            for i in range(5):
+                out[i] += counts[i]
+        return out
+
+    recent = []
+    for date in recent_dates:
+        counts = totals(days.get(date, {}))
+        recent.append({
+            "date": date,
+            "tokens": sum(counts[:4]),
+            "messages": counts[4],
+        })
+
+    today_counts = totals(days.get(today.isoformat(), {}))
+    by_model: dict = {}
+    for date in recent_dates:
+        for model, counts in days.get(date, {}).items():
+            by_model[model] = by_model.get(model, 0) + sum(counts[:4])
+
+    limits = collect_limits(force)
+
+    record = {
+        "id": "claude",
+        "name": "Claude Code",
+        "plan": limits["plan"],
+        "limits": limits["limits"],
+        "limitsStatus": limits["status"],
+        "today": {
+            "tokens": sum(today_counts[:4]),
+            "input": today_counts[0],
+            "output": today_counts[1],
+            "cacheRead": today_counts[2],
+            "cacheWrite": today_counts[3],
+            "messages": today_counts[4],
+        },
+        "weekTokens": sum(day["tokens"] for day in recent),
+        "recentDays": recent,
+        "byModel": [
+            {"model": model, "tokens": tokens}
+            for model, tokens in sorted(by_model.items(), key=lambda kv: -kv[1])
+        ],
+    }
+    print(json.dumps(record, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

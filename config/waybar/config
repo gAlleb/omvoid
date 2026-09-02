@@ -8,7 +8,7 @@
 
   "modules-center": ["image#album_art","custom/playerctl"],
   "modules-left": ["custom/menu", "custom/sep", "hyprland/workspaces", "custom/sep", "hyprland/window"],
-  "modules-right": ["group/tray-expander", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "group/updates-expander", "battery", "hyprland/language", "backlight", "custom/screenrecording-indicator", "custom/screenshot", "clock", "custom/swaync", "bluetooth", "network", "custom/vpn", "custom/wlogout"],
+  "modules-right": ["group/tray-expander", "custom/agent-usage", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "group/updates-expander", "battery", "hyprland/language", "backlight", "custom/screenrecording-indicator", "custom/screenshot", "clock", "custom/swaync", "bluetooth", "network", "custom/vpn", "custom/wlogout"],
 
   "image#album_art": {
       "exec": "~/.config/waybar/scripts/playerctl/cover.sh",
@@ -16,6 +16,15 @@
       "on-click": "~/.config/waybar/scripts/playerctl/playerctl-notify.sh",
       "interval": 1800,
       "signal": 10,
+  },
+
+  "custom/agent-usage": {
+    "exec": "~/.config/waybar/scripts/waybar-agent-usage.py",
+    "return-type": "json",
+    "interval": 60,
+    "signal": 12,
+    "tooltip": true,
+    "on-click": "pkill -RTMIN+12 waybar"
   },
 
   "custom/temperature": {

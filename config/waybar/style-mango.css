@@ -201,3 +201,17 @@ window#waybar {
   color: @bg;
 }
 
+
+#custom-agent-usage {
+    padding: 0 4px;
+    margin: 0 -1px;
+    color: @fg;
+}
+
+#custom-agent-usage.warning {
+    color: #ffb86c; /* лимит близко */
+}
+
+#custom-agent-usage.critical {
+    color: #ff5555; /* лимит почти выбран */
+}

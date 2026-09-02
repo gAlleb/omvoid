@@ -8,7 +8,7 @@
 
   "modules-center": ["image#album_art","custom/playerctl"],
   "modules-left": ["custom/menu", "custom/sep", "ext/workspaces", "custom/sep", "dwl/window"],
-  "modules-right": ["group/tray-expander", "idle_inhibitor", "custom/mail", "custom/tasks", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "group/updates-expander", "battery", "custom/screenrecording-indicator", "backlight", "custom/screenshot", "pulseaudio", "custom/keyboard", "clock", "custom/swaync", "bluetooth", "network", "custom/vpn", "custom/wlogout"],
+  "modules-right": ["group/tray-expander", "idle_inhibitor", "custom/mail", "custom/tasks", "custom/agent-usage", "cpu", "memory", "custom/hdd", "custom/temperature", "custom/weather", "group/updates-expander", "battery", "custom/screenrecording-indicator", "backlight", "custom/screenshot", "pulseaudio", "custom/keyboard", "clock", "custom/swaync", "bluetooth", "network", "custom/vpn", "custom/wlogout"],
 
   "custom/keyboard": {
     "exec": "~/.config/waybar/scripts/layout-switcher-mango.sh",
@@ -23,6 +23,15 @@
       "return-type": "json", // Указываем, что ждем JSON от скрипта [1]
       "interval": 60,     // Интервал обновления в секундах (раз в минуту)
       "exec": "~/.config/waybar/scripts/waybar-tasks.sh"
+  },
+
+  "custom/agent-usage": {
+    "exec": "~/.config/waybar/scripts/waybar-agent-usage.py",
+    "return-type": "json",
+    "interval": 60,
+    "signal": 12,
+    "tooltip": true,
+    "on-click": "pkill -RTMIN+12 waybar"
   },
 
   "custom/mail": {
