@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Убирает ленивую обёртку. По умолчанию удаляет только сам stub, а скачанный
+# инструмент оставляет в mise; --purge сносит и его.
+#
+#   omvoid-mise-uninstall codex
+#   omvoid-mise-uninstall --purge codex
+
+set -euo pipefail
+
+STUB_MARK="# omvoid-mise-stub"
+STUB_DIR="${OMVOID_STUB_DIR:-$HOME/.local/bin}"
+
+purge=false
+if [[ ${1:-} == "--purge" ]]; then
+  purge=true
+  shift
+fi
+
+if [[ -z ${1:-} ]]; then
+  echo "Использование: omvoid-mise-uninstall [--purge] <имя-команды>" >&2
+  exit 1
+fi
+
+target="$STUB_DIR/$1"
+
+if [[ ! -e $target ]]; then
+  echo "omvoid-mise-uninstall: $target не найден" >&2
+  exit 1
+fi
+
+# Та же осторожность, что при установке: если это не наш файл, значит его
+# положил сюда кто-то другой, и удалять его мы не вправе.
+if ! grep -qF "$STUB_MARK" "$target"; then
+  echo "omvoid-mise-uninstall: $target — не наш stub, не трогаю" >&2
+  exit 1
+fi
+
+package=$(sed -n "s|^${STUB_MARK} ||p" "$target" | head -1)
+rm -f "$target"
+echo "удалён stub: $target"
+
+if $purge && [[ -n $package ]]; then
+  mise uninstall "$package" 2>/dev/null && echo "удалён инструмент: $package" || true
+  mise rm -g "$package" 2>/dev/null || true
+fi

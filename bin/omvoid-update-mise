@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Обновляет всё, чем управляет mise, — и рантаймы, и инструменты за stub'ами.
+# Без MISE_MINIMUM_RELEASE_AGE=0 mise придержал бы свежие релизы на несколько
+# дней, из-за чего агентские CLI отставали бы от своих собственных апдейтеров
+# сильнее, чем нужно.
+
+set -euo pipefail
+
+if ! command -v mise >/dev/null; then
+  echo "omvoid-update-mise: mise не установлен" >&2
+  exit 1
+fi
+
+MISE_MINIMUM_RELEASE_AGE=0 exec mise up "$@"

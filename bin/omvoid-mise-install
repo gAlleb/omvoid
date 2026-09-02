@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# Создаёт ленивую обёртку над mise: команда появляется в PATH сразу, а сам
+# инструмент скачивается при первом её запуске. Файл весит ~200 байт, поэтому
+# прошить можно сколько угодно CLI, не удлиняя установку системы.
+#
+# Использование: omvoid-mise-install <пакет> [имя-команды [имя-бинарника]]
+#   omvoid-mise-install codex
+#   omvoid-mise-install antigravity-cli agy
+#   omvoid-mise-install npm:@xai-official/grok grok
+
+set -euo pipefail
+
+STUB_MARK="# omvoid-mise-stub"
+STUB_DIR="${OMVOID_STUB_DIR:-$HOME/.local/bin}"
+
+if [[ -z ${1:-} ]]; then
+  echo "Использование: omvoid-mise-install <пакет> [имя-команды [имя-бинарника]]" >&2
+  exit 1
+fi
+
+package=$1
+command_name=${2:-$1}
+bin=${3:-$command_name}
+
+# Имя пакета может нести бэкенд и версию (npm:@scope/foo, github:a/b, node@22).
+# В имя файла это не годится, поэтому срезаем, если имя команды не задано явно.
+if (($# < 2)); then
+  command_name=${command_name##*:}
+  command_name=${command_name##*/}
+  command_name=${command_name%%@*}
+fi
+
+mkdir -p "$STUB_DIR"
+target="$STUB_DIR/$command_name"
+
+# Здесь в том же каталоге лежат скрипты,
+# написанные руками, поэтому чужой файл не трогаем ни при каких
+# обстоятельствах -- ошибиться именем стоит слишком дорого.
+if [[ -e $target ]] && ! grep -qF "$STUB_MARK" "$target" 2>/dev/null; then
+  echo "omvoid-mise-install: $target уже существует и это не наш stub — не трогаю" >&2
+  exit 1
+fi
+
+# Если команда с таким именем уже есть в PATH, stub её либо перекроет, либо
+# останется мёртвым грузом — смотря какой каталог идёт раньше. Сказать об этом
+# сейчас дешевле, чем потом искать, почему запускается не то.
+existing=$(command -v "$command_name" 2>/dev/null || true)
+if [[ -n $existing && $existing != "$target" ]]; then
+  echo "omvoid-mise-install: внимание — '$command_name' уже есть в PATH: $existing" >&2
+fi
+
+cat >"$target" <<EOF
+#!/bin/bash
+$STUB_MARK $package
+# MISE_MINIMUM_RELEASE_AGE=0: по умолчанию mise придерживает свежие релизы на
+# несколько дней, а CLI-агенты выпускаются почти ежедневно. Экспортируется, а
+# не ставится только на строку установки, чтобы версия, которую mise выберет
+# для запуска, совпала с той, которую он только что поставил.
+export MISE_MINIMUM_RELEASE_AGE=0
+mise use -g --quiet "$package" || exit 1
+exec mise x "$package" -- "$bin" "\$@"
+EOF
+
+chmod +x "$target"
+echo "создан stub: $target → $package"
+
+case ":$PATH:" in
+*":$STUB_DIR:"*) ;;
+*) echo "внимание: $STUB_DIR не в PATH — команда '$command_name' не найдётся" >&2 ;;
+esac

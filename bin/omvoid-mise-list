@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Показывает все ленивые обёртки: имя команды, за каким пакетом она стоит и
+# скачан ли он уже. Пустая колонка состояния — нормально: stub на то и ленивый,
+# что до первого запуска за ним ничего нет.
+
+set -euo pipefail
+
+STUB_MARK="# omvoid-mise-stub"
+STUB_DIR="${OMVOID_STUB_DIR:-$HOME/.local/bin}"
+
+if [[ ! -d $STUB_DIR ]]; then
+  echo "каталог $STUB_DIR не создан — ни одного stub'а ещё нет"
+  exit 0
+fi
+
+found=0
+for stub in "$STUB_DIR"/*; do
+  [[ -f $stub ]] || continue
+  grep -qF "$STUB_MARK" "$stub" || continue
+  found=1
+
+  package=$(sed -n "s|^${STUB_MARK} ||p" "$stub" | head -1)
+
+  if where=$(mise where "$package" 2>/dev/null) && [[ -n $where ]]; then
+    state="скачан ${where##*/}"
+  else
+    state="ещё не скачан"
+  fi
+
+  printf '%-14s %-38s %s\n' "${stub##*/}" "$package" "$state"
+done
+
+((found)) || echo "в $STUB_DIR нет ни одного stub'а"

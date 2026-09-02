@@ -86,7 +86,9 @@ run_step development/development.sh
 run_step development/omvoid-repo.sh
 run_step development/sddm.sh
 run_step development/pipewire.sh
-run_step development/node.sh
+run_step development/mise.sh
+# ЗАКОММЕНТИРОВАНО: node ставится через mise (см. development/mise.sh)
+#run_step development/node.sh
 run_step development/mihomo.sh
 run_step development/brave-repo.sh
 run_step development/mw.sh
