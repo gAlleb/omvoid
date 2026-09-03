@@ -106,7 +106,7 @@ show_subtext "Installing default applications [4/5]"
 run_step apps/icons.sh
 run_step apps/tui.sh
 run_step apps/audioutils.sh
-run_step apps/netui.sh
+run_step apps/vendored.sh
 run_step apps/webapps.sh
 run_step apps/xtras.sh
 run_step apps/mimetypes.sh

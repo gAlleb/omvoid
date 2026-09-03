@@ -1,22 +1,59 @@
 #!/bin/bash
 
-# Кладёт конфиг из репозитория в ~/.config поверх живого, сохранив резервную
-# копию и показав, что именно затирается. Нужен потому, что config/ попадает в
-# ~/.config копированием, и после git pull живой файл сам не обновится:
-# install.sh перекопировать не станет, у шага config/config.sh стоит маркер.
+# Кладёт файл из репозитория туда, куда его разворачивает установка, сохранив
+# резервную копию и показав, что именно затирается. Нужен потому, что установка
+# копирует, а не связывает: после git pull живой файл сам не обновится, и
+# повторный install.sh его не тронет -- у шага стоит маркер.
 #
 #   omvoid-refresh-config waybar/config-mango
-#   omvoid-refresh-config waybar/config-mango waybar/style-mango.css
+#   omvoid-refresh-config applications/imv.desktop default/.bashrc
 #
-# С --capture -- наоборот, из ~/.config в репозиторий. Нужно потому, что правки
-# делаются и там и там: живой файл правится по ходу дела и уходит вперёд, и без
-# обратного хода эта правка теряется при первом же обновлении.
+# С --capture -- наоборот, из системы в репозиторий. Правки делаются и там и
+# там: живой файл правится по ходу дела и уходит вперёд, и без обратного хода
+# эта правка теряется при первом же обновлении.
 #
 #   omvoid-refresh-config --capture mango/conf/windowrules.conf
+#
+# Путь можно давать репозиторный (config/..., default/..., applications/...)
+# или, по старой привычке, относительно ~/.config -- тогда config/ добавится сам.
 
 set -euo pipefail
 
 OMVOID_PATH="${OMVOID_PATH:-$HOME/.local/share/omvoid}"
+
+# Куда установка разворачивает файл репозитория. Пусто -- значит этот файл
+# никуда не копируется: themes/ и default/agents/ разворачиваются симлинками и
+# потому живые сами по себе, default/xcompose подключается по пути,
+# default/repokeyes уезжает в системный каталог под root.
+deployed_target() {
+  case "$1" in
+  config/*) echo "$HOME/.config/${1#config/}" ;;
+  applications/icons/*) echo "$HOME/.local/share/icons/hicolor/48x48/apps/${1#applications/icons/}" ;;
+  applications/*.desktop) echo "$HOME/.local/share/applications/${1#applications/}" ;;
+  install/apps/files/*) echo "$HOME/.local/bin/${1#install/apps/files/}" ;;
+  default/gnupg/*) echo "$HOME/.gnupg/${1#default/gnupg/}" ;;
+  default/.bashrc | default/.bash_profile | default/.gtkrc-2.0) echo "$HOME/${1#default/}" ;;
+  esac
+}
+
+# Старая форма вызова принимала путь относительно ~/.config. Оставлена: ей
+# пользуются и руки, и написанная раньше документация.
+normalize() {
+  case "$1" in
+  config/* | default/* | applications/* | install/* | themes/*) echo "$1" ;;
+  *) echo "config/$1" ;;
+  esac
+}
+
+# Служебный режим для omvoid-update: спросить, куда разворачивается файл, и
+# ничего не делать. Так таблица путей живёт в одном месте, а не в двух.
+if [[ ${1:-} == "--where" ]]; then
+  shift
+  for argument in "$@"; do
+    deployed_target "$(normalize "$argument")"
+  done
+  exit 0
+fi
 
 capture=false
 if [[ ${1:-} == "--capture" ]]; then
@@ -28,26 +65,40 @@ if (($# == 0)); then
   cat >&2 <<USAGE
 Использование: omvoid-refresh-config [--capture] <путь> [путь...]
 
-Путь -- относительно ~/.config, он же относительно config/ в репозитории:
+  omvoid-refresh-config waybar/config-mango            репозиторий -> система
+  omvoid-refresh-config --capture waybar/config-mango  система -> репозиторий
 
-  omvoid-refresh-config waybar/config-mango            репозиторий -> ~/.config
-  omvoid-refresh-config --capture waybar/config-mango  ~/.config -> репозиторий
+Путь репозиторный либо относительно ~/.config. Разворачиваются:
+  config/*                 -> ~/.config/
+  applications/*.desktop   -> ~/.local/share/applications/
+  applications/icons/*     -> ~/.local/share/icons/hicolor/48x48/apps/
+  install/apps/files/*     -> ~/.local/bin/
+  default/.bashrc и т.п.   -> \$HOME
 USAGE
   exit 1
 fi
 
 status=0
-for config_file in "$@"; do
+for argument in "$@"; do
+  config_file=$(normalize "$argument")
+  deployed=$(deployed_target "$config_file")
+
+  if [[ -z $deployed ]]; then
+    echo "omvoid-refresh-config: $config_file никуда не копируется установкой" >&2
+    status=1
+    continue
+  fi
+
   if $capture; then
-    source_file="$HOME/.config/$config_file"
-    target_file="$OMVOID_PATH/config/$config_file"
-    missing="на машине нет ~/.config/$config_file"
-    label="config/$config_file"
+    source_file="$deployed"
+    target_file="$OMVOID_PATH/$config_file"
+    missing="в системе нет ${deployed/#$HOME/\~}"
+    label="$config_file"
   else
-    source_file="$OMVOID_PATH/config/$config_file"
-    target_file="$HOME/.config/$config_file"
-    missing="в репозитории нет config/$config_file"
-    label="~/.config/$config_file"
+    source_file="$OMVOID_PATH/$config_file"
+    target_file="$deployed"
+    missing="в репозитории нет $config_file"
+    label="${deployed/#$HOME/\~}"
   fi
 
   if [[ ! -f $source_file ]]; then

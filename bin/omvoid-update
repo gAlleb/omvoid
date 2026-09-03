@@ -20,6 +20,12 @@ step() { echo -e "\n\e[32m==> $1\e[0m"; }
 
 confirm() {
   $assume_yes && return 0
+  # Без терминала спрашивать некого и нечем: gum там падает, а read сразу видит
+  # конец ввода. Молча отвечаем "нет" -- ничего не менять безопаснее.
+  if [[ ! -t 0 ]]; then
+    echo "нет терминала для вопроса -- пропускаю" >&2
+    return 1
+  fi
   if command -v gum >/dev/null; then
     gum confirm "$1"
   else
@@ -91,16 +97,35 @@ is_runtime_owned() {
   return 1
 }
 
-mapfile -t changed < <(
-  cd "$OMVOID_PATH/config"
-  find . -type f -printf '%P\n' | sort
+# Установка разворачивает не только config/. Обходим все каталоги, которые она
+# куда-то копирует, иначе обновление молча пропускало бы новую иконку, правку в
+# .bashrc или обновлённый netui -- ровно то, что на машину само не приезжает.
+mapfile -t candidates < <(
+  cd "$OMVOID_PATH"
+  find config -type f -printf '%p\n'
+  find applications -maxdepth 1 -name '*.desktop' -printf '%p\n'
+  find applications/icons -type f -printf '%p\n' 2>/dev/null
+  find install/apps/files -type f -printf '%p\n' 2>/dev/null
+  for f in default/.bashrc default/.bash_profile default/.gtkrc-2.0; do
+    [[ -f $f ]] && printf '%s\n' "$f"
+  done
+  find default/gnupg -type f -printf '%p\n' 2>/dev/null
 )
 
 diverged=()
-for rel in "${changed[@]}"; do
-  is_runtime_owned "$rel" && continue
-  target="$HOME/.config/$rel"
-  if [[ ! -f $target ]] || ! cmp -s "$OMVOID_PATH/config/$rel" "$target"; then
+for rel in "${candidates[@]}"; do
+  # is_runtime_owned знает про пути внутри config/, поэтому спрашиваем её тем же
+  # видом пути, что и раньше.
+  [[ $rel == config/* ]] && is_runtime_owned "${rel#config/}" && continue
+
+  # Шаблоны с подстановкой при установке есть не только в config/:
+  # default/.bash_profile несёт путь с __USERNAME__ для opam. Копировать их как
+  # есть нельзя ни в какую сторону, поэтому в список они не попадают.
+  grep -q '__USERNAME__' "$OMVOID_PATH/$rel" 2>/dev/null && continue
+
+  target=$(omvoid-refresh-config --where "$rel")
+  [[ -n $target ]] || continue
+  if [[ ! -f $target ]] || ! cmp -s "$OMVOID_PATH/$rel" "$target"; then
     diverged+=("$rel")
   fi
 done
@@ -116,7 +141,9 @@ else
   echo "расходятся с репозиторием (${#diverged[@]}):"
   # Выбор пофайлово, а не "заменить всё": часть расхождений -- это ручная
   # правка живого файла, которую заменять как раз не надо.
-  if command -v gum >/dev/null; then
+  # gum рисует список только в терминале. Под cron, по ssh без tty или в
+  # конвейере он падает, поэтому запасной путь -- обычный список и один вопрос.
+  if command -v gum >/dev/null && [[ -t 0 && -t 1 ]]; then
     mapfile -t chosen < <(gum choose --no-limit --height 20 \
       --header "Пробел -- отметить, Enter -- обновить отмеченные" \
       "${diverged[@]}" || true)

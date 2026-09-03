@@ -79,8 +79,13 @@ machine. Shipping a new file is not one: it arrives on its own.
 sync, migrations, `mise up`, skill relinking, reloads, and finally
 `omvoid-hook post-update` for anything machine-specific.
 
-The config sync matters because `config/` reaches `~/.config` by copying and
-`install.sh` will not repeat that step once its marker exists. It lists files
+The sync step matters because the repo reaches `$HOME` by copying, and
+`install.sh` will not repeat those steps once their markers exist. It covers
+every directory the install deploys, not just `config/`: `applications/*.desktop`
+and the icons, `install/apps/files/*` (vendored executables that land in
+`~/.local/bin`), and the `default/` dotfiles. The path table lives in
+`omvoid-refresh-config`; ask it with `--where <repo-path>` rather than
+duplicating it. It lists files
 that diverged and lets you pick per file — never blanket-overwrite. Some paths
 are deliberately excluded because the system owns them after installation
 (`rclone/rclone.conf` is an empty placeholder in git, `nvim/lazy-lock.json` is

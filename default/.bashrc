@@ -42,6 +42,8 @@ PS1="\[\033[1;33m\] \[\e[01;37m\] \[\e[01;34m\]\w \[\e[1;33m\]󰅂 \[\e[0;
 # [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 # [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
+export PATH="$HOME/.local/bin:$PATH"
+
 # Подставляет в PATH то, чем управляет mise. Только для интерактивной оболочки:
 # в скриптах и сервисах этих версий не будет — там нужны шимы.
 eval "$(mise activate bash)"
