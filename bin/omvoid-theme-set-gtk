@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Отдаёт цвета текущей палитры приложениям на GTK3 и GTK4/libadwaita.
+#
+# Nautilus и прочий libadwaita GTK-темы игнорируют: единственное, что они
+# слушают, -- переопределения @define-color в gtk.css. Поэтому файл с цветами
+# кладётся рядом и подключается строкой @import.
+#
+# Строка дописывается в самый конец: в этих же файлах может стоять @import от
+# Noctalia, а в CSS выигрывает тот, кто объявлен последним.
+
+set -euo pipefail
+
+SOURCE="$HOME/.cache/wal/colors-gtk.css"
+IMPORT='@import url("omvoid.css"); /* omvoid: цвета из pywal */'
+
+if [[ ! -f $SOURCE ]]; then
+  echo "omvoid-theme-set-gtk: нет $SOURCE -- pywal ещё не разворачивал шаблон" >&2
+  exit 1
+fi
+
+# Дописывает @import в конец файла, предварительно убрав свою же прежнюю строку,
+# чтобы повторные запуски не плодили дубликаты.
+ensure_import() {
+  local css="$1"
+  [[ -f $css ]] || return 0
+  local tmp
+  tmp=$(mktemp)
+  grep -vF 'omvoid: цвета из pywal' "$css" >"$tmp" || true
+  printf '\n%s\n' "$IMPORT" >>"$tmp"
+  cat "$tmp" >"$css"   # не mv: gtk.css бывает симлинком, его надо сохранить
+  rm -f "$tmp"
+}
+
+for version in 3.0 4.0; do
+  dir="$HOME/.config/gtk-$version"
+  [[ -d $dir ]] || continue
+
+  cp -f "$SOURCE" "$dir/omvoid.css"
+
+  # gtk.css и gtk-dark.css у WhiteSur -- симлинки на gtk-Light.css/gtk-Dark.css.
+  # Правим то, на что они указывают, иначе запись пошла бы мимо.
+  for entry in gtk.css gtk-dark.css; do
+    [[ -e $dir/$entry ]] || continue
+    ensure_import "$(readlink -f "$dir/$entry")"
+  done
+done
+
+echo "цвета GTK обновлены (gtk-3.0, gtk-4.0)"

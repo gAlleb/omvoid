@@ -85,6 +85,8 @@ executeCommand() {
     pkill -SIGUSR1 dwmblocks
     pywalfox update
     omvoid-theme-set-browser wal
+    omvoid-theme-set-gtk
+    omvoid-theme-set-obsidian
     ln -sf ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc 
     dunstctl reload
     pkill -e --signal SIGKILL dunst

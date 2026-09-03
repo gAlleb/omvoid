@@ -33,7 +33,7 @@ if [[ -z "$mode_choice" ]]; then
 fi
 
 # 6. Determine the correct `wal` flag based on the choice
-local wal_flags=""
+wal_flags=""
 if [ "$mode_choice" = "Light Mode" ]; then
     wal_flags="-l -i ${current_wallpaper}"
     kvantummanager --set WhiteSur-opaque
@@ -56,6 +56,8 @@ xdotool key alt+shift+F5
 pkill -SIGUSR1 dwmblocks
 pywalfox update
 omvoid-theme-set-browser wal
+omvoid-theme-set-gtk
+omvoid-theme-set-obsidian
 ln -sf ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc 
 dunstctl reload
 pkill -e --signal SIGKILL dunst

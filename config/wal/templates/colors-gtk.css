@@ -1,0 +1,81 @@
+/*
+ * Цвета GTK/libadwaita из текущей палитры pywal.
+ * Генерируется автоматически, правится шаблон: config/wal/templates/colors-gtk.css
+ *
+ * Nautilus и прочие приложения на libadwaita GTK-темы игнорируют полностью.
+ * Единственное, что они слушают, -- переопределения @define-color в gtk.css.
+ * Поэтому файл подключается строкой @import из gtk.css, а не ставится темой.
+ *
+ * Набор имён повторяет тот, что пишет Noctalia: он покрывает и GTK3, и GTK4.
+ *
+ * Тональный ряд строится от color1 -- цвета темы, а не от background.
+ * Иначе все поверхности сливаются: в палитрах pywal color0 обычно равен
+ * background, и получается плоская чернота вместо оттенка темы.
+ *
+ * saturate(18) поднимает насыщенность базы: у color1 она бывает около 0.08,
+ * и без этого весь ряд читается серым, хотя тон у него тёплый. saturate
+ * ЗАДАЁТ насыщенность, а не прибавляет -- значение одинаково на всех темах.
+ *
+ * Проценты только целые: pywal16 вырезает точку из аргумента, и lighten(0.2)
+ * превратился бы в 2%, а не в 20%.
+ */
+
+@define-color accent_color {color5};
+@define-color accent_bg_color {color5};
+@define-color accent_fg_color {color1.saturate(18).darken(62)};
+
+@define-color destructive_bg_color {color1};
+@define-color destructive_fg_color {color1.saturate(18).darken(62)};
+
+@define-color error_bg_color {color1};
+@define-color error_fg_color {color1.saturate(18).darken(62)};
+
+@define-color success_bg_color {color2};
+@define-color success_fg_color {color1.saturate(18).darken(62)};
+
+@define-color warning_bg_color {color3};
+@define-color warning_fg_color {color1.saturate(18).darken(62)};
+
+@define-color window_bg_color {color1.saturate(18).darken(62)};
+@define-color window_fg_color {foreground};
+
+@define-color view_bg_color {color1.saturate(18).darken(62)};
+@define-color view_fg_color {foreground};
+
+@define-color headerbar_bg_color {color1.saturate(18).darken(45)};
+@define-color headerbar_fg_color {foreground};
+@define-color headerbar_backdrop_color {color1.saturate(18).darken(72)};
+@define-color headerbar_border_color {color1.saturate(18).lighten(10)};
+
+@define-color popover_bg_color {color1.saturate(18).darken(45)};
+@define-color popover_fg_color {foreground};
+
+@define-color card_bg_color {color1.saturate(18).darken(45)};
+@define-color card_fg_color {foreground};
+
+@define-color dialog_bg_color {color1.saturate(18).darken(45)};
+@define-color dialog_fg_color {foreground};
+
+@define-color overview_bg_color {color1.saturate(18).darken(62)};
+@define-color overview_fg_color {foreground};
+
+@define-color sidebar_bg_color {color1.saturate(18).darken(45)};
+@define-color sidebar_fg_color {foreground};
+@define-color sidebar_backdrop_color {color1.saturate(18).darken(72)};
+@define-color sidebar_border_color {color1.saturate(18).lighten(10)};
+
+@define-color secondary_sidebar_bg_color {color1.saturate(18).darken(45)};
+@define-color secondary_sidebar_fg_color {foreground};
+@define-color secondary_sidebar_border_color {color1.saturate(18).lighten(10)};
+
+/* GTK3 знает ещё эти два */
+@define-color theme_selected_bg_color {color5};
+@define-color theme_selected_fg_color {color1.saturate(18).darken(62)};
+
+/* Неактивное окно: те же цвета приглушённее */
+@define-color theme_unfocused_bg_color {color1.saturate(18).darken(62)};
+@define-color theme_unfocused_base_color {color1.saturate(18).darken(62)};
+@define-color theme_unfocused_fg_color {color1.saturate(18).lighten(10)};
+@define-color theme_unfocused_text_color {color1.saturate(18).lighten(10)};
+@define-color theme_unfocused_selected_bg_color {color1.saturate(18).lighten(10)};
+@define-color theme_unfocused_selected_fg_color {color1.saturate(18).darken(62)};

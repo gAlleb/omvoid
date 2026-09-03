@@ -34,6 +34,20 @@ omvoid-theme-set-browser
 # run wal 
 wal -c 
 wal --theme "$CURRENT_THEME_DIR/colors.json"
+wal_status=$?
+
+# Если wal упал, дальше идти нельзя: ниже стоит перезагрузка конфига
+# композитора, а он читает то, что wal должен был сгенерировать. Именно так
+# опечатка в шаблоне однажды уронила всю сессию.
+if (( wal_status != 0 )); then
+  echo "wal завершился с ошибкой ($wal_status) -- пропускаю перезагрузку конфигов" >&2
+  notify-send -u critical "Тема не применена" "wal упал, см. вывод" 2>/dev/null || true
+  exit 1
+fi
+
+# После wal, а не до: оба читают ~/.cache/wal, который wal только что переписал.
+omvoid-theme-set-gtk
+omvoid-theme-set-obsidian
 pkill -SIGUSR2 waybar
 mmsg dispatch reload_config
 swaync-client -rs

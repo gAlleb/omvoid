@@ -33,7 +33,7 @@ if [[ -z "$mode_choice" ]]; then
 fi
 
 # 6. Determine the correct `wal` flag based on the choice
-local wal_flags=""
+wal_flags=""
 if [ "$mode_choice" = "Light Mode" ]; then
     wal_flags="-l -i ${current_wallpaper}"
     gsettings set org.gnome.desktop.interface gtk-theme "WhiteSur-Light"
@@ -53,9 +53,21 @@ wal -c
 # Generate the new color scheme using wal with the determined flag
 #wal ${wal_flags} -i ${selected_wallpaper}
 wal ${wal_flags} 
+wal_status=$?
+
+# Если wal упал, дальше идти нельзя: ниже стоит перезагрузка конфига
+# композитора, а он читает то, что wal должен был сгенерировать. Именно так
+# опечатка в шаблоне однажды уронила всю сессию.
+if (( wal_status != 0 )); then
+  echo "wal завершился с ошибкой ($wal_status) -- пропускаю перезагрузку конфигов" >&2
+  notify-send -u critical "Тема не применена" "wal упал, см. вывод" 2>/dev/null || true
+  exit 1
+fi
 
 pywalfox update
 omvoid-theme-set-browser wal
+omvoid-theme-set-gtk
+omvoid-theme-set-obsidian
 pkill -SIGUSR2 waybar
 swaync-client -rs
 makoctl reload

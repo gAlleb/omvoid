@@ -1,0 +1,87 @@
+/* Цвета Obsidian из текущей палитры pywal.
+ * Генерируется автоматически, правится шаблон: config/wal/templates/obsidian.css
+ *
+ * Это сниппет, а не тема: подключается поверх выбранной темы и меняет только
+ * цвета. Тема (GitHub Theme и любая другая) остаётся на месте вместе со всей
+ * своей вёрсткой. */
+
+.theme-dark,
+.theme-light {{
+  /* Фон */
+  --background-primary:              {color1.saturate(18).darken(62)};
+  --background-primary-alt:          {color1.saturate(18).darken(72)};
+  --background-secondary:            {color1.saturate(18).darken(45)};
+  --background-secondary-alt:        {color1.saturate(18).darken(52)};
+  --background-modifier-border:      {color1.saturate(18).lighten(10)};
+  --background-modifier-border-hover: {color5};
+  --background-modifier-border-focus: {color5};
+  --background-modifier-form-field:  {color1.saturate(18).darken(45)};
+  --background-modifier-box-shadow:  {color1.saturate(18).darken(62)};
+  --background-modifier-success:     {color2};
+  --background-modifier-error:       {color1};
+  --background-modifier-cover:       {color1.saturate(18).darken(62)};
+
+  /* Текст */
+  --text-normal:                     {foreground};
+  --text-muted:                      {color7};
+  --text-faint:                      {color1.saturate(18).lighten(10)};
+  --text-on-accent:                  {color1.saturate(18).darken(62)};
+  --text-error:                      {color1};
+  --text-success:                    {color2};
+  --text-accent:                     {color5};
+  --text-accent-hover:               {color6.saturate(26)};
+  --text-selection:                  {color1.saturate(18).lighten(10)};
+  --text-highlight-bg:               {color3};
+
+  /* Взаимодействие */
+  --interactive-normal:              {color1.saturate(18).darken(45)};
+  --interactive-hover:               {color1.saturate(18).lighten(10)};
+  --interactive-accent:              {color5};
+  --interactive-accent-hover:        {color6.saturate(26)};
+  --interactive-success:             {color2};
+
+  /* Акцент */
+  --color-accent:                    {color5};
+  --color-accent-1:                  {color5};
+  --color-accent-2:                  {color6.saturate(26)};
+
+  /* Заголовки */
+  --h1-color:                        {color5};
+  --h2-color:                        {color5};
+  --h3-color:                        {color6.saturate(26)};
+  --h4-color:                        {color3};
+  --h5-color:                        {color2};
+  --h6-color:                        {color7};
+
+  /* Код и цитаты */
+  --code-background:                 {color1.saturate(18).darken(45)};
+  --code-normal:                     {foreground};
+  --code-comment:                    {color1.saturate(18).lighten(10)};
+  --blockquote-border-color:         {color5};
+  --bold-color:                      {color5};
+  --italic-color:                    {color6.saturate(26)};
+
+  /* Разделители, скроллбар, ссылки */
+  --divider-color:                   {color1.saturate(18).lighten(10)};
+  --divider-color-hover:             {color5};
+  --scrollbar-bg:                    {color1.saturate(18).darken(62)};
+  --scrollbar-thumb-bg:              {color1.saturate(18).lighten(10)};
+  --scrollbar-active-thumb-bg:       {color5};
+  --link-color:                      {color5};
+  --link-color-hover:                {color6.saturate(26)};
+  --link-unresolved-color:           {color1};
+
+  /* Граф */
+  --graph-line:                      {color1.saturate(18).lighten(10)};
+  --graph-node:                      {foreground};
+  --graph-node-focused:              {color5};
+  --graph-node-tag:                  {color3};
+  --graph-node-attachment:           {color5};
+
+  /* Чекбоксы и теги */
+  --checkbox-color:                  {color5};
+  --checkbox-color-hover:            {color6.saturate(26)};
+  --checkbox-border-color:           {color1.saturate(18).lighten(10)};
+  --tag-color:                       {color6.saturate(26)};
+  --tag-background:                  {color1.saturate(18).darken(45)};
+}}

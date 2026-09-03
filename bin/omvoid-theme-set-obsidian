@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Отдаёт цвета текущей палитры всем хранилищам Obsidian.
+#
+# Кладётся сниппетом, а не темой: тема (GitHub Theme и любая другая) остаётся
+# выбранной вместе со своей вёрсткой, сниппет меняет поверх неё только цвета.
+# Так же поступает Noctalia -- отсюда и совместимость, если оба включены.
+#
+# Хранилища берутся из ~/.config/obsidian/obsidian.json, а не задаются жёстко:
+# их может быть несколько, и путь к ним меняется.
+
+set -euo pipefail
+
+SOURCE="$HOME/.cache/wal/obsidian.css"
+SNIPPET_NAME="omvoid"
+VAULTS_FILE="$HOME/.config/obsidian/obsidian.json"
+
+if [[ ! -f $SOURCE ]]; then
+  echo "omvoid-theme-set-obsidian: нет $SOURCE -- pywal ещё не разворачивал шаблон" >&2
+  exit 1
+fi
+
+[[ -f $VAULTS_FILE ]] || exit 0
+
+count=0
+while read -r vault; do
+  [[ -d $vault/.obsidian ]] || continue
+
+  mkdir -p "$vault/.obsidian/snippets"
+  cp -f "$SOURCE" "$vault/.obsidian/snippets/$SNIPPET_NAME.css"
+
+  # Сниппет мало положить -- его надо ещё включить, иначе Obsidian его
+  # проигнорирует. Список правится через jq, чтобы не потерять остальные
+  # настройки внешнего вида; запись атомарная, файл читает живое приложение.
+  appearance="$vault/.obsidian/appearance.json"
+  [[ -f $appearance ]] || echo '{}' >"$appearance"
+
+  tmp=$(mktemp)
+  jq --arg s "$SNIPPET_NAME" '
+    .enabledCssSnippets = ((.enabledCssSnippets // []) + [$s] | unique)
+  ' "$appearance" >"$tmp" && mv "$tmp" "$appearance"
+
+  count=$((count + 1))
+done < <(jq -r '.vaults | values[].path' "$VAULTS_FILE" 2>/dev/null)
+
+echo "цвета Obsidian обновлены (хранилищ: $count)"

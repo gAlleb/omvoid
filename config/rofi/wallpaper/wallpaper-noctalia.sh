@@ -47,6 +47,16 @@ fi
 # --- 4. Run Pywal ---
 wal -c
 wal ${wal_flags}
+wal_status=$?
+
+# Если wal упал, дальше идти нельзя: ниже стоит перезагрузка конфига
+# композитора, а он читает то, что wal должен был сгенерировать. Именно так
+# опечатка в шаблоне однажды уронила всю сессию.
+if (( wal_status != 0 )); then
+  echo "wal завершился с ошибкой ($wal_status) -- пропускаю перезагрузку конфигов" >&2
+  notify-send -u critical "Тема не применена" "wal упал, см. вывод" 2>/dev/null || true
+  exit 1
+fi
 
 # --- 5. Wallpaper Setter (awww) ---
 awww img "${WALLPAPER}" 2>/dev/null
@@ -54,6 +64,8 @@ awww img "${WALLPAPER}" 2>/dev/null
 # --- 6. Update Applications & Colors ---
 pywalfox update 2>/dev/null &
 omvoid-theme-set-browser wal 2>/dev/null &
+omvoid-theme-set-gtk 2>/dev/null
+omvoid-theme-set-obsidian 2>/dev/null
 echo "\$wallpaper = ${WALLPAPER}" > "$CACHE_DIR/wallpaper-hyprland.conf"
 
 # Notification daemons & status bars

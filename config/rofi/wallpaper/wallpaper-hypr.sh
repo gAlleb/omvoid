@@ -80,12 +80,24 @@ executeCommand() {
     # Generate the new color scheme using wal with the determined flag
     #wal ${wal_flags} -i ${selected_wallpaper}
     wal ${wal_flags} 
+    wal_status=$?
+
+    # Если wal упал, дальше идти нельзя: ниже стоит перезагрузка конфига
+    # композитора, а он читает то, что wal должен был сгенерировать. Именно так
+    # опечатка в шаблоне однажды уронила всю сессию.
+    if (( wal_status != 0 )); then
+      echo "wal завершился с ошибкой ($wal_status) -- пропускаю перезагрузку конфигов" >&2
+      notify-send -u critical "Тема не применена" "wal упал, см. вывод" 2>/dev/null || true
+      exit 1
+    fi
 
     # Update other applications
     awww img --transition-type any --transition-angle 45 "${selected_wallpaper}"
     mmsg dispatch reload_config
     pywalfox update
     omvoid-theme-set-browser wal
+    omvoid-theme-set-gtk
+    omvoid-theme-set-obsidian
     echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR/wallpaper-hyprland.conf
     pkill -SIGUSR2 waybar
     swaync-client -rs
