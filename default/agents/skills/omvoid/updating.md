@@ -137,16 +137,22 @@ they were written for.
 ## Bringing a second machine up to date
 
 `omvoid-update` updates what is already deployed; it does not run install steps.
-New steps (a new tool, a new mechanism) arrive only through `install.sh`, which is
-safe to re-run: everything with a marker is skipped and only the new steps
-execute.
+New steps arrive only through `install.sh`, which is safe to re-run: everything
+with a marker is skipped and only the new steps execute.
 
-```bash
-cd ~/.local/share/omvoid && git pull
-bash ~/.local/share/omvoid/install.sh
-omvoid-update
-```
+A machine that has drifted needs one manual alignment first, because the
+baseline is only meaningful if repo and machine match when it is taken. The
+order matters and each step earns its place:
 
-Expect many divergences on a machine that has never been synced — those are two
-machines differing, not forgotten edits. Select only what genuinely must be the
-same everywhere.
+1. Back up `~/.config` and note the current font.
+2. `git pull`.
+3. Copy `config/*` over `~/.config`, the `default/` dotfiles over `$HOME`, and
+   run `omvoid-refresh-applications`. This is the alignment.
+4. `bash install.sh` — picks up new steps and records the baseline last.
+5. Restore the machine-specific files from the backup and re-apply the font.
+   Doing this *after* the baseline is what makes them read as user edits, so
+   they are never offered again.
+6. Log out and back in, then `omvoid-update` for the system packages.
+
+Steps 3 and 4 cannot swap: a baseline taken over a drifted machine records a
+state that was never deployed, and every later comparison reads from it.

@@ -99,9 +99,14 @@ omvoid-update -y    # unattended: reports differences, replaces nothing
 ```
 
 It lists the files that differ from the repo and lets you pick per file. The old
-version is kept as `<file>.bak.<epoch>` and the diff is printed. Files the system
-owns after installation — your font choice, monitor layout, autostart, rclone
-config, generated files — are never offered.
+version is kept as `<file>.bak.<epoch>` and the diff is printed.
+
+Your own edits are not on that list. OMVOID remembers what it deployed, so it can
+tell the three cases apart: if the repo moved ahead you are offered the new
+version, if you edited the live file it stays yours and is never mentioned, and
+if both changed it is flagged so you can look. Files rewritten by a program —
+your font, `lazy-lock.json`, crystal-dock's state, the real `rclone.conf` — fall
+into the second case and disappear from view on their own.
 
 Edits happen on both sides, so there is a way back:
 
@@ -114,14 +119,39 @@ live config dies at the next update. Paths may be given repo-relative
 (`applications/imv.desktop`, `default/.bashrc`) or, for configs, relative to
 `~/.config`.
 
-To bring a machine that has never been synced up to date, run the installer first
-so it picks up any new steps, then update:
+### Adopting a machine that has drifted
+
+A machine that has been running an older checkout for a while is brought into
+line once, by hand. That gives the comparison a truthful starting point;
+everything after it is automatic.
+
+```bash
+cp -a ~/.config ~/.config.bak-$(date +%F) && omvoid-font-current
+```
 
 ```bash
 cd ~/.local/share/omvoid && git pull
-bash ~/.local/share/omvoid/install.sh
-omvoid-update
 ```
+
+```bash
+cp -R ~/.local/share/omvoid/config/* ~/.config/
+```
+
+```bash
+cd ~/.local/share/omvoid/default && cp .bashrc .bash_profile .gtkrc-2.0 ~/ && cp gnupg/gpg-agent.conf ~/.gnupg/ && omvoid-refresh-applications
+```
+
+Then run the installer — it skips every step already done and adds the new ones,
+recording the starting point as its last act:
+
+```bash
+bash ~/.local/share/omvoid/install.sh
+```
+
+Only now put your machine-specific files back from the backup — monitor layout,
+autostart, `rclone.conf`, and your font with `omvoid-font-set`. Restoring them
+*after* the installer is what makes them count as your edits, so they will never
+be offered for replacement again. Log out and back in for the new shell files.
 
 ## Migrations
 
