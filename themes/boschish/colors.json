@@ -1,8 +1,7 @@
 {
     "checksum": "fbf286895b62332dd8fb6072cb544af2",
-    "wallpaper": "/home/stefan/.config/wallpaper/1.jpg",
+    "wallpaper": null,
     "alpha": "100",
-
     "special": {
         "background": "#201a0e",
         "foreground": "#c7c5c2",

@@ -36,6 +36,40 @@ deployed_target() {
   esac
 }
 
+# Манифест развёрнутого: что именно было положено на машину в последний раз.
+#
+# Без него расхождение -- одно слово для трёх разных случаев: репозиторий ушёл
+# вперёд, пользователь правил живой файл, или изменились обе стороны. Различить
+# их можно, только помня исходное состояние. Так же поступают pacman со своими
+# .pacnew и dpkg с conffiles.
+MANIFEST="${XDG_STATE_HOME:-$HOME/.local/state}/omvoid/deployed.sha256"
+
+# Формат строки -- как у sha256sum: 64 знака суммы, два пробела, путь. Значит
+# путь начинается с 67-го символа, и сравнивать надо именно его целиком.
+# Подстрокой нельзя: "config/waybar/config" входит в "config/waybar/config-mango",
+# и запись про один файл стирала бы запись про другой. Полем тоже нельзя --
+# среди файлов есть "applications/icons/Disk Usage.png" с пробелом в имени.
+manifest_get() {
+  [[ -f $MANIFEST ]] || return 1
+  local sum
+  sum=$(awk -v r="$1" 'substr($0, 67) == r { print substr($0, 1, 64) }' "$MANIFEST" | tail -1)
+  [[ -n $sum ]] || return 1
+  printf '%s\n' "$sum"
+}
+
+manifest_set() {
+  local rel="$1" file="$2" sum tmp
+  [[ -f $file ]] || return 0
+  sum=$(sha256sum "$file" | cut -d' ' -f1)
+  mkdir -p "$(dirname "$MANIFEST")"
+  tmp=$(mktemp)
+  {
+    [[ -f $MANIFEST ]] && awk -v r="$rel" 'substr($0, 67) != r' "$MANIFEST"
+    printf '%s  %s\n' "$sum" "$rel"
+  } >"$tmp" 2>/dev/null || true
+  mv "$tmp" "$MANIFEST"
+}
+
 # Старая форма вызова принимала путь относительно ~/.config. Оставлена: ей
 # пользуются и руки, и написанная раньше документация.
 normalize() {
@@ -44,6 +78,58 @@ normalize() {
   *) echo "config/$1" ;;
   esac
 }
+
+# Записать текущее состояние машины как исходное. Без аргументов -- по всем
+# файлам, которые вообще разворачиваются.
+#
+# Снимается на чистой машине: сразу после установки, когда репозиторий и
+# система заведомо совпадают. Различение работает вперёд по времени -- правка,
+# сделанная до этого момента, вобралась бы в отсчёт и перестала бы считаться
+# правкой. Поэтому машину, которая давно жила своей жизнью, сначала приводят в
+# соответствие с репозиторием вручную, а уже потом снимают отсчёт.
+if [[ ${1:-} == "--record" ]]; then
+  shift
+  if (($# == 0)); then
+    mapfile -t to_record < <(
+      cd "$OMVOID_PATH"
+      find config -type f -printf '%p\n'
+      find applications -maxdepth 1 -name '*.desktop' -printf '%p\n'
+      find applications/icons -type f -printf '%p\n' 2>/dev/null
+      find install/apps/files -type f -printf '%p\n' 2>/dev/null
+      for f in default/.bashrc default/.bash_profile default/.gtkrc-2.0; do
+        [[ -f $f ]] && printf '%s\n' "$f"
+      done
+      find default/gnupg -type f -printf '%p\n' 2>/dev/null
+    )
+  else
+    to_record=("$@")
+  fi
+  recorded=0
+  skipped=0
+  for argument in "${to_record[@]}"; do
+    rel=$(normalize "$argument")
+    live=$(deployed_target "$rel")
+    [[ -n $live && -f $live ]] || continue
+
+    # Записываем, только если репозиторий и машина сейчас совпадают.
+    #
+    # Вся дальнейшая логика держится на том, что запись означает "вот что было
+    # развёрнуто". Если файлы уже разошлись, такого момента не было, и запись
+    # соврала бы: живой равнялся бы записи, и любое расхождение читалось бы как
+    # "репозиторий впереди" -- даже там, где репозиторий ничего не менял.
+    # Честнее не знать исходного состояния, чем знать неверное.
+    if ! cmp -s "$OMVOID_PATH/$rel" "$live"; then
+      skipped=$((skipped + 1))
+      continue
+    fi
+
+    manifest_set "$rel" "$live"
+    recorded=$((recorded + 1))
+  done
+  echo "записано в манифест: $recorded"
+  ((skipped)) && echo "  пропущено (репозиторий и машина уже разошлись): $skipped"
+  exit 0
+fi
 
 # Служебный режим для omvoid-update: спросить, куда разворачивается файл, и
 # ничего не делать. Так таблица путей живёт в одном месте, а не в двух.
@@ -127,11 +213,17 @@ for argument in "$@"; do
 
   if [[ ! -f $target_file ]]; then
     cp -f "$source_file" "$target_file"
+    # После копии в любую сторону репозиторий и машина совпадают, и это
+    # состояние становится исходным для будущих сравнений.
+    manifest_set "$config_file" "$deployed"
     echo "создан: $label"
     continue
   fi
 
   if cmp -s "$source_file" "$target_file"; then
+    # Совпадают, но в манифесте могло не быть записи -- например, файл
+    # разворачивала установка, а не этот скрипт. Зафиксируем.
+    manifest_get "$config_file" >/dev/null || manifest_set "$config_file" "$deployed"
     echo "без изменений: $label"
     continue
   fi
@@ -158,6 +250,8 @@ for argument in "$@"; do
     echo "  что изменилось (- было, + стало):"
     diff -u "$backup" "$target_file" | tail -n +3 | sed 's/^/    /' || true
   fi
+
+  manifest_set "$config_file" "$deployed"
 done
 
 exit $status

@@ -110,6 +110,7 @@ run_step apps/vendored.sh
 run_step apps/webapps.sh
 run_step apps/xtras.sh
 run_step apps/mimetypes.sh
+run_step apps/record-deployed.sh
 
 show_logo
 show_subtext "Installing void-packages repo and building apps [5/5]"

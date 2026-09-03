@@ -44,31 +44,57 @@ file into the repo. Both directions are needed because edits genuinely happen on
 both sides — a live file gets tweaked in passing and moves ahead, and without a
 way back that tweak dies at the next update.
 
+## Telling three situations apart
+
+"The files differ" is one phrase for three situations that need opposite
+handling. They are distinguished by remembering what was last deployed —
+sha256 sums in `~/.local/state/omvoid/deployed.sha256`, the same trick pacman
+uses for `.pacnew` and dpkg for conffiles.
+
+| live vs recorded | repo vs recorded | meaning | shown? |
+|---|---|---|---|
+| same | differs | the repo moved ahead, nobody touched the file | yes, "репозиторий впереди" |
+| differs | same | the user edited the live file | **no** — it is their setting |
+| differs | differs | both changed | yes, "изменились обе стороны" |
+| — | — | missing on the machine | yes, "нет на машине" |
+
+A missing file is checked **before** the exclusion list: an exclusion means "do
+not overwrite what the system owns", not "never install". Otherwise a new
+`rofi/*.rasi` would never arrive, because that path matches the font rule.
+
+`omvoid-refresh-config` records after every copy in either direction, and
+`omvoid-update` seeds the manifest when it does not exist yet, so the order of
+the first commands does not matter.
+
+The distinction only works forward in time: an edit made *before* the baseline
+was recorded is absorbed into it and stops looking like an edit. So the baseline
+is taken on a clean machine — right after an install, when repo and system are
+known to match. A machine that has been running an older checkout for a while is
+first brought into line by hand, and only then recorded.
+
 ## What the sync must never touch
 
-Some files the repo ships once and the system owns afterwards. Their divergence
-is normal, not something to repair. The list lives in `is_runtime_owned` inside
-`omvoid-update`, each entry with the reason:
+Almost nothing, by design. A file that a program rewrites — the seventeen that
+`omvoid-font-set` edits, `autostart.conf` after `omvoid-cmd-first-run` removes
+its own line, `lazy-lock.json`, crystal-dock's state, the real `rclone.conf`
+over its empty placeholder — is recognised automatically: the machine's copy
+moved, the repo's did not, so it reads as a user edit and never appears in the
+list. Listing such files explicitly would also hide genuine repo changes to
+them, which is worse.
 
-- `rclone/rclone.conf` — an empty placeholder in git, the live file is the real one
-- `nvim/lazy-lock.json` — written by lazy.nvim
-- `bg.jpg`, `*.so` — generated or built
-- `crystal-dock/*` — the app writes its own state there
-- `mango/conf/autostart.conf` — `omvoid-cmd-first-run` deletes its own line from
-  it after the first boot, and per-machine things live there (screen brightness,
-  gpg unlock, autostarts)
-- `mango/conf/monitors.conf`, `hypr/config/monitors.conf` — geometry, scale and
-  output names belong to a particular laptop and monitor
-- everything `omvoid-font-set` rewrites: `alacritty/font.toml`, `kitty/kitty.conf`,
-  `ghostty/config`, `fontconfig/fonts.conf`, `swayosd/style.css`, `mako/config`,
-  `wal/templates/dunstrc`, every `rofi/*.rasi` — their divergence *is* the font
-  you picked
-- anything containing `__USERNAME__` — a template the installer substitutes.
-  Detected by content, not by a list, so a new one is covered automatically
+Two things still cannot be inferred and stay declared:
 
-Add to that list rather than letting an update destroy live state. The list only
-governs the automatic scan: `omvoid-refresh-config` knows nothing about it, so a
-migration can still touch an excluded file deliberately.
+- **Templates.** Anything containing `__USERNAME__` is substituted by the
+  installer. Copying it verbatim is wrong in both directions, whoever changed
+  it. Detected by content, so a new one is covered automatically.
+- **`mango/conf/monitors.conf` and `hypr/config/monitors.conf`.** Geometry,
+  scale and output names belong to a particular laptop and monitor. That is
+  machine-specific by nature rather than by accident, and getting it wrong means
+  someone else's resolution on someone else's screen — not a guess worth making.
+
+The list lives in `is_runtime_owned` inside `omvoid-update`, and it only governs
+the automatic scan: `omvoid-refresh-config` knows nothing about it, so a
+migration can still touch a declared file deliberately.
 
 ## Migrations
 

@@ -1,8 +1,7 @@
 {
     "checksum": "7cac33214a9cf01ebe46a1a851869986",
-    "wallpaper": "/home/stefan/.config/wallpaper/some-cool-wallpapers-v0-wkp1biib47da1.webp",
+    "wallpaper": null,
     "alpha": "100",
-
     "special": {
         "background": "#0c0d1b",
         "foreground": "#c2c2c6",

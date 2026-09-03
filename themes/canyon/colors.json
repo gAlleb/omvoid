@@ -1,8 +1,7 @@
 {
     "checksum": "4fd0510cfdb2ee8a6665209c043506c0",
-    "wallpaper": "/home/stefan/.config/wallpaper/Antelope_Canyon.jpeg",
+    "wallpaper": null,
     "alpha": "100",
-
     "special": {
         "background": "#251b10",
         "foreground": "#c8c6c3",

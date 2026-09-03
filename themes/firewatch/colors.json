@@ -1,8 +1,7 @@
 {
     "checksum": "454ce65d73f96572a239f6288feee546",
-    "wallpaper": "/home/stefan/.config/wallpaper/watchtower-mountains-and-forests.jpg",
+    "wallpaper": null,
     "alpha": "100",
-
     "special": {
         "background": "#0b101b",
         "foreground": "#c2c3c6",
