@@ -37,6 +37,11 @@ curl -fsSL https://raw.githubusercontent.com/gAlleb/omvoid/refs/heads/main/boot.
 > [!WARNING]  
 > Script will ask you for a password few times.
 
+### 📖 [Read the manual](MANUAL.md)
+
+Themes and wallpapers, keeping several machines in sync, AI agents, and where
+everything lives.
+
 ---
 
 Project started as a private repo just to reproduce my setup across different machines. But hey, sharing is caring :) Got some ideas from Omarchy project and Jake@Linux, reorganized initial scripting, tweaked some stuff. Work in progress.

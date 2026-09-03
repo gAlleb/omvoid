@@ -29,6 +29,7 @@ one before starting — they are written for this system specifically and are no
 duplicated here:
 
 - [`install-scripts.md`](default/agents/skills/omvoid/install-scripts.md) — adding or editing anything under `install/`
+- [`updating.md`](default/agents/skills/omvoid/updating.md) — reaching machines that are already installed: the file sync and migrations
 - [`theming.md`](default/agents/skills/omvoid/theming.md) — themes, wallpapers, and the pywal fan-out
 - [`mise-stubs.md`](default/agents/skills/omvoid/mise-stubs.md) — lazy CLI wrappers backed by mise
 - [`agent-usage.md`](default/agents/skills/omvoid/agent-usage.md) — AI usage collectors and the waybar module

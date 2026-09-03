@@ -78,6 +78,61 @@ drift easily.
 `~/.cache/omvoid_wallpaper/current_wallpaper_path` records the active wallpaper;
 `wallpaper-switch-theme-hypr.sh` reads it and fails loudly if it is missing.
 
+## GTK, libadwaita and Obsidian
+
+Nautilus and everything else on libadwaita **ignore GTK themes entirely**. The
+only thing they honour is `@define-color` overrides in `gtk.css`. So the colours
+are shipped as a separate file next to it and pulled in with an `@import`, which
+`omvoid-theme-set-gtk` appends as the **last** line — in CSS the last declaration
+wins, and Noctalia may have its own `@import` in the same files.
+
+Obsidian gets a **snippet**, not a theme: `<vault>/.obsidian/snippets/omvoid.css`
+plus one entry in `enabledCssSnippets`. A theme would force the user off whatever
+theme they picked; a snippet layers colours on top of it. Vault paths come from
+`~/.config/obsidian/obsidian.json`, never hardcoded.
+
+`appearance.json` is written **once**, only when the snippet is not yet enabled.
+Obsidian keeps that file open and rewrites it from its own memory; writing to it
+on every theme change once wiped five of the user's enabled snippets. After the
+first time only the CSS changes, and Obsidian hot-reloads it without a fight.
+
+### The tonal ramp
+
+Do not build surfaces from `{background}`: in pywal palettes `color0` usually
+equals it, so every surface collapses into the same flat dark and the theme's hue
+disappears. Build the ramp from `color1` instead, in `darken` steps, and take the
+accent from a vivid entry:
+
+```
+{color1.saturate(18).darken(62)}   window background
+{color1.saturate(18).darken(45)}   headerbars, cards, sidebars
+{color1.saturate(18).lighten(10)}  borders
+{color5}                           accent
+```
+
+### pywal16 specifics
+
+The fork behaves differently from stock pywal, and each difference has bitten:
+
+- **Percentages must be integers.** `lighten(0.2)` becomes 2%, not 20% — the
+  argument is run through `re.sub(r"[\D\.]", "", …)`, which strips the dot.
+- **`saturate(N)` sets saturation, it does not add.** The same template gives
+  0.26 on every theme, so a palette that is already vivid can come out flatter.
+- **Templates are parsed by regex, not `str.format()`.** A marker needs both
+  braces on one line, so a CSS block brace at the end of a line passes through
+  untouched. `{{` and `}}` still work and are unescaped at the end — prefer them,
+  as `base46-dark.lua` does.
+- **A broken template is skipped, not fatal.** pywal logs the error and moves on
+  to the next file.
+
+## When wal fails
+
+Every branch checks `wal`'s exit status before reloading anything. This matters
+because `mango/conf/config.conf` sources `~/.cache/wal/colors-mango.conf` on its
+first line, and `wal -c` deletes that cache before regenerating it. Reloading the
+compositor against a half-written cache is how a theme switch can take the whole
+session down. If `wal` fails, the branch stops and notifies instead.
+
 ## Gotchas
 
 - Colours are **never** written by hand into app configs. If an app looks wrong

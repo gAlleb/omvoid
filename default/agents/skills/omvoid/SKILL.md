@@ -45,6 +45,7 @@ Caches go to `~/.cache/omvoid/` and `~/.cache/omvoid_wallpaper/`.
 Read the matching guide before touching one of these areas:
 
 - [`install-scripts.md`](install-scripts.md) — adding or editing an install step
+- [`updating.md`](updating.md) — how a change reaches an installed machine: the file sync, its exclusions, and migrations
 - [`theming.md`](theming.md) — themes, wallpapers, and the pywal fan-out
 - [`mise-stubs.md`](mise-stubs.md) — lazy CLI wrappers backed by mise
 - [`agent-usage.md`](agent-usage.md) — AI agent usage collectors and the waybar module

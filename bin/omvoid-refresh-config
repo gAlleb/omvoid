@@ -117,7 +117,7 @@ for argument in "$@"; do
   #             этого пользователя, и на следующей машине он был бы неверным.
   if grep -q '__USERNAME__' "$source_file" 2>/dev/null ||
     { [[ -f $target_file ]] && grep -q '__USERNAME__' "$target_file"; }; then
-    echo "omvoid-refresh-config: config/$config_file -- шаблон с __USERNAME__, пропущен" >&2
+    echo "omvoid-refresh-config: $config_file -- шаблон с __USERNAME__, пропущен" >&2
     echo "  такие файлы правятся в репозитории вручную, с сохранением подстановки" >&2
     status=1
     continue
