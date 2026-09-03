@@ -30,15 +30,30 @@ while read -r vault; do
   cp -f "$SOURCE" "$vault/.obsidian/snippets/$SNIPPET_NAME.css"
 
   # Сниппет мало положить -- его надо ещё включить, иначе Obsidian его
-  # проигнорирует. Список правится через jq, чтобы не потерять остальные
-  # настройки внешнего вида; запись атомарная, файл читает живое приложение.
+  # проигнорирует.
+  #
+  # Но appearance.json одновременно держит открытым сам Obsidian и переписывает
+  # его из своей памяти. Запись отсюда при каждой смене темы однажды уже стёрла
+  # пользователю пять включённых сниппетов: наше чтение-правка-запись разошлось
+  # с его записью. Поэтому трогаем файл ровно один раз -- когда нашего сниппета
+  # в списке ещё нет. Дальше меняется только сам CSS, а его Obsidian
+  # перечитывает на лету и ни с кем за файл не спорит.
   appearance="$vault/.obsidian/appearance.json"
   [[ -f $appearance ]] || echo '{}' >"$appearance"
 
-  tmp=$(mktemp)
-  jq --arg s "$SNIPPET_NAME" '
-    .enabledCssSnippets = ((.enabledCssSnippets // []) + [$s] | unique)
-  ' "$appearance" >"$tmp" && mv "$tmp" "$appearance"
+  if ! jq -e --arg s "$SNIPPET_NAME" \
+    '(.enabledCssSnippets // []) | index($s)' "$appearance" >/dev/null 2>&1; then
+    tmp=$(mktemp)
+    if jq --arg s "$SNIPPET_NAME" \
+      '.enabledCssSnippets = ((.enabledCssSnippets // []) + [$s])' \
+      "$appearance" >"$tmp"; then
+      mv "$tmp" "$appearance"
+      echo "сниппет $SNIPPET_NAME включён в $vault"
+    else
+      rm -f "$tmp"
+      echo "omvoid-theme-set-obsidian: не смог включить сниппет в $vault" >&2
+    fi
+  fi
 
   count=$((count + 1))
 done < <(jq -r '.vaults | values[].path' "$VAULTS_FILE" 2>/dev/null)
