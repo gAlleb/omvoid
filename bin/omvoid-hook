@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Выполняет пользовательский хук: ~/.config/omvoid/hooks/<имя> и всё, что лежит
+# в ~/.config/omvoid/hooks/<имя>.d/.
+#
+# Смысл в том, чтобы машинно-специфичное не приходилось держать в репозитории.
+# Правка в репозитории уезжает на все машины; хук остаётся на своей.
+#
+#   omvoid-hook post-update
+#
+# Упавший хук не роняет вызвавшего: обновление не должно останавливаться из-за
+# личного скрипта.
+
+set -u
+
+if (($# < 1)); then
+  echo "Использование: omvoid-hook <имя> [аргументы...]" >&2
+  exit 1
+fi
+
+HOOK_NAME=$1
+shift
+
+HOOK_PATH="$HOME/.config/omvoid/hooks/$HOOK_NAME"
+HOOK_DIR="$HOOK_PATH.d"
+
+if [[ -f $HOOK_PATH ]]; then
+  bash "$HOOK_PATH" "$@" || echo "omvoid-hook: хук упал: $HOOK_PATH" >&2
+fi
+
+if [[ -d $HOOK_DIR ]]; then
+  for hook in "$HOOK_DIR"/*; do
+    [[ -f $hook ]] || continue
+    [[ $hook == *.sample ]] && continue
+    bash "$hook" "$@" || echo "omvoid-hook: хук упал: $hook" >&2
+  done
+fi
+
+exit 0

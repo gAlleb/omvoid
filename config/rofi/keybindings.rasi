@@ -1,0 +1,45 @@
+/* Тема для списка кейбиндов.
+ *
+ * Наследует menu-style.rasi -- те же цвета из ~/.cache/wal и те же обои на
+ * фоне. Переопределяет только то, из-за чего список не помещался на экран:
+ *
+ *   - шрифт был 17 при ширине окна 600px, длинные строки вылезали вбок;
+ *   - inputbar с обоями занимал 100px сверху и снизу, то есть 200px высоты;
+ *   - строки шли с шагом 10px при крупном элементе.
+ *
+ * Экран 1920x1200. */
+
+@import "~/.config/rofi/menu-style.rasi"
+
+configuration {
+    show-icons:  false;
+}
+
+* {
+    font: "CaskaydiaMono Nerd Font 12";
+}
+
+window {
+    width: 1000px;
+}
+
+/* Обои остаются, но полосой, а не половиной экрана. */
+inputbar {
+    padding: 24px 15px;
+}
+
+listview {
+    lines:    14;
+    columns:  1;
+    padding:  10px;
+    spacing:  2px;
+}
+
+element {
+    padding: 4px 12px;
+}
+
+element-icon {
+    enabled: false;
+    size:    0px;
+}

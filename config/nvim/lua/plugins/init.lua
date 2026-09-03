@@ -2,7 +2,7 @@ return {
   {
     "folke/which-key.nvim",
      lazy = false,
-  },
+   },
   {
     "NvChad/WallSync",
     lazy = false,

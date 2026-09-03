@@ -50,6 +50,43 @@ To re-run a step that has already completed, delete its marker:
 rm ~/.local/state/omvoid/done/development/mise.sh
 ```
 
+## Migrations
+
+An install step only helps a machine being set up. When an **already installed**
+machine needs repairing — a file moved, a stale cache removed, a symlink
+repointed — that is a migration: a script in `migrations/` named after the unix
+time it was created, so sorting by name is the execution order.
+
+```bash
+omvoid-dev-add-migration "move mise wrappers to the new directory"
+omvoid-migrate --pending   # list what has not run
+omvoid-migrate             # run them
+```
+
+Markers live in `~/.local/state/omvoid/migrations/`. Each migration runs in its
+own `bash -euo pipefail`, so a failure takes neither the others nor the caller
+down, and leaves no marker — it retries on the next update.
+`install/preflight/migrations.sh` stamps every existing migration as done during
+a fresh install, because a machine built from the current repo needs no historical
+repairs.
+
+Reach for a migration only when a repo change alone cannot fix an installed
+machine. Shipping a new file is not one: it arrives on its own.
+
+## Updating an installed machine
+
+`omvoid-update` is the whole path: `git pull`, system packages, then the config
+sync, migrations, `mise up`, skill relinking, reloads, and finally
+`omvoid-hook post-update` for anything machine-specific.
+
+The config sync matters because `config/` reaches `~/.config` by copying and
+`install.sh` will not repeat that step once its marker exists. It lists files
+that diverged and lets you pick per file — never blanket-overwrite. Some paths
+are deliberately excluded because the system owns them after installation
+(`rclone/rclone.conf` is an empty placeholder in git, `nvim/lazy-lock.json` is
+written by lazy.nvim, `bg.jpg` is generated). Add to that list rather than
+letting an update destroy live state.
+
 ## Style of existing steps
 
 Plain sequential shell, comments explaining *why* rather than what. Look at

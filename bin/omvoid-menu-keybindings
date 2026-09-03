@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Показывает кейбинды mango списком с поиском. Читает конфиг напрямую -- он и
+# есть источник истины, в отличие от Hyprland, где приходится опрашивать
+# hyprctl и резолвить XKB-коды.
+#
+# Тема меню переопределяется: OMVOID_MENU_THEME=menu-style-clipboard omvoid-menu-keybindings
+
+set -euo pipefail
+
+CONFIG="$HOME/.config/mango/conf/keybindings.conf"
+[[ -f $CONFIG ]] || CONFIG="${OMVOID_PATH:-$HOME/.local/share/omvoid}/config/mango/conf/keybindings.conf"
+
+if [[ ! -f $CONFIG ]]; then
+  echo "omvoid-menu-keybindings: не найден keybindings.conf" >&2
+  exit 1
+fi
+
+THEME="${OMVOID_MENU_THEME:-keybindings}"
+
+# Строки пишутся и как "bind=MOD,key,action", и как "bind = MOD, key, action",
+# поэтому сначала приводим к одному виду, а уже потом режем по запятым.
+list() {
+  # Хвостовой комментарий отрезаем здесь: в конфиге встречается "down# swap
+  # window" без пробела, и без этого он прилипал бы к действию.
+  sed -n 's/^[[:space:]]*bind[[:space:]]*=\{0,1\}[[:space:]]*//p' "$CONFIG" |
+    sed 's/[[:space:]]*#.*$//' |
+    awk -F',' '
+      {
+        for (i = 1; i <= NF; i++) {
+          gsub(/^[ \t]+|[ \t]+$/, "", $i)
+        }
+        mod = $1
+        key = $2
+        if (key == "") next
+
+        action = $3
+        args = ""
+        for (i = 4; i <= NF; i++) {
+          if ($i == "") continue
+          args = (args == "" ? $i : args " " $i)
+        }
+
+        combo = (mod == "" ? key : mod " + " key)
+        gsub(/\+/, " + ", combo)
+        gsub(/  +/, " ", combo)
+
+        line = action
+        if (args != "") line = line " " args
+        printf "%-28s %s\n", combo, line
+      }
+    '
+}
+
+count=$(list | wc -l)
+
+list | rofi -dmenu -i \
+  -p "кейбинды ($count)" \
+  -theme "$HOME/.config/rofi/${THEME}.rasi" >/dev/null || true

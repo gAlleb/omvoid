@@ -1,0 +1,112 @@
+#!/bin/bash
+
+# Кладёт конфиг из репозитория в ~/.config поверх живого, сохранив резервную
+# копию и показав, что именно затирается. Нужен потому, что config/ попадает в
+# ~/.config копированием, и после git pull живой файл сам не обновится:
+# install.sh перекопировать не станет, у шага config/config.sh стоит маркер.
+#
+#   omvoid-refresh-config waybar/config-mango
+#   omvoid-refresh-config waybar/config-mango waybar/style-mango.css
+#
+# С --capture -- наоборот, из ~/.config в репозиторий. Нужно потому, что правки
+# делаются и там и там: живой файл правится по ходу дела и уходит вперёд, и без
+# обратного хода эта правка теряется при первом же обновлении.
+#
+#   omvoid-refresh-config --capture mango/conf/windowrules.conf
+
+set -euo pipefail
+
+OMVOID_PATH="${OMVOID_PATH:-$HOME/.local/share/omvoid}"
+
+capture=false
+if [[ ${1:-} == "--capture" ]]; then
+  capture=true
+  shift
+fi
+
+if (($# == 0)); then
+  cat >&2 <<USAGE
+Использование: omvoid-refresh-config [--capture] <путь> [путь...]
+
+Путь -- относительно ~/.config, он же относительно config/ в репозитории:
+
+  omvoid-refresh-config waybar/config-mango            репозиторий -> ~/.config
+  omvoid-refresh-config --capture waybar/config-mango  ~/.config -> репозиторий
+USAGE
+  exit 1
+fi
+
+status=0
+for config_file in "$@"; do
+  if $capture; then
+    source_file="$HOME/.config/$config_file"
+    target_file="$OMVOID_PATH/config/$config_file"
+    missing="на машине нет ~/.config/$config_file"
+    label="config/$config_file"
+  else
+    source_file="$OMVOID_PATH/config/$config_file"
+    target_file="$HOME/.config/$config_file"
+    missing="в репозитории нет config/$config_file"
+    label="~/.config/$config_file"
+  fi
+
+  if [[ ! -f $source_file ]]; then
+    echo "omvoid-refresh-config: $missing" >&2
+    status=1
+    continue
+  fi
+
+  # Часть файлов в репозитории -- шаблоны с подстановкой при установке
+  # (config/service/mpd/run несёт __USERNAME__). Копировать их как есть нельзя
+  # ни в какую сторону, и обе ошибки одинаково тихие:
+  #
+  #   вперёд -- в живой файл попал бы буквальный __USERNAME__, и сервис не
+  #             поднялся бы, потому что подстановку делает установщик;
+  #   назад  -- шаблон в репозитории заменился бы готовым файлом с именем
+  #             этого пользователя, и на следующей машине он был бы неверным.
+  if grep -q '__USERNAME__' "$source_file" 2>/dev/null ||
+    { [[ -f $target_file ]] && grep -q '__USERNAME__' "$target_file"; }; then
+    echo "omvoid-refresh-config: config/$config_file -- шаблон с __USERNAME__, пропущен" >&2
+    echo "  такие файлы правятся в репозитории вручную, с сохранением подстановки" >&2
+    status=1
+    continue
+  fi
+
+  mkdir -p "$(dirname "$target_file")"
+
+  if [[ ! -f $target_file ]]; then
+    cp -f "$source_file" "$target_file"
+    echo "создан: $label"
+    continue
+  fi
+
+  if cmp -s "$source_file" "$target_file"; then
+    echo "без изменений: $label"
+    continue
+  fi
+
+  # Резервная копия делается всегда, когда файлы разошлись: расхождение почти
+  # наверняка значит, что живой правили руками, и молча стереть эту правку --
+  # худшее, что может сделать этот скрипт.
+  if $capture; then
+    # В репозитории резервная копия ни к чему -- прежнее содержимое и так
+    # лежит в git, а .bak-файл попал бы в дерево и в коммит.
+    previous=$(mktemp)
+    cp -f "$target_file" "$previous"
+    cp -f "$source_file" "$target_file"
+    echo "обновлён: $label"
+    echo "  что изменилось (- было, + стало):"
+    diff -u "$previous" "$target_file" | tail -n +3 | sed 's/^/    /' || true
+    rm -f "$previous"
+  else
+    backup="$target_file.bak.$(date +%s)"
+    cp -f "$target_file" "$backup"
+    cp -f "$source_file" "$target_file"
+    echo "обновлён: $label"
+    echo "  копия прежнего: $backup"
+    echo "  что изменилось (- было, + стало):"
+    diff -u "$backup" "$target_file" | tail -n +3 | sed 's/^/    /' || true
+  fi
+done
+
+exit $status

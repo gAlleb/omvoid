@@ -48,6 +48,10 @@ if [[ -n "$font_name" && "$font_name" != "CNCLD" ]]; then
 
     fi 
 
+    if [[ -f ~/.config/rofi/keybindings.rasi ]]; then
+      sed -i "s/font: \".*\"/font: \"$font_name 12\"/g" ~/.config/rofi/keybindings.rasi
+    fi
+
     if [[ -f ~/.config/rofi/menu-style-clipboard.rasi ]]; then
       sed -i "s/font: \".*\"/font: \"$font_name 12\"/g" ~/.config/rofi/menu-style-clipboard.rasi
 

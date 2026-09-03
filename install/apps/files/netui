@@ -1,0 +1,2258 @@
+#!/usr/bin/env python3
+"""
+netui — a full curses front-end for NetworkManager (Wi-Fi / Ethernet / VPN /
+Mobile / PPPoE), in the spirit of bluetui.
+
+Features
+--------
+  * Tabs: Wi-Fi, Ethernet, VPN, Mobile & DSL, Adapters, Profiles
+  * Two-pane layout: list on the left, details for the selected item on the right
+  * All nmcli calls run on a background thread — the UI never blocks
+  * Connect/disconnect, rescan, hidden networks, forget a saved network
+  * Create connections:
+      - VPN: PPTP, L2TP/IPsec, OpenVPN (import), WireGuard (import),
+             OpenConnect, vpnc, SSTP, Fortinet SSL — depending on which
+             NetworkManager VPN plugin is actually installed
+      - Mobile: GSM (APN/PIN), CDMA
+      - PPPoE (DSL / dial-up-over-Ethernet)
+  * Edit a profile: name, autoconnect, IPv4 (auto/manual), DNS, IPv6
+  * Wi-Fi/WWAN radio toggle, event log, in-app key reference
+  * Adapters tab: raw `nmcli device status` view, so you can see exactly
+    which physical/virtual network devices the system actually has
+
+Dependencies: Python 3.8+ stdlib (curses) and nmcli only.
+ModemManager (mmcli) is optional, used for operator/signal info if present.
+
+Run: chmod +x netui.py && ./netui.py
+Keys: press "?" inside the app.
+"""
+
+from __future__ import annotations
+
+import curses
+import glob
+import locale
+import os
+import queue
+import re
+import shutil
+import subprocess
+import sys
+import termios
+import threading
+import time
+
+NMCLI = shutil.which("nmcli")
+MMCLI = shutil.which("mmcli")
+
+REFRESH_INTERVAL = 6.0      # periodic status refresh, seconds
+SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+
+WIFI_TYPES = ("802-11-wireless", "wifi")
+ETH_TYPES = ("802-3-ethernet", "ethernet")
+VPN_TYPES = ("vpn", "wireguard")
+MOBILE_TYPES = ("gsm", "cdma", "pppoe")
+WWAN_DEVICE_TYPES = ("gsm", "cdma", "wwan")
+SKIP_DEVICE_TYPES = ("loopback",)
+
+
+# ---------------------------------------------------------------------------
+# nmcli: execution and terse-output parsing
+# ---------------------------------------------------------------------------
+
+def run(args, timeout=15, input_text=None):
+    """Run a command, return (returncode, stdout, stderr). Never raises."""
+    try:
+        p = subprocess.run(args, capture_output=True, text=True,
+                           timeout=timeout, input=input_text)
+        return p.returncode, p.stdout, p.stderr
+    except subprocess.TimeoutExpired:
+        return 124, "", "nmcli timed out"
+    except FileNotFoundError:
+        return 127, "", "command not found"
+    except Exception as e:  # pragma: no cover - defensive
+        return 1, "", str(e)
+
+
+def nm(*args, timeout=15):
+    return run([NMCLI, *args], timeout=timeout)
+
+
+def nmt(*args, timeout=15):
+    return run([NMCLI, "-t", *args], timeout=timeout)
+
+
+def split_terse(line, maxsplit=-1):
+    """Split one line of `nmcli -t` output on *unescaped* ':' and unescape
+    '\\:' and '\\\\'. nmcli escapes literal colons inside field values (SSIDs,
+    BSSIDs, connection names, IPv6 addresses), so a naive line.split(':')
+    corrupts any value containing a colon."""
+    fields, cur = [], []
+    i, n = 0, len(line)
+    while i < n:
+        c = line[i]
+        if c == "\\" and i + 1 < n and line[i + 1] in (":", "\\"):
+            cur.append(line[i + 1])
+            i += 2
+            continue
+        if c == ":" and (maxsplit < 0 or len(fields) < maxsplit):
+            fields.append("".join(cur))
+            cur = []
+            i += 1
+            continue
+        cur.append(c)
+        i += 1
+    fields.append("".join(cur))
+    return fields
+
+
+def parse_terse(output):
+    return [split_terse(l) for l in output.splitlines() if l != ""]
+
+
+def pad(fields, n):
+    f = list(fields)
+    return f + [""] * (n - len(f)) if len(f) < n else f
+
+
+def esc_value(v):
+    """Escape a value for key=value pairs inside vpn.data / vpn.secrets."""
+    return str(v).replace(",", r"\,").replace("=", r"\=")
+
+
+# ---------------------------------------------------------------------------
+# State queries
+# ---------------------------------------------------------------------------
+
+def q_devices():
+    rc, out, _ = nmt("-f", "DEVICE,TYPE,STATE,CONNECTION", "device", "status")
+    if rc != 0:
+        return []
+    res = []
+    for f in parse_terse(out):
+        d, t, s, c = pad(f, 4)[:4]
+        res.append({"device": d, "type": t, "state": s, "connection": c})
+    return res
+
+
+def q_wifi_device():
+    for d in q_devices():
+        if d["type"] == "wifi":
+            return d["device"]
+    return None
+
+
+def q_radio():
+    rc, out, _ = nmt("-f", "WIFI,WWAN", "radio")
+    if rc != 0 or not out.strip():
+        return {"wifi": None, "wwan": None}
+    f = pad(split_terse(out.strip().splitlines()[0]), 2)
+    return {"wifi": f[0] == "enabled", "wwan": f[1] == "enabled"}
+
+
+def q_wifi(dev, rescan=False):
+    if not dev:
+        return []
+    args = ["-f", "IN-USE,SSID,BSSID,MODE,CHAN,FREQ,RATE,SIGNAL,SECURITY",
+            "device", "wifi", "list", "ifname", dev,
+            "--rescan", "yes" if rescan else "no"]
+    rc, out, _ = nmt(*args, timeout=25 if rescan else 10)
+    if rc != 0:
+        return []
+    nets = {}
+    for f in parse_terse(out):
+        in_use, ssid, bssid, mode, chan, freq, rate, sig, sec = pad(f, 9)[:9]
+        if not ssid:
+            continue
+        item = {
+            "in_use": in_use.strip() == "*",
+            "ssid": ssid, "bssid": bssid, "mode": mode, "chan": chan,
+            "freq": freq, "rate": rate,
+            "signal": int(sig) if sig.isdigit() else -1,
+            "security": (sec.strip() if sec.strip() not in ("", "--") else "open"),
+        }
+        prev = nets.get(ssid)
+        if prev is None or item["in_use"] or item["signal"] > prev["signal"]:
+            nets[ssid] = item
+    return sorted(nets.values(), key=lambda x: (not x["in_use"], -x["signal"], x["ssid"].lower()))
+
+
+def q_saved():
+    rc, out, _ = nmt("-f", "NAME,UUID,TYPE,DEVICE,AUTOCONNECT,ACTIVE",
+                     "connection", "show")
+    if rc != 0:
+        return []
+    res = []
+    for f in parse_terse(out):
+        name, uuid, typ, dev, auto, active = pad(f, 6)[:6]
+        res.append({"name": name, "uuid": uuid, "type": typ, "device": dev,
+                    "autoconnect": auto == "yes", "active": active == "yes"})
+    return res
+
+
+def q_dev_details(dev):
+    rc, out, _ = nmt("device", "show", dev, timeout=10)
+    if rc != 0:
+        return {}
+    d = {}
+    for line in out.splitlines():
+        if not line:
+            continue
+        parts = split_terse(line, maxsplit=1)
+        if len(parts) == 2:
+            d[parts[0]] = parts[1]
+    return d
+
+
+def q_con_details(uuid):
+    rc, out, _ = nmt("connection", "show", uuid, timeout=10)
+    if rc != 0:
+        return {}
+    d = {}
+    for line in out.splitlines():
+        if not line:
+            continue
+        parts = split_terse(line, maxsplit=1)
+        if len(parts) == 2:
+            d[parts[0]] = parts[1]
+    return d
+
+
+def q_vpn_plugins():
+    """Which VPN plugins are actually installed (via *.name files)."""
+    found = set()
+    pats = ["/usr/lib/NetworkManager/VPN/*.name",
+            "/usr/lib64/NetworkManager/VPN/*.name",
+            "/usr/lib/*/NetworkManager/VPN/*.name",
+            "/etc/NetworkManager/VPN/*.name",
+            "/run/current-system/sw/lib/NetworkManager/VPN/*.name"]
+    for pat in pats:
+        for path in glob.glob(pat):
+            try:
+                with open(path, "r", errors="replace") as fh:
+                    text = fh.read()
+            except OSError:
+                continue
+            m = re.search(r"^service\s*=\s*org\.freedesktop\.NetworkManager\.(\S+)",
+                          text, re.M)
+            if m:
+                found.add(m.group(1).strip().lower())
+            else:
+                found.add(os.path.basename(path)[:-5].lower())
+    return found
+
+
+def q_modems():
+    """Modems: from nmcli device, enriched with mmcli info if available."""
+    modems = [d for d in q_devices() if d["type"] in ("gsm", "cdma", "modem")]
+    if not MMCLI:
+        return modems
+    rc, out, _ = run([MMCLI, "-L"], timeout=6)
+    if rc != 0:
+        return modems
+    paths = re.findall(r"(/org/freedesktop/ModemManager1/Modem/\d+)", out)
+    info = []
+    for p in paths:
+        rc2, o2, _ = run([MMCLI, "-m", p], timeout=6)
+        if rc2 != 0:
+            continue
+        op = re.search(r"operator name:\s*(.+)", o2)
+        sq = re.search(r"signal quality:\s*(\d+)", o2)
+        st = re.search(r"\bstate:\s*(\S+)", o2)
+        info.append({"path": p,
+                     "operator": op.group(1).strip() if op else "",
+                     "signal": sq.group(1) if sq else "",
+                     "mm_state": st.group(1) if st else ""})
+    for i, m in enumerate(modems):
+        if i < len(info):
+            m.update(info[i])
+    if not modems and info:
+        for i in info:
+            modems.append({"device": "(ModemManager)", "type": "gsm",
+                           "state": i.get("mm_state", ""), "connection": "", **i})
+    return modems
+
+
+def snapshot(rescan=False):
+    devs = q_devices()
+    radio = q_radio()
+    wdev = next((d["device"] for d in devs if d["type"] == "wifi"), None)
+    nets = q_wifi(wdev, rescan=rescan) if (wdev and radio["wifi"]) else []
+    saved = q_saved()
+    details = {}
+    for d in devs:
+        if d["state"] == "connected":
+            details[d["device"]] = q_dev_details(d["device"])
+    has_wwan_hw = any(d["type"] in WWAN_DEVICE_TYPES for d in devs)
+    return {
+        "ts": time.time(), "devices": devs, "radio": radio, "wifi_dev": wdev,
+        "wifi": nets, "saved": saved, "dev_details": details,
+        "plugins": q_vpn_plugins(), "modems": q_modems(),
+        "has_wwan_hw": has_wwan_hw,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Actions
+# ---------------------------------------------------------------------------
+
+def a_con_up(ident):
+    return nm("connection", "up", "id", ident, timeout=45)
+
+
+def a_con_down(ident):
+    return nm("connection", "down", "id", ident, timeout=20)
+
+
+def a_con_delete(ident):
+    return nm("connection", "delete", "id", ident, timeout=15)
+
+
+def a_dev_disconnect(dev):
+    return nm("device", "disconnect", dev, timeout=20)
+
+
+def a_dev_connect(dev):
+    return nm("device", "connect", dev, timeout=45)
+
+
+def a_wifi_connect(ssid, password=None, hidden=False, iface=None):
+    args = ["device", "wifi", "connect", ssid]
+    if password:
+        args += ["password", password]
+    if hidden:
+        args += ["hidden", "yes"]
+    if iface:
+        args += ["ifname", iface]
+    return nm(*args, timeout=60)
+
+
+# Security types the user can pick explicitly instead of relying on
+# `nmcli device wifi connect`'s built-in auto-negotiation, which only
+# handles plain WPA/WPA2-PSK and can't do 802.1x Enterprise at all.
+WIFI_SEC_CHOICES = [
+    ("auto", "Auto-detect (recommended)"),
+    ("wpa-psk", "WPA / WPA2 Personal"),
+    ("sae", "WPA3 Personal (SAE)"),
+    ("wpa-eap", "WPA / WPA2 Enterprise (802.1x)"),
+    ("wep", "WEP (legacy)"),
+]
+
+
+def guess_wifi_security(security_str):
+    """Best-effort guess of which explicit security type matches what the
+    scan reported, so the picker can pre-highlight it. Always overridable
+    by the user — this is only a starting point."""
+    s = (security_str or "").lower()
+    if "802.1x" in s or "eap" in s:
+        return "wpa-eap"
+    if "wep" in s:
+        return "wep"
+    if "wpa3" in s or "sae" in s:
+        return "sae"
+    if "wpa" in s:
+        return "wpa-psk"
+    return "wpa-psk"
+
+
+def eap_fields():
+    return [
+        _f("eap", "EAP method", "choice",
+           choices=["peap", "ttls", "tls", "fast", "leap", "pwd"]),
+        _f("identity", "Identity / username", required=True),
+        _f("password", "Password", "secret"),
+        _f("anon_identity", "Anonymous identity (optional)"),
+        _f("phase2", "Phase 2 auth", "choice",
+           choices=["default", "mschapv2", "pap", "chap", "gtc", "md5"]),
+        _f("ca_cert", "CA certificate path (optional, recommended)"),
+    ]
+
+
+def create_wifi_manual(name, ssid, iface, security, values, hidden=False):
+    """Build a Wi-Fi profile with an explicitly chosen security type and
+    bring it up. Used whenever the user overrides auto-detection — covers
+    WPA3-SAE, WEP, and 802.1x Enterprise, none of which
+    `nmcli device wifi connect` can express on its own."""
+    # A previous failed attempt (e.g. wrong password) can leave a same-named
+    # broken profile behind; replace it instead of piling up duplicates.
+    for c in q_saved():
+        if c["name"] == name and c["type"] in WIFI_TYPES:
+            a_con_delete(c["uuid"])
+            break
+
+    args = ["connection", "add", "type", "wifi", "con-name", name,
+            "ifname", iface or "*", "ssid", ssid]
+    if hidden:
+        args += ["802-11-wireless.hidden", "yes"]
+
+    if security == "wpa-psk":
+        args += ["wifi-sec.key-mgmt", "wpa-psk"]
+    elif security == "sae":
+        args += ["wifi-sec.key-mgmt", "sae"]
+    elif security == "wep":
+        args += ["wifi-sec.key-mgmt", "none", "wifi-sec.wep-key-type", "1"]
+    elif security == "wpa-eap":
+        args += ["wifi-sec.key-mgmt", "wpa-eap",
+                 "802-1x.eap", values.get("eap", "peap"),
+                 "802-1x.identity", values.get("identity", "")]
+        if values.get("anon_identity"):
+            args += ["802-1x.anonymous-identity", values["anon_identity"]]
+        if values.get("ca_cert"):
+            args += ["802-1x.ca-cert", os.path.expanduser(values["ca_cert"])]
+        phase2 = values.get("phase2", "default")
+        if phase2 and phase2 != "default":
+            args += ["802-1x.phase2-auth", phase2]
+    # "open" needs no security properties at all.
+
+    rc, out, err = nm(*args, timeout=25)
+    if rc != 0:
+        return rc, out, err
+
+    secret_mods = []
+    if security in ("wpa-psk", "sae"):
+        secret_mods += ["wifi-sec.psk", values.get("password", ""), "wifi-sec.psk-flags", "0"]
+    elif security == "wep":
+        secret_mods += ["wifi-sec.wep-key0", values.get("password", ""), "wifi-sec.wep-key-flags", "0"]
+    elif security == "wpa-eap":
+        secret_mods += ["802-1x.password", values.get("password", ""), "802-1x.password-flags", "0"]
+    if secret_mods:
+        rc2, out2, err2 = nm("connection", "modify", name, *secret_mods, timeout=20)
+        if rc2 != 0:
+            return rc2, out2, err2
+
+    return a_con_up(name)
+
+
+def a_radio(kind, on):
+    return nm("radio", kind, "on" if on else "off", timeout=10)
+
+
+def a_autoconnect(ident, on):
+    return nm("connection", "modify", ident,
+              "connection.autoconnect", "yes" if on else "no", timeout=15)
+
+
+def err_line(rc, err, out=""):
+    text = (err or "").strip() or (out or "").strip()
+    if not text:
+        return f"nmcli exited with code {rc}"
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    return lines[-1] if lines else f"code {rc}"
+
+
+# ---------------------------------------------------------------------------
+# Connection creation
+# ---------------------------------------------------------------------------
+
+def _f(key, label, kind="text", **kw):
+    d = {"key": key, "label": label, "kind": kind}
+    d.update(kw)
+    return d
+
+
+VPN_SPECS = {
+    "pptp": {
+        "title": "PPTP",
+        "fields": [
+            _f("gateway", "Server address", required=True),
+            _f("user", "Username", required=True),
+            _f("password", "Password", "secret"),
+            _f("domain", "NT domain (optional)"),
+            _f("mppe", "MPPE encryption", "bool", value=True),
+        ],
+        # MPPE requires MSCHAPv2, so the weaker methods are only refused when
+        # encryption is on — otherwise you could lock yourself out of a
+        # server that only accepts plain PAP.
+        "data": lambda v: dict(
+            [("gateway", v["gateway"]), ("user", v["user"]),
+             ("password-flags", "0")]
+            + ([("require-mppe", "yes"), ("refuse-eap", "yes"),
+                ("refuse-pap", "yes"), ("refuse-chap", "yes")] if v["mppe"] else [])
+            + ([("domain", v["domain"])] if v.get("domain") else [])),
+        "secrets": lambda v: {"password": v["password"]} if v.get("password") else {},
+    },
+    "l2tp": {
+        "title": "L2TP / IPsec",
+        "fields": [
+            _f("gateway", "Server address", required=True),
+            _f("user", "Username", required=True),
+            _f("password", "Password", "secret"),
+            _f("psk", "IPsec pre-shared key", "secret"),
+            _f("ipsec", "Enable IPsec", "bool", value=True),
+        ],
+        "data": lambda v: dict(
+            [("gateway", v["gateway"]), ("user", v["user"]),
+             ("password-flags", "0"), ("refuse-eap", "yes")]
+            + ([("ipsec-enabled", "yes"), ("ipsec-psk-flags", "0")] if v["ipsec"] else [])),
+        "secrets": lambda v: {k: val for k, val in
+                              (("password", v.get("password")),
+                               ("ipsec-psk", v.get("psk") if v["ipsec"] else None))
+                              if val},
+    },
+    "openvpn": {
+        "title": "OpenVPN (import .ovpn)",
+        "import": "openvpn",
+        "fields": [_f("file", "Path to .ovpn / .conf", required=True)],
+    },
+    "wireguard": {
+        "title": "WireGuard (import .conf)",
+        "import": "wireguard",
+        "native": True,
+        "fields": [_f("file", "Path to .conf", required=True)],
+    },
+    "openconnect": {
+        "title": "OpenConnect (AnyConnect / GlobalProtect)",
+        "fields": [
+            _f("gateway", "Server", required=True),
+            _f("protocol", "Protocol", "choice",
+               choices=["anyconnect", "gp", "pulse", "nc", "fortinet"]),
+            _f("user", "Username"),
+        ],
+        "data": lambda v: dict(
+            [("gateway", v["gateway"]), ("protocol", v["protocol"]),
+             ("authtype", "password")]
+            + ([("username", v["user"])] if v.get("user") else [])),
+        "secrets": lambda v: {},
+        "note": "OpenConnect asks for the password interactively when connecting.",
+    },
+    "vpnc": {
+        "title": "Cisco (vpnc)",
+        "fields": [
+            _f("gateway", "Gateway", required=True),
+            _f("group", "Group name (IPsec ID)", required=True),
+            _f("gsecret", "Group password", "secret"),
+            _f("user", "Username (Xauth)", required=True),
+            _f("password", "User password", "secret"),
+        ],
+        "data": lambda v: {"IPSec gateway": v["gateway"], "IPSec ID": v["group"],
+                           "Xauth username": v["user"],
+                           "IPSec secret-flags": "0", "Xauth password-flags": "0"},
+        "secrets": lambda v: {k: val for k, val in
+                              (("IPSec secret", v.get("gsecret")),
+                               ("Xauth password", v.get("password"))) if val},
+    },
+    "sstp": {
+        "title": "SSTP",
+        "fields": [
+            _f("gateway", "Server", required=True),
+            _f("user", "Username", required=True),
+            _f("password", "Password", "secret"),
+        ],
+        "data": lambda v: {"gateway": v["gateway"], "user": v["user"],
+                           "password-flags": "0"},
+        "secrets": lambda v: {"password": v["password"]} if v.get("password") else {},
+    },
+    "fortisslvpn": {
+        "title": "Fortinet SSL VPN",
+        "fields": [
+            _f("gateway", "Server", required=True),
+            _f("user", "Username", required=True),
+            _f("password", "Password", "secret"),
+        ],
+        "data": lambda v: {"gateway": v["gateway"], "user": v["user"],
+                           "password-flags": "0"},
+        "secrets": lambda v: {"password": v["password"]} if v.get("password") else {},
+    },
+}
+
+
+def create_vpn(vpn_type, name, values):
+    spec = VPN_SPECS[vpn_type]
+
+    if spec.get("import"):
+        path = os.path.expanduser(values["file"].strip())
+        if not os.path.isfile(path):
+            return 1, "", f"file not found: {path}"
+        rc, out, err = nm("connection", "import", "type", spec["import"],
+                          "file", path, timeout=30)
+        if rc != 0:
+            return rc, out, err
+        if name:
+            # nmcli names the profile after the file — rename if requested
+            base = os.path.splitext(os.path.basename(path))[0]
+            if name != base:
+                nm("connection", "modify", base, "connection.id", name, timeout=10)
+        return 0, out, err
+
+    data = spec["data"](values)
+    data_str = ", ".join(f"{k}={esc_value(v)}" for k, v in data.items() if v != "")
+    rc, out, err = nm("connection", "add", "type", "vpn", "vpn-type", vpn_type,
+                      "con-name", name, "ifname", "*",
+                      "vpn.data", data_str, timeout=25)
+    if rc != 0:
+        return rc, out, err
+
+    secrets = spec["secrets"](values)
+    if secrets:
+        sec_str = ", ".join(f"{k}={esc_value(v)}" for k, v in secrets.items())
+        rc2, out2, err2 = nm("connection", "modify", name,
+                             "vpn.secrets", sec_str, timeout=20)
+        if rc2 != 0:
+            return rc2, out2, err2
+    return 0, out, err
+
+
+def create_gsm(name, values):
+    args = ["connection", "add", "type", "gsm", "ifname", "*", "con-name", name,
+            "gsm.apn", values["apn"]]
+    rc, out, err = nm(*args, timeout=25)
+    if rc != 0:
+        return rc, out, err
+    mods = []
+    if values.get("user"):
+        mods += ["gsm.username", values["user"]]
+    if values.get("password"):
+        mods += ["gsm.password", values["password"], "gsm.password-flags", "0"]
+    if values.get("pin"):
+        mods += ["gsm.pin", values["pin"]]
+    if not values.get("autoconnect", True):
+        mods += ["connection.autoconnect", "no"]
+    if mods:
+        rc2, out2, err2 = nm("connection", "modify", name, *mods, timeout=20)
+        if rc2 != 0:
+            return rc2, out2, err2
+    return 0, out, err
+
+
+def create_cdma(name, values):
+    args = ["connection", "add", "type", "cdma", "ifname", "*", "con-name", name,
+            "cdma.number", values["number"]]
+    rc, out, err = nm(*args, timeout=25)
+    if rc != 0:
+        return rc, out, err
+    mods = []
+    if values.get("user"):
+        mods += ["cdma.username", values["user"]]
+    if values.get("password"):
+        mods += ["cdma.password", values["password"], "cdma.password-flags", "0"]
+    if mods:
+        rc2, out2, err2 = nm("connection", "modify", name, *mods, timeout=20)
+        if rc2 != 0:
+            return rc2, out2, err2
+    return 0, out, err
+
+
+def create_pppoe(name, values):
+    args = ["connection", "add", "type", "pppoe", "con-name", name,
+            "ifname", values["iface"], "pppoe.username", values["user"]]
+    rc, out, err = nm(*args, timeout=25)
+    if rc != 0:
+        return rc, out, err
+    mods = []
+    if values.get("password"):
+        mods += ["pppoe.password", values["password"], "pppoe.password-flags", "0"]
+    if values.get("service"):
+        mods += ["pppoe.service", values["service"]]
+    if mods:
+        rc2, out2, err2 = nm("connection", "modify", name, *mods, timeout=20)
+        if rc2 != 0:
+            return rc2, out2, err2
+    return 0, out, err
+
+
+def create_ethernet(name, values):
+    args = ["connection", "add", "type", "ethernet", "con-name", name,
+            "ifname", values["iface"]]
+    rc, out, err = nm(*args, timeout=20)
+    if rc != 0:
+        return rc, out, err
+    return apply_ip_settings(name, values)
+
+
+def apply_ip_settings(ident, values):
+    mods = []
+    m4 = values.get("ipv4_method", "auto")
+    if m4 == "manual" and not values.get("ipv4_addr", "").strip():
+        return 2, "", "IPv4 = manual requires an address, e.g. 192.168.1.50/24"
+    mods += ["ipv4.method", m4]
+    if m4 == "manual":
+        mods += ["ipv4.addresses", values.get("ipv4_addr", "")]
+        if values.get("ipv4_gw"):
+            mods += ["ipv4.gateway", values["ipv4_gw"]]
+    else:
+        mods += ["ipv4.addresses", "", "ipv4.gateway", ""]
+    mods += ["ipv4.dns", values.get("dns", "")]
+    mods += ["ipv6.method", values.get("ipv6_method", "auto")]
+    if "autoconnect" in values:
+        mods += ["connection.autoconnect", "yes" if values["autoconnect"] else "no"]
+    return nm("connection", "modify", ident, *mods, timeout=20)
+
+
+def edit_connection(ident, values):
+    mods = []
+    if values.get("name"):
+        mods += ["connection.id", values["name"]]
+    if mods:
+        rc, out, err = nm("connection", "modify", ident, *mods, timeout=15)
+        if rc != 0:
+            return rc, out, err
+        ident = values["name"]
+    return apply_ip_settings(ident, values)
+
+
+# nmcli accepts these short aliases in place of the full setting name.
+TYPE_ALIAS = {"802-3-ethernet": "ethernet", "802-11-wireless": "wifi"}
+
+
+def apply_advanced(uuid, alias, values):
+    """Apply the "Advanced" settings screen (MTU, cloned MAC, routes, DNS
+    search, ignore-auto-dns, never-default, IPv4-required, metered,
+    autoconnect priority, firewall zone) to an existing profile.
+
+    These map directly to NetworkManager connection properties; blank/0
+    generally means "use the default" for that property.
+    """
+    mods = []
+    if alias:
+        mtu = values.get("mtu", "0").strip() or "0"
+        mods += [f"{alias}.mtu", mtu]
+        mods += [f"{alias}.cloned-mac-address", values.get("cloned_mac", "").strip()]
+    mods += ["ipv4.routes", values.get("routes", "").strip()]
+    mods += ["ipv4.dns-search", values.get("dns_search", "").strip()]
+    mods += ["ipv4.ignore-auto-dns", "yes" if values.get("ignore_auto_dns") else "no"]
+    mods += ["ipv4.never-default", "yes" if values.get("never_default") else "no"]
+    mods += ["ipv4.may-fail", "no" if values.get("ipv4_required") else "yes"]
+    metered_val = {"default": "unknown", "yes": "yes", "no": "no"}.get(
+        values.get("metered", "default"), "unknown")
+    mods += ["connection.metered", metered_val]
+    priority = values.get("priority", "0").strip() or "0"
+    mods += ["connection.autoconnect-priority", priority]
+    mods += ["connection.zone", values.get("zone", "").strip()]
+    return nm("connection", "modify", uuid, *mods, timeout=20)
+
+
+# ---------------------------------------------------------------------------
+# Background worker: curses lives on the main thread only
+# ---------------------------------------------------------------------------
+
+class Worker:
+    def __init__(self):
+        self.jobs = queue.Queue()
+        self.results = queue.Queue()
+        self.busy = 0
+        self._lock = threading.Lock()
+        self.thread = threading.Thread(target=self._loop, daemon=True)
+        self.thread.start()
+
+    def submit(self, tag, fn, *args, **kwargs):
+        with self._lock:
+            self.busy += 1
+        self.jobs.put((tag, fn, args, kwargs))
+
+    def _loop(self):
+        while True:
+            tag, fn, args, kwargs = self.jobs.get()
+            try:
+                value, error = fn(*args, **kwargs), None
+            except Exception as e:  # pragma: no cover
+                value, error = None, e
+            with self._lock:
+                self.busy -= 1
+            self.results.put((tag, value, error))
+
+    def poll(self):
+        out = []
+        while True:
+            try:
+                out.append(self.results.get_nowait())
+            except queue.Empty:
+                return out
+
+    @property
+    def is_busy(self):
+        with self._lock:
+            return self.busy > 0
+
+
+# ---------------------------------------------------------------------------
+# Widgets
+# ---------------------------------------------------------------------------
+
+C_NORM, C_ACCENT, C_OK, C_WARN, C_ERR, C_DIM, C_SEL = range(1, 8)
+_ATTRS = {}
+
+
+def init_colors():
+    """Build a mostly monochrome attribute table.
+
+    Coloured text (blue/cyan especially) is unreadable on a lot of real
+    terminal themes — light backgrounds, Solarized, etc. So structural
+    elements (headers, focus, dim text, selection) use plain attributes
+    (bold / dim / reverse) that always adapt to the user's palette, and
+    colour is reserved for a handful of clearly semantic states.
+    """
+    has_color = False
+    try:
+        curses.start_color()
+        curses.use_default_colors()
+        has_color = curses.has_colors()
+    except curses.error:
+        has_color = False
+
+    if has_color:
+        try:
+            curses.init_pair(1, curses.COLOR_GREEN, -1)
+            curses.init_pair(2, curses.COLOR_YELLOW, -1)
+            curses.init_pair(3, curses.COLOR_RED, -1)
+        except curses.error:
+            has_color = False
+
+    global _ATTRS
+    _ATTRS = {
+        C_NORM: curses.A_NORMAL,
+        C_ACCENT: curses.A_BOLD,
+        C_OK: (curses.color_pair(1) | curses.A_BOLD) if has_color else curses.A_BOLD,
+        C_WARN: (curses.color_pair(2) | curses.A_BOLD) if has_color
+                else curses.A_BOLD | curses.A_UNDERLINE,
+        C_ERR: (curses.color_pair(3) | curses.A_BOLD) if has_color
+               else curses.A_BOLD | curses.A_REVERSE,
+        C_DIM: curses.A_DIM,
+        C_SEL: curses.A_REVERSE,
+    }
+
+
+def cp(pair):
+    return _ATTRS.get(pair, curses.A_NORMAL)
+
+
+def put(win, y, x, text, attr=0):
+    """Safe output: clips to width, swallows curses.error."""
+    try:
+        h, w = win.getmaxyx()
+    except curses.error:
+        return
+    if y < 0 or y >= h or x < 0 or x >= w:
+        return
+    avail = w - x
+    if avail <= 0:
+        return
+    s = text[:avail]
+    if y == h - 1 and x + len(s) >= w:
+        s = s[:max(0, avail - 1)]
+    try:
+        win.addstr(y, x, s, attr)
+    except curses.error:
+        pass
+
+
+def draw_frame(win, title="", attr=0, title_attr=None):
+    try:
+        win.box()
+    except curses.error:
+        pass
+    if title:
+        put(win, 0, 2, f" {title} ", title_attr if title_attr is not None else attr)
+
+
+def elide(text, width):
+    if width <= 0:
+        return ""
+    return text if len(text) <= width else text[:max(0, width - 1)] + "…"
+
+
+BAR_LEVELS = [(75, "▂▄▆█"), (50, "▂▄▆·"), (25, "▂▄··"), (0, "▂···")]
+
+
+def signal_bars(sig):
+    if sig is None or sig < 0:
+        return "····"
+    for th, bars in BAR_LEVELS:
+        if sig >= th:
+            return bars
+    return "····"
+
+
+def sig_attr(sig):
+    if sig is None or sig < 0:
+        return cp(C_DIM)
+    if sig >= 60:
+        return cp(C_OK)
+    if sig >= 35:
+        return cp(C_WARN)
+    return cp(C_ERR)
+
+
+class Modal:
+    """A centred window."""
+
+    def __init__(self, stdscr, height, width, title):
+        sh, sw = stdscr.getmaxyx()
+        self.h = min(height, max(5, sh - 2))
+        self.w = min(width, max(20, sw - 2))
+        self.y = max(0, (sh - self.h) // 2)
+        self.x = max(0, (sw - self.w) // 2)
+        self.stdscr = stdscr
+        self.title = title
+        self.win = curses.newwin(self.h, self.w, self.y, self.x)
+        self.win.keypad(True)
+
+    def close(self):
+        del self.win
+        self.stdscr.touchwin()
+        self.stdscr.refresh()
+
+
+def message_box(stdscr, title, lines, kind=C_ACCENT):
+    body = []
+    for line in lines:
+        body.extend(wrap(line, 70) or [""])
+    if not body:
+        body = [""]
+    m = Modal(stdscr, len(body) + 4, max(30, min(76, max(len(l) for l in body) + 6)), title)
+    m.win.erase()
+    draw_frame(m.win, title, cp(kind))
+    for i, line in enumerate(body):
+        put(m.win, 1 + i, 2, line)
+    put(m.win, m.h - 2, 2, "Press any key to close", cp(C_DIM))
+    m.win.refresh()
+    m.win.getch()
+    m.close()
+
+
+def confirm_box(stdscr, title, question, danger=False):
+    lines = wrap(question, 60)
+    m = Modal(stdscr, len(lines) + 5, max(36, min(70, max(len(l) for l in lines) + 6)), title)
+    m.win.erase()
+    draw_frame(m.win, title, cp(C_ERR if danger else C_WARN))
+    for i, line in enumerate(lines):
+        put(m.win, 1 + i, 2, line)
+    put(m.win, m.h - 2, 2, "y — yes, any other key — cancel", cp(C_DIM))
+    m.win.refresh()
+    ch = m.win.getch()
+    m.close()
+    return 0 <= ch < 256 and chr(ch).lower() == "y"
+
+
+def wrap(text, width):
+    words, lines, cur = str(text).split(), [], ""
+    for word in words:
+        if not cur:
+            cur = word
+        elif len(cur) + 1 + len(word) <= width:
+            cur += " " + word
+        else:
+            lines.append(cur)
+            cur = word
+    if cur:
+        lines.append(cur)
+    return lines or [""]
+
+
+def select_box(stdscr, title, options, footer="Enter — select, Esc — cancel"):
+    """options: list of (value, label, enabled, hint). Returns value or None."""
+    labels = [f"{lab}" + (f"   {hint}" if hint else "") for _, lab, _, hint in options]
+    width = max(40, min(76, max(len(l) for l in labels) + 8, max(len(title) + 8, len(footer) + 6)))
+    m = Modal(stdscr, len(options) + 4, width, title)
+    sel = next((i for i, o in enumerate(options) if o[2]), 0)
+    while True:
+        m.win.erase()
+        draw_frame(m.win, title, cp(C_ACCENT))
+        for i, (value, label, enabled, hint) in enumerate(options):
+            attr = cp(C_SEL) if i == sel else (0 if enabled else cp(C_DIM))
+            marker = "› " if i == sel else "  "
+            text = marker + label
+            if hint:
+                text += "  " + hint
+            if not enabled:
+                text += "  (not installed)"
+            put(m.win, 1 + i, 1, text.ljust(m.w - 2), attr)
+        put(m.win, m.h - 2, 2, elide(footer, m.w - 4), cp(C_DIM))
+        m.win.refresh()
+        ch = m.win.getch()
+        if ch in (27, ord("q")):
+            m.close()
+            return None
+        if ch in (curses.KEY_DOWN, ord("j")):
+            sel = (sel + 1) % len(options)
+        elif ch in (curses.KEY_UP, ord("k")):
+            sel = (sel - 1) % len(options)
+        elif ch in (10, 13, curses.KEY_ENTER):
+            value, label, enabled, hint = options[sel]
+            if enabled:
+                m.close()
+                return value
+
+
+class FormBox:
+    """A form with text / secret / bool / choice fields."""
+
+    def __init__(self, stdscr, title, fields, note=""):
+        self.fields = []
+        for f in fields:
+            g = dict(f)
+            g.setdefault("kind", "text")
+            g.setdefault("value", True if g["kind"] == "bool" else "")
+            if g["kind"] == "choice":
+                g.setdefault("choices", [])
+                if not g["value"] and g["choices"]:
+                    g["value"] = g["choices"][0]
+            g.setdefault("required", False)
+            g["cursor"] = len(str(g["value"])) if g["kind"] in ("text", "secret") else 0
+            self.fields.append(g)
+        self.note = note
+        self.title = title
+        self.stdscr = stdscr
+        self.error = ""
+        self.label_w = max(len(f["label"]) for f in self.fields) + 2
+        note_lines = wrap(note, 66) if note else []
+        height = len(self.fields) + len(note_lines) + 6
+        self.note_lines = note_lines
+        self.modal = Modal(stdscr, height, 76, title)
+        self.sel = 0
+
+    def _render_value(self, f, width):
+        if f["kind"] == "bool":
+            return "[x] yes" if f["value"] else "[ ] no"
+        if f["kind"] == "choice":
+            return f"‹ {f['value']} ›"
+        if f["kind"] == "secret":
+            return "•" * len(str(f["value"]))
+        return str(f["value"])
+
+    def draw(self):
+        w = self.modal.win
+        w.erase()
+        draw_frame(w, self.title, cp(C_ACCENT))
+        vw = self.modal.w - self.label_w - 4
+        for i, f in enumerate(self.fields):
+            y = 1 + i
+            focused = i == self.sel
+            lab = f["label"] + ("*" if f["required"] else "") + ":"
+            put(w, y, 2, lab.ljust(self.label_w),
+                cp(C_ACCENT) if focused else 0)
+            val = self._render_value(f, vw)
+            shown = val[-vw:] if len(val) > vw else val
+            put(w, y, 2 + self.label_w, shown.ljust(max(0, vw)),
+                cp(C_SEL) if focused else 0)
+        row = 1 + len(self.fields)
+        for j, line in enumerate(self.note_lines):
+            put(w, row + j, 2, line, cp(C_DIM))
+        row += len(self.note_lines)
+        if self.error:
+            put(w, row, 2, elide("⚠ " + self.error, self.modal.w - 4), cp(C_ERR))
+        hint = "Enter — next field · F10 — save · Space — toggle · Esc — cancel"
+        put(w, self.modal.h - 2, 2, elide(hint, self.modal.w - 4), cp(C_DIM))
+        w.refresh()
+
+    def validate(self):
+        for f in self.fields:
+            if f["required"] and not str(f["value"]).strip():
+                self.sel = self.fields.index(f)
+                self.error = f"Fill in \u201c{f['label']}\u201d"
+                return False
+        self.error = ""
+        return True
+
+    def result(self):
+        return {f["key"]: (f["value"] if f["kind"] == "bool" else str(f["value"]).strip())
+                for f in self.fields}
+
+    def run(self):
+        curses.curs_set(1)
+        try:
+            while True:
+                self.draw()
+                f = self.fields[self.sel]
+                ch = self.modal.win.getch()
+
+                if ch == 27:                                   # Esc
+                    return None
+                # F10 is the primary save key. Ctrl+S is a secondary option:
+                # many terminals treat it as XOFF flow control, so it can't
+                # be relied on alone.
+                if ch in (curses.KEY_F10, curses.KEY_F2, 19):
+                    if self.validate():
+                        return self.result()
+                    continue
+                if ch in (curses.KEY_DOWN, 9):                 # Down / Tab
+                    self.sel = (self.sel + 1) % len(self.fields)
+                    continue
+                if ch in (curses.KEY_UP, curses.KEY_BTAB, 353):
+                    self.sel = (self.sel - 1) % len(self.fields)
+                    continue
+                if ch in (10, 13, curses.KEY_ENTER):
+                    if self.sel == len(self.fields) - 1:
+                        if self.validate():
+                            return self.result()
+                    else:
+                        self.sel += 1
+                    continue
+                if f["kind"] == "bool":
+                    if ch in (ord(" "), ord("x"), curses.KEY_LEFT, curses.KEY_RIGHT):
+                        f["value"] = not f["value"]
+                    continue
+                if f["kind"] == "choice":
+                    if f["choices"]:
+                        idx = f["choices"].index(f["value"]) if f["value"] in f["choices"] else 0
+                        if ch in (curses.KEY_RIGHT, ord(" ")):
+                            f["value"] = f["choices"][(idx + 1) % len(f["choices"])]
+                        elif ch == curses.KEY_LEFT:
+                            f["value"] = f["choices"][(idx - 1) % len(f["choices"])]
+                    continue
+
+                # text field
+                s = str(f["value"])
+                cur = min(f["cursor"], len(s))
+                if ch in (curses.KEY_BACKSPACE, 127, 8):
+                    if cur > 0:
+                        f["value"] = s[:cur - 1] + s[cur:]
+                        f["cursor"] = cur - 1
+                elif ch == curses.KEY_DC:
+                    f["value"] = s[:cur] + s[cur + 1:]
+                elif ch == curses.KEY_LEFT:
+                    f["cursor"] = max(0, cur - 1)
+                elif ch == curses.KEY_RIGHT:
+                    f["cursor"] = min(len(s), cur + 1)
+                elif ch == curses.KEY_HOME:
+                    f["cursor"] = 0
+                elif ch == curses.KEY_END:
+                    f["cursor"] = len(s)
+                elif ch == 21:                                  # Ctrl+U
+                    f["value"], f["cursor"] = "", 0
+                elif 32 <= ch <= 126 or ch > 255:
+                    try:
+                        c = chr(ch)
+                    except ValueError:
+                        continue
+                    f["value"] = s[:cur] + c + s[cur:]
+                    f["cursor"] = cur + 1
+        finally:
+            curses.curs_set(0)
+            self.modal.close()
+
+
+# ---------------------------------------------------------------------------
+# Application
+# ---------------------------------------------------------------------------
+
+TABS = ["Wi-Fi", "Ethernet", "VPN", "Mobile/DSL", "Adapters", "Profiles"]
+T_WIFI, T_ETH, T_VPN, T_MOB, T_ADAPT, T_PROF = range(6)
+
+STATE_LABELS = {
+    "connected": "connected", "connecting": "connecting",
+    "disconnected": "disconnected", "unavailable": "unavailable",
+    "unmanaged": "unmanaged", "deactivating": "deactivating",
+    "failed": "failed", "unknown": "unknown",
+}
+
+HELP_TEXT = [
+    "Navigation:  Left/Right, h/l, Tab — switch tabs; 1..6 — jump to a tab",
+    "             Up/Down, j/k — move; g/G — top/bottom; PgUp/PgDn — page",
+    "",
+    "Actions:     Enter — connect (VPN: toggle on/off)",
+    "             d — disconnect;  a — add a connection;  e — edit profile",
+    "             x — delete profile (Wi-Fi: forget network)",
+    "             t — toggle autoconnect;  i — show all properties",
+    "             A — advanced settings (MTU, cloned MAC, routes, metered, ...)",
+    "",
+    "Radio:       w — toggle Wi-Fi radio;  W — toggle mobile (WWAN) radio",
+    "Other:       s — rescan Wi-Fi;  r — refresh;  L — event log;  ? — help",
+    "             q — quit",
+]
+
+
+def state_label(state):
+    return STATE_LABELS.get(state, state or "unknown")
+
+
+class App:
+    def __init__(self, stdscr):
+        self.stdscr = stdscr
+        self.worker = Worker()
+        self.snap = None
+        self.loading = True
+        self.tab = T_WIFI
+        self.sel = [0] * len(TABS)
+        self.scroll = [0] * len(TABS)
+        self.log = []
+        self.status = ""
+        self.status_attr = 0
+        self.pending = set()
+        self.detail_cache = {}
+        self.last_refresh = 0.0
+        self.frame = 0
+
+        curses.curs_set(0)
+        init_colors()
+        stdscr.keypad(True)
+        stdscr.timeout(120)
+        # Without this, Esc takes about a second to register: curses waits
+        # to see whether more bytes follow (the start of an escape sequence).
+        try:
+            curses.set_escdelay(25)
+        except (AttributeError, curses.error):
+            pass
+
+        self.request_refresh(rescan=True, note="Querying NetworkManager…")
+
+    # -- log / status ---------------------------------------------------
+
+    def notify(self, text, level=C_ACCENT):
+        self.status = text
+        self.status_attr = cp(level)
+        self.log.append((time.strftime("%H:%M:%S"), text))
+        self.log = self.log[-200:]
+
+    # -- data -------------------------------------------------------------
+
+    def request_refresh(self, rescan=False, note=""):
+        if "snap" in self.pending:
+            return
+        self.pending.add("snap")
+        if note:
+            self.notify(note)
+        self.last_refresh = time.time()
+        self.worker.submit("snap", snapshot, rescan)
+
+    def do_action(self, tag, fn, *args, note="", success="Done", **kwargs):
+        if note:
+            self.notify(note)
+        self.pending.add(tag)
+        self.worker.submit(("action", tag, success), fn, *args, **kwargs)
+
+    def handle_results(self):
+        for tag, value, error in self.worker.poll():
+            if tag == "snap":
+                self.pending.discard("snap")
+                self.loading = False
+                if error:
+                    self.notify(f"Refresh failed: {error}", C_ERR)
+                else:
+                    self.snap = value
+                    self.clamp()
+                    if self.status.endswith("…"):
+                        self.status = ""
+            elif isinstance(tag, tuple) and tag[0] == "action":
+                _, name, success = tag
+                self.pending.discard(name)
+                if error:
+                    self.notify(f"Failed: {error}", C_ERR)
+                else:
+                    rc, out, err = value
+                    if rc == 0:
+                        self.notify(success, C_OK)
+                    else:
+                        self.notify(err_line(rc, err, out), C_ERR)
+                self.request_refresh()
+            elif isinstance(tag, tuple) and tag[0] == "detail":
+                key = tag[1]
+                self.pending.discard(f"detail:{key}")
+                if not error:
+                    self.detail_cache[key] = value
+
+    # -- tab contents ---------------------------------------------------
+
+    def items(self, tab=None):
+        tab = self.tab if tab is None else tab
+        s = self.snap
+        if not s:
+            return []
+        if tab == T_WIFI:
+            return s["wifi"]
+        if tab == T_ETH:
+            return [d for d in s["devices"] if d["type"] == "ethernet"]
+        if tab == T_VPN:
+            saved = [c for c in s["saved"] if c["type"] in VPN_TYPES]
+            return sorted(saved, key=lambda c: (not c["active"], c["name"].lower()))
+        if tab == T_MOB:
+            rows = list(s["modems"])
+            rows += [c for c in s["saved"] if c["type"] in MOBILE_TYPES]
+            return rows
+        if tab == T_ADAPT:
+            return [d for d in s["devices"] if d["type"] not in SKIP_DEVICE_TYPES]
+        if tab == T_PROF:
+            return sorted(s["saved"], key=lambda c: (not c["active"], c["type"], c["name"].lower()))
+        return []
+
+    def current(self):
+        lst = self.items()
+        if not lst:
+            return None
+        i = min(self.sel[self.tab], len(lst) - 1)
+        return lst[i]
+
+    def clamp(self):
+        for t in range(len(TABS)):
+            n = len(self.items(t))
+            self.sel[t] = max(0, min(self.sel[t], max(0, n - 1)))
+
+    def saved_wifi_profile(self, ssid, in_use=False):
+        """Find the saved profile for a network.
+
+        Usually the profile is named after the SSID, but the user may have
+        renamed it. For the currently active network, fall back to the
+        connection name reported by the device itself — otherwise a renamed
+        active profile would incorrectly show up as "not saved"."""
+        if not self.snap:
+            return None
+        exact = next((c for c in self.snap["saved"]
+                      if c["name"] == ssid and c["type"] in WIFI_TYPES), None)
+        if exact:
+            return exact
+        if in_use and self.snap["wifi_dev"]:
+            active = next((d["connection"] for d in self.snap["devices"]
+                           if d["device"] == self.snap["wifi_dev"]), "")
+            if active:
+                return next((c for c in self.snap["saved"]
+                             if c["name"] == active and c["type"] in WIFI_TYPES), None)
+        return None
+
+    # -- drawing ------------------------------------------------------------
+
+    def draw(self):
+        stdscr = self.stdscr
+        stdscr.erase()
+        h, w = stdscr.getmaxyx()
+        if h < 12 or w < 54:
+            put(stdscr, 0, 0, "Enlarge the terminal window (min 54x12)", cp(C_WARN))
+            stdscr.refresh()
+            return
+
+        self.draw_header(w)
+        list_w = max(30, int(w * 0.52))
+        body_h = h - 4
+        left = stdscr.derwin(body_h, list_w, 2, 0)
+        right = stdscr.derwin(body_h, w - list_w, 2, list_w)
+        self.draw_list(left, body_h, list_w)
+        self.draw_details(right, body_h, w - list_w)
+        self.draw_footer(h, w)
+        stdscr.refresh()
+
+    def draw_header(self, w):
+        x = 0
+        for i, name in enumerate(TABS):
+            label = f" {i + 1} {name} "
+            attr = cp(C_SEL) | curses.A_BOLD if i == self.tab else cp(C_ACCENT)
+            put(self.stdscr, 0, x, label, attr)
+            x += len(label)
+        s = self.snap
+        right = []
+        if s:
+            if s["wifi_dev"] and s["radio"]["wifi"] is not None:
+                right.append(f"Wi-Fi {'on' if s['radio']['wifi'] else 'off'}")
+            # Only show WWAN status if there is actual WWAN/mobile hardware:
+            # nmcli reports a software WWAN radio state even on machines
+            # with no modem at all, which reads as "there's a modem" when
+            # there isn't one.
+            if s["has_wwan_hw"] and s["radio"]["wwan"] is not None:
+                right.append(f"WWAN {'on' if s['radio']['wwan'] else 'off'}")
+            act = [c["name"] for c in s["saved"] if c["active"]]
+            if act:
+                right.append(f"active: {len(act)}")
+        tail = "  ".join(right)
+        if self.worker.is_busy:
+            tail = SPINNER[self.frame % len(SPINNER)] + " " + tail
+        put(self.stdscr, 0, max(x + 1, w - len(tail) - 1), elide(tail, w - x - 2), cp(C_DIM))
+        put(self.stdscr, 1, 0, "─" * w, cp(C_DIM))
+
+    def draw_list(self, win, h, w):
+        title = TABS[self.tab]
+        draw_frame(win, title, cp(C_ACCENT))
+        inner_h = h - 2
+        lst = self.items()
+
+        if self.loading:
+            put(win, 1, 2, SPINNER[self.frame % len(SPINNER)] + " Loading…", cp(C_DIM))
+            return
+        if not lst:
+            for i, line in enumerate(wrap(self.empty_text(), w - 4)):
+                put(win, 1 + i, 2, line, cp(C_DIM))
+            return
+
+        sel = min(self.sel[self.tab], len(lst) - 1)
+        top = self.scroll[self.tab]
+        if sel < top:
+            top = sel
+        elif sel >= top + inner_h:
+            top = sel - inner_h + 1
+        top = max(0, min(top, max(0, len(lst) - inner_h)))
+        self.scroll[self.tab] = top
+
+        for row in range(min(inner_h, len(lst) - top)):
+            idx = top + row
+            item = lst[idx]
+            focused = idx == sel
+            self.draw_row(win, 1 + row, w - 2, item, focused)
+
+        if len(lst) > inner_h:
+            put(win, h - 1, w - 12, f" {sel + 1}/{len(lst)} ", cp(C_DIM))
+
+    def draw_row(self, win, y, w, item, focused):
+        base = cp(C_SEL) if focused else 0
+        marker = "›" if focused else " "
+        if self.tab == T_WIFI:
+            bars = signal_bars(item["signal"])
+            sig = f"{item['signal']:>3}%" if item["signal"] >= 0 else "  --"
+            saved = "★" if self.saved_wifi_profile(item["ssid"], item["in_use"]) else " "
+            lock = "🔒" if item["security"] != "open" else "  "
+            active = "●" if item["in_use"] else " "
+            name = elide(item["ssid"], max(6, w - 26))
+            text = f"{marker}{active}{saved} {bars} {sig} {lock} {name}"
+            put(win, y, 1, text.ljust(w), base if focused else 0)
+            if not focused:
+                put(win, y, 5, bars, sig_attr(item["signal"]))
+                if item["in_use"]:
+                    put(win, y, 2, "●", cp(C_OK))
+            return
+        if self.tab in (T_ETH, T_ADAPT):
+            up = item["state"] == "connected"
+            state = state_label(item["state"])
+            if self.tab == T_ADAPT:
+                text = (f"{marker}{'●' if up else '○'} {item['device']:<10} "
+                        f"{item['type']:<9} {state:<13} "
+                        f"{elide(item['connection'] or '-', max(4, w - 40))}")
+            else:
+                text = (f"{marker}{'●' if up else '○'} {item['device']:<10} {state:<14} "
+                        f"{elide(item['connection'] or '-', max(4, w - 32))}")
+            put(win, y, 1, text.ljust(w), base if focused else 0)
+            if not focused and up:
+                put(win, y, 2, "●", cp(C_OK))
+            return
+        if self.tab == T_VPN:
+            on = item["active"]
+            kind = "wireguard" if item["type"] == "wireguard" else "vpn"
+            text = f"{marker}{'●' if on else '○'} {elide(item['name'], max(6, w - 26)):<{max(6, w - 26)}} {kind:<10}"
+            put(win, y, 1, text.ljust(w), base if focused else 0)
+            if not focused and on:
+                put(win, y, 2, "●", cp(C_OK))
+            return
+        if self.tab == T_MOB:
+            if "device" in item and "uuid" not in item:
+                sig = item.get("signal", "")
+                op = item.get("operator", "")
+                extra = f"{op} {sig + '%' if sig else ''}".strip()
+                text = f"{marker}▣ {item['device']:<12} {item.get('state', ''):<14} {elide(extra, max(4, w - 34))}"
+            else:
+                on = item.get("active")
+                text = f"{marker}{'●' if on else '○'} {elide(item['name'], max(6, w - 24)):<{max(6, w - 24)}} {item['type']:<8}"
+            put(win, y, 1, text.ljust(w), base if focused else 0)
+            return
+        # profiles
+        on = item["active"]
+        auto = "A" if item["autoconnect"] else " "
+        text = f"{marker}{'●' if on else '○'}{auto} {elide(item['name'], max(6, w - 26)):<{max(6, w - 26)}} {elide(item['type'], 12)}"
+        put(win, y, 1, text.ljust(w), base if focused else 0)
+        if not focused and on:
+            put(win, y, 2, "●", cp(C_OK))
+
+    def empty_text(self):
+        s = self.snap
+        if self.tab == T_WIFI:
+            if not s or not s["wifi_dev"]:
+                return "No Wi-Fi adapter detected. Check the Adapters tab, or the driver."
+            if s["radio"]["wifi"] is False:
+                return "Wi-Fi radio is off. Press w to turn it on."
+            return "No networks found. Press s to rescan."
+        if self.tab == T_ETH:
+            return "No wired interfaces found. Check the Adapters tab."
+        if self.tab == T_VPN:
+            return "No VPN configured. Press a to add PPTP, L2TP, OpenVPN, WireGuard, and more."
+        if self.tab == T_MOB:
+            return ("No modem found. Press a to create a mobile data profile "
+                    "or a PPPoE connection over Ethernet.")
+        if self.tab == T_ADAPT:
+            return "No network devices found."
+        return "No saved profiles. Press a to create one."
+
+    def draw_details(self, win, h, w):
+        draw_frame(win, "Details", cp(C_ACCENT))
+        item = self.current()
+        if self.loading:
+            put(win, 1, 2, "…", cp(C_DIM))
+            return
+        if item is None:
+            put(win, 1, 2, "Select an item on the left", cp(C_DIM))
+            return
+        rows = self.detail_rows(item)
+        maxw = w - 4
+        y = 1
+        for label, value, attr in rows:
+            if y >= h - 1:
+                break
+            if label is None:
+                put(win, y, 2, elide(str(value), maxw), attr)
+                y += 1
+                continue
+            put(win, y, 2, f"{label}:", cp(C_DIM))
+            put(win, y, 2 + 14, elide(str(value), max(0, maxw - 14)), attr)
+            y += 1
+
+    def detail_rows(self, item):
+        s = self.snap
+        rows = []
+        if self.tab == T_WIFI:
+            saved = self.saved_wifi_profile(item["ssid"], item["in_use"])
+            rows += [
+                ("Network", item["ssid"], curses.A_BOLD),
+                ("State", "connected" if item["in_use"] else "not connected",
+                 cp(C_OK) if item["in_use"] else 0),
+                ("Signal", f"{item['signal']}%  {signal_bars(item['signal'])}"
+                 if item["signal"] >= 0 else "unknown", sig_attr(item["signal"])),
+                ("Security", item["security"], 0),
+                ("BSSID", item["bssid"] or "-", 0),
+                ("Channel", f"{item['chan']}  ({item['freq']})", 0),
+                ("Rate", item["rate"] or "-", 0),
+                ("Mode", item["mode"] or "-", 0),
+                ("Profile", saved["name"] if saved else "not saved",
+                 cp(C_OK) if saved else cp(C_DIM)),
+            ]
+            if item["in_use"] and s["wifi_dev"]:
+                rows.append((None, "", 0))
+                rows += self.ip_rows(s["dev_details"].get(s["wifi_dev"], {}))
+            return rows
+
+        if self.tab in (T_ETH, T_ADAPT):
+            rows += [
+                ("Device", item["device"], curses.A_BOLD),
+                ("Type", item["type"], 0),
+                ("State", state_label(item["state"]),
+                 cp(C_OK) if item["state"] == "connected" else cp(C_DIM)),
+                ("Profile", item["connection"] or "-", 0),
+            ]
+            det = self.want_dev_detail(item["device"])
+            if det is None:
+                rows.append((None, "loading device info…", cp(C_DIM)))
+                return rows
+            if det.get("GENERAL.DRIVER"):
+                rows.append(("Driver", det["GENERAL.DRIVER"], 0))
+            if det.get("GENERAL.HWADDR"):
+                rows.append(("MAC", det["GENERAL.HWADDR"], 0))
+            if det.get("GENERAL.MTU"):
+                rows.append(("MTU", det["GENERAL.MTU"], 0))
+            if det.get("CAPABILITIES.SPEED") not in (None, "", "--", "unknown"):
+                rows.append(("Speed", det["CAPABILITIES.SPEED"], 0))
+            if item["state"] == "connected":
+                rows.append((None, "", 0))
+                rows += self.ip_rows(det)
+            return rows
+
+        if self.tab in (T_VPN, T_PROF) or (self.tab == T_MOB and "uuid" in item):
+            rows += [
+                ("Profile", item["name"], curses.A_BOLD),
+                ("Type", item["type"], 0),
+                ("State", "active" if item["active"] else "inactive",
+                 cp(C_OK) if item["active"] else cp(C_DIM)),
+                ("Autoconnect", "yes" if item["autoconnect"] else "no", 0),
+                ("Device", item["device"] or "-", 0),
+                ("UUID", item["uuid"], cp(C_DIM)),
+            ]
+            det = self.want_con_detail(item["uuid"])
+            if det is None:
+                rows.append((None, "loading properties…", cp(C_DIM)))
+                return rows
+            rows.append((None, "", 0))
+            for key, label in (("vpn.data", "VPN data"), ("connection.interface-name", "Interface"),
+                               ("ipv4.method", "IPv4"), ("ipv4.addresses", "IPv4 address"),
+                               ("ipv4.gateway", "IPv4 gateway"), ("ipv4.dns", "DNS"),
+                               ("ipv6.method", "IPv6"), ("gsm.apn", "APN"),
+                               ("gsm.username", "Username"), ("pppoe.username", "PPPoE user")):
+                val = det.get(key)
+                if val and val not in ("--", ""):
+                    rows.append((label, val, 0))
+            if item["active"] and item["device"]:
+                live = s["dev_details"].get(item["device"], {})
+                if live:
+                    rows.append((None, "", 0))
+                    rows += self.ip_rows(live)
+            rows.append((None, "", 0))
+            rows.append((None, "Press A for advanced settings (MTU, routes, metered, ...)", cp(C_DIM)))
+            return rows
+
+        # physical modem row (no saved profile)
+        rows += [
+            ("Device", item.get("device", "-"), curses.A_BOLD),
+            ("Type", item.get("type", "-"), 0),
+            ("State", item.get("state", "-"), 0),
+            ("Profile", item.get("connection") or "-", 0),
+        ]
+        if item.get("operator"):
+            rows.append(("Operator", item["operator"], 0))
+        if item.get("signal"):
+            rows.append(("Signal", item["signal"] + "%", 0))
+        if not MMCLI:
+            rows.append((None, "ModemManager (mmcli) not found — info limited", cp(C_DIM)))
+        return rows
+
+    def ip_rows(self, det):
+        rows = []
+        v4 = [v for k, v in sorted(det.items()) if k.startswith("IP4.ADDRESS")]
+        v6 = [v for k, v in sorted(det.items()) if k.startswith("IP6.ADDRESS")]
+        dns = [v for k, v in sorted(det.items()) if k.startswith("IP4.DNS")]
+        if v4:
+            rows.append(("IPv4", ", ".join(v4), 0))
+        if det.get("IP4.GATEWAY", "--") not in ("--", ""):
+            rows.append(("Gateway", det["IP4.GATEWAY"], 0))
+        if dns:
+            rows.append(("DNS", ", ".join(dns), 0))
+        if v6:
+            rows.append(("IPv6", v6[0], 0))
+        return rows
+
+    def want_con_detail(self, uuid):
+        key = f"con:{uuid}"
+        if key in self.detail_cache:
+            return self.detail_cache[key]
+        if key not in self.pending:
+            self.pending.add(key)
+            self.worker.submit(("detail", key), q_con_details, uuid)
+        return None
+
+    def want_dev_detail(self, dev):
+        key = f"dev:{dev}"
+        if key in self.detail_cache:
+            return self.detail_cache[key]
+        if key not in self.pending:
+            self.pending.add(key)
+            self.worker.submit(("detail", key), q_dev_details, dev)
+        return None
+
+    def draw_footer(self, h, w):
+        keys = {
+            T_WIFI: "Enter connect · d disconnect · x forget · a hidden network · e/A edit · s rescan · w radio",
+            T_ETH: "Enter connect · d disconnect · a new profile · e edit · A advanced",
+            T_VPN: "Enter toggle · a add VPN · e edit · A advanced · x delete · t autoconnect",
+            T_MOB: "Enter connect · a add (GSM/CDMA/PPPoE) · e/A edit · d disconnect · W radio",
+            T_ADAPT: "Enter connect · d disconnect · e edit · A advanced · i device info · r refresh",
+            T_PROF: "Enter activate · d disconnect · e edit · A advanced · x delete · t autoconnect · i properties",
+        }[self.tab]
+        put(self.stdscr, h - 2, 0, "─" * w, cp(C_DIM))
+        put(self.stdscr, h - 2, 2, " " + elide(keys, w - 6) + " ", cp(C_DIM))
+        if self.status:
+            put(self.stdscr, h - 1, 0, elide(self.status, w - 12), self.status_attr)
+        put(self.stdscr, h - 1, max(0, w - 9), "? help", cp(C_DIM))
+
+    # -- action handlers ----------------------------------------------------
+
+    def act_enter(self):
+        item = self.current()
+        if item is None:
+            return
+        if self.tab == T_WIFI:
+            self.wifi_connect(item)
+        elif self.tab in (T_ETH, T_ADAPT):
+            if item["state"] == "connected":
+                self.notify(f"{item['device']} is already connected")
+            else:
+                self.do_action("dev", a_dev_connect, item["device"],
+                               note=f"Connecting {item['device']}…",
+                               success=f"{item['device']} connected")
+        elif self.tab == T_MOB and "uuid" not in item:
+            if item.get("connection"):
+                self.do_action("con", a_con_up, item["connection"],
+                               note="Connecting…", success="Connected")
+            else:
+                self.notify("This modem has no profile yet. Press a to create one.", C_WARN)
+        else:
+            if item.get("active"):
+                self.do_action("con", a_con_down, item["name"],
+                               note=f"Disconnecting {item['name']}…",
+                               success=f"{item['name']} disconnected")
+            else:
+                self.do_action("con", a_con_up, item["name"],
+                               note=f"Connecting {item['name']}…",
+                               success=f"{item['name']} connected")
+
+    def wifi_connect(self, net):
+        if net["in_use"]:
+            self.notify(f"{net['ssid']} is already connected")
+            return
+        saved = self.saved_wifi_profile(net["ssid"], net["in_use"])
+        if saved:
+            self.do_action("wifi", a_con_up, saved["name"],
+                           note=f"Connecting to {net['ssid']}…",
+                           success=f"Connected: {net['ssid']}")
+            return
+        if net["security"] == "open":
+            self.do_action("wifi", a_wifi_connect, net["ssid"], None, False,
+                           self.snap["wifi_dev"],
+                           note=f"Connecting to {net['ssid']}…",
+                           success=f"Connected: {net['ssid']}")
+            return
+
+        guess = guess_wifi_security(net["security"])
+        options = [(key, label + ("  — detected" if key == guess and key != "auto" else ""),
+                   True, "") for key, label in WIFI_SEC_CHOICES]
+        sectype = select_box(self.stdscr, f"Security for {elide(net['ssid'], 30)}", options,
+                             footer=f"Scan reports: {net['security']} · Enter select · Esc cancel")
+        if sectype is None:
+            self.notify("Cancelled")
+            return
+
+        if sectype == "auto":
+            form = FormBox(self.stdscr, f"Connect to {elide(net['ssid'], 40)}",
+                           [_f("password", "Password", "secret", required=True)],
+                           note=f"Security: {net['security']}")
+            res = form.run()
+            if res is None:
+                self.notify("Cancelled")
+                return
+            self.do_action("wifi", a_wifi_connect, net["ssid"], res["password"], False,
+                           self.snap["wifi_dev"],
+                           note=f"Connecting to {net['ssid']}…",
+                           success=f"Connected: {net['ssid']}")
+            return
+
+        if sectype == "wpa-eap":
+            form = FormBox(self.stdscr, f"Enterprise login: {elide(net['ssid'], 28)}",
+                           eap_fields(),
+                           note="Ask your network admin for the EAP method, identity, and CA certificate.")
+        else:
+            label = "WEP key" if sectype == "wep" else "Password"
+            form = FormBox(self.stdscr, f"{dict(WIFI_SEC_CHOICES)[sectype]}: {elide(net['ssid'], 24)}",
+                           [_f("password", label, "secret", required=True)])
+        res = form.run()
+        if res is None:
+            self.notify("Cancelled")
+            return
+        self.do_action("wifi", create_wifi_manual, net["ssid"], net["ssid"],
+                       self.snap["wifi_dev"], sectype, res,
+                       note=f"Connecting to {net['ssid']}…",
+                       success=f"Connected: {net['ssid']}")
+
+    def act_disconnect(self):
+        item = self.current()
+        if item is None:
+            return
+        if self.tab == T_WIFI:
+            if not item["in_use"]:
+                self.notify("This network is not active", C_WARN)
+                return
+            self.do_action("wifi", a_dev_disconnect, self.snap["wifi_dev"],
+                           note="Disconnecting…", success="Wi-Fi disconnected")
+        elif self.tab in (T_ETH, T_ADAPT):
+            if item["state"] != "connected":
+                self.notify("Device is not connected", C_WARN)
+                return
+            self.do_action("dev", a_dev_disconnect, item["device"],
+                           note="Disconnecting…", success=f"{item['device']} disconnected")
+        elif "uuid" in item:
+            if not item["active"]:
+                self.notify("Profile is not active", C_WARN)
+                return
+            self.do_action("con", a_con_down, item["name"],
+                           note="Disconnecting…", success=f"{item['name']} disconnected")
+        elif item.get("connection"):
+            self.do_action("con", a_con_down, item["connection"],
+                           note="Disconnecting…", success="Disconnected")
+
+    def act_delete(self):
+        item = self.current()
+        if item is None:
+            return
+        if self.tab == T_WIFI:
+            saved = self.saved_wifi_profile(item["ssid"], item["in_use"])
+            if not saved:
+                self.notify("This network is not saved", C_WARN)
+                return
+            if not confirm_box(self.stdscr, "Forget network",
+                               f"Delete the saved profile \u201c{saved['name']}\u201d?", danger=True):
+                self.notify("Cancelled")
+                return
+            self.do_action("del", a_con_delete, saved["name"],
+                           note="Deleting profile…", success=f"Forgot {item['ssid']}")
+            return
+        if "uuid" not in item:
+            self.notify("Select a profile, not a device", C_WARN)
+            return
+        if not confirm_box(self.stdscr, "Delete profile",
+                           f"Delete \u201c{item['name']}\u201d ({item['type']})?", danger=True):
+            self.notify("Cancelled")
+            return
+        self.do_action("del", a_con_delete, item["uuid"],
+                       note="Deleting…", success=f"\u201c{item['name']}\u201d deleted")
+
+    def act_toggle_auto(self):
+        item = self.current()
+        if item is None or "uuid" not in item:
+            self.notify("Autoconnect applies to a profile", C_WARN)
+            return
+        new = not item["autoconnect"]
+        self.do_action("auto", a_autoconnect, item["uuid"], new,
+                       note="Updating autoconnect…",
+                       success=f"Autoconnect {'enabled' if new else 'disabled'}: {item['name']}")
+
+    def act_info(self):
+        item = self.current()
+        if item is None:
+            return
+        if "uuid" in item:
+            key = f"con:{item['uuid']}"
+            det = self.detail_cache.get(key) or q_con_details(item["uuid"])
+            self.detail_cache[key] = det
+            title = f"Properties: {item['name']}"
+        elif self.tab == T_WIFI:
+            det = {"SSID": item["ssid"], "BSSID": item["bssid"],
+                   "Signal": str(item["signal"]), "Security": item["security"],
+                   "Channel": item["chan"], "Frequency": item["freq"], "Rate": item["rate"]}
+            title = f"Network {item['ssid']}"
+        else:
+            dev = item.get("device", "")
+            det = q_dev_details(dev)
+            title = f"Device {dev}"
+        lines = [f"{k} = {v}" for k, v in det.items() if v not in ("", "--")]
+        if not lines:
+            lines = ["No data"]
+        self.pager(title, lines)
+
+    def pager(self, title, lines):
+        stdscr = self.stdscr
+        sh, sw = stdscr.getmaxyx()
+        m = Modal(stdscr, sh - 2, min(sw - 2, 100), title)
+        top = 0
+        inner = m.h - 3
+        while True:
+            m.win.erase()
+            draw_frame(m.win, title, cp(C_ACCENT))
+            for i in range(min(inner, len(lines) - top)):
+                put(m.win, 1 + i, 2, elide(lines[top + i], m.w - 4))
+            put(m.win, m.h - 2, 2,
+                f"{top + 1}-{min(len(lines), top + inner)} of {len(lines)} · Up/Down scroll · q close",
+                cp(C_DIM))
+            m.win.refresh()
+            ch = m.win.getch()
+            if ch in (ord("q"), 27, 10, 13):
+                break
+            if ch in (curses.KEY_DOWN, ord("j")):
+                top = min(max(0, len(lines) - inner), top + 1)
+            elif ch in (curses.KEY_UP, ord("k")):
+                top = max(0, top - 1)
+            elif ch == curses.KEY_NPAGE:
+                top = min(max(0, len(lines) - inner), top + inner)
+            elif ch == curses.KEY_PPAGE:
+                top = max(0, top - inner)
+        m.close()
+
+    def act_radio(self, kind):
+        if not self.snap:
+            return
+        if kind == "wwan" and not self.snap["has_wwan_hw"]:
+            self.notify("No mobile (WWAN) hardware detected", C_WARN)
+            return
+        cur = self.snap["radio"]["wifi" if kind == "wifi" else "wwan"]
+        if cur is None:
+            self.notify(f"{kind} radio is not available", C_WARN)
+            return
+        label = "Wi-Fi" if kind == "wifi" else "WWAN"
+        self.do_action("radio", a_radio, kind, not cur,
+                       note=f"Switching {label} radio…",
+                       success=f"{label} {'disabled' if cur else 'enabled'}")
+
+    # -- creation ------------------------------------------------------------
+
+    def act_add(self):
+        if self.tab == T_WIFI:
+            self.add_hidden_wifi()
+        elif self.tab == T_ETH:
+            self.add_ethernet()
+        elif self.tab == T_VPN:
+            self.add_vpn()
+        elif self.tab == T_MOB:
+            self.add_mobile()
+        elif self.tab == T_ADAPT:
+            self.notify("Adapters are detected automatically, nothing to add here", C_WARN)
+        else:
+            choice = select_box(self.stdscr, "New connection", [
+                ("wifi", "Hidden Wi-Fi network", True, ""),
+                ("ethernet", "Wired (Ethernet)", True, ""),
+                ("vpn", "VPN", True, ""),
+                ("mobile", "Mobile / PPPoE", True, ""),
+            ])
+            if choice == "wifi":
+                self.add_hidden_wifi()
+            elif choice == "ethernet":
+                self.add_ethernet()
+            elif choice == "vpn":
+                self.add_vpn()
+            elif choice == "mobile":
+                self.add_mobile()
+
+    def add_hidden_wifi(self):
+        options = [(k, l, True, "") for k, l in WIFI_SEC_CHOICES if k != "auto"]
+        sectype = select_box(self.stdscr, "Hidden network security", options,
+                             footer="Enter select · Esc cancel")
+        if sectype is None:
+            return
+        ssid_field = _f("ssid", "Network name (SSID)", required=True)
+        if sectype == "open":
+            fields = [ssid_field]
+        elif sectype == "wpa-eap":
+            fields = [ssid_field] + eap_fields()
+        else:
+            label = "WEP key" if sectype == "wep" else "Password"
+            fields = [ssid_field, _f("password", label, "secret", required=True)]
+        form = FormBox(self.stdscr, "Hidden Wi-Fi network", fields,
+                       note="The network will be added and connected right away.")
+        res = form.run()
+        if not res:
+            return
+        ssid = res.pop("ssid")
+        self.do_action("wifi", create_wifi_manual, ssid, ssid,
+                       self.snap["wifi_dev"] if self.snap else None, sectype, res,
+                       note=f"Connecting to {ssid}…", success=f"Connected: {ssid}",
+                       hidden=True)
+
+    def eth_ifaces(self):
+        devs = [d["device"] for d in (self.snap["devices"] if self.snap else [])
+                if d["type"] == "ethernet"]
+        return devs or ["eth0"]
+
+    def add_ethernet(self):
+        form = FormBox(self.stdscr, "Wired connection", [
+            _f("name", "Profile name", required=True),
+            _f("iface", "Interface", "choice", choices=self.eth_ifaces()),
+            _f("ipv4_method", "IPv4", "choice", choices=["auto", "manual", "link-local", "disabled"]),
+            _f("ipv4_addr", "Address/prefix", value=""),
+            _f("ipv4_gw", "Gateway"),
+            _f("dns", "DNS, comma-separated"),
+            _f("ipv6_method", "IPv6", "choice", choices=["auto", "disabled", "ignore"]),
+            _f("autoconnect", "Autoconnect", "bool", value=True),
+        ], note="Address format: 192.168.1.50/24 — only used when IPv4 = manual.")
+        res = form.run()
+        if not res:
+            return
+        self.do_action("add", create_ethernet, res["name"], res,
+                       note="Creating profile…", success=f"Profile \u201c{res['name']}\u201d created")
+
+    def add_vpn(self):
+        plugins = self.snap["plugins"] if self.snap else set()
+        options = []
+        for key, spec in VPN_SPECS.items():
+            available = spec.get("native", False) or key in plugins
+            options.append((key, spec["title"], available, ""))
+        options.sort(key=lambda o: (not o[2], o[1].lower()))
+        vpn_type = select_box(self.stdscr, "VPN type", options,
+                              footer="Enter — select · unavailable ones need a NetworkManager plugin")
+        if not vpn_type:
+            return
+        spec = VPN_SPECS[vpn_type]
+        fields = [_f("name", "Profile name", required=True, value=spec["title"])]
+        fields += [dict(f) for f in spec["fields"]]
+        form = FormBox(self.stdscr, f"New connection: {spec['title']}", fields,
+                       note=spec.get("note", "Passwords are passed to nmcli — keep that in mind on a shared machine."))
+        res = form.run()
+        if not res:
+            return
+        name = res.pop("name")
+        self.do_action("add", create_vpn, vpn_type, name, res,
+                       note=f"Creating {spec['title']}…",
+                       success=f"\u201c{name}\u201d created — press Enter to connect")
+
+    def add_mobile(self):
+        kind = select_box(self.stdscr, "Connection type", [
+            ("gsm", "Mobile data GSM (APN, SIM)", True, ""),
+            ("cdma", "Mobile data CDMA", True, ""),
+            ("pppoe", "PPPoE / DSL over Ethernet", True, ""),
+        ], footer="Analog (AT-modem) dial-up is not supported by NetworkManager")
+        if kind == "gsm":
+            form = FormBox(self.stdscr, "Mobile data (GSM)", [
+                _f("name", "Profile name", required=True, value="Mobile data"),
+                _f("apn", "APN", required=True),
+                _f("user", "Username"),
+                _f("password", "Password", "secret"),
+                _f("pin", "SIM PIN", "secret"),
+                _f("autoconnect", "Autoconnect", "bool", value=False),
+            ], note="The APN is provided by your carrier. The profile attaches to any available modem.")
+            res = form.run()
+            if not res:
+                return
+            name = res.pop("name")
+            self.do_action("add", create_gsm, name, res,
+                           note="Creating profile…", success=f"\u201c{name}\u201d created")
+        elif kind == "cdma":
+            form = FormBox(self.stdscr, "Mobile data (CDMA)", [
+                _f("name", "Profile name", required=True, value="CDMA"),
+                _f("number", "Dial number", required=True, value="#777"),
+                _f("user", "Username"),
+                _f("password", "Password", "secret"),
+            ])
+            res = form.run()
+            if not res:
+                return
+            name = res.pop("name")
+            self.do_action("add", create_cdma, name, res,
+                           note="Creating profile…", success=f"\u201c{name}\u201d created")
+        elif kind == "pppoe":
+            form = FormBox(self.stdscr, "PPPoE / DSL", [
+                _f("name", "Profile name", required=True, value="DSL"),
+                _f("iface", "Interface", "choice", choices=self.eth_ifaces()),
+                _f("user", "Username", required=True),
+                _f("password", "Password", "secret"),
+                _f("service", "Service name (optional)"),
+            ], note="Username and password are provided by your ISP.")
+            res = form.run()
+            if not res:
+                return
+            name = res.pop("name")
+            self.do_action("add", create_pppoe, name, res,
+                           note="Creating profile…", success=f"\u201c{name}\u201d created")
+
+    def resolve_profile_item(self):
+        """Return the current item as a saved profile (dict with 'uuid'), or
+        None (after notifying the user) if none can be resolved.
+
+        Wi-Fi/VPN/Profiles/saved-Mobile rows already carry a profile. For
+        device-shaped rows (Ethernet, Adapters, a physical modem with no
+        profile yet) we look for a saved connection bound to that device —
+        preferring the one currently active on it — and, if several match,
+        let the user pick which one to edit."""
+        item = self.current()
+        if item is None:
+            return None
+        if self.tab == T_WIFI:
+            saved = self.saved_wifi_profile(item["ssid"], item["in_use"])
+            if not saved:
+                self.notify("Network is not saved — connect first", C_WARN)
+                return None
+            return saved
+        if "uuid" in item:
+            return item
+        # Device-shaped item (Ethernet / Adapters / a physical modem row):
+        # resolve to a saved profile bound to it.
+        dev = item.get("device", "")
+        dev_type = item.get("type", "")
+        con_name = item.get("connection", "")
+        if con_name:
+            match = next((c for c in self.snap["saved"] if c["name"] == con_name), None)
+            if match:
+                return match
+        # nmcli only fills in DEVICE for a connection that's currently
+        # active, so an inactive profile for this device won't match on
+        # device name alone — fall back to matching by connection type.
+        type_map = {"ethernet": ETH_TYPES, "wifi": WIFI_TYPES,
+                    "gsm": ("gsm",), "cdma": ("cdma",)}
+        expected_types = type_map.get(dev_type, ())
+        candidates = [c for c in self.snap["saved"]
+                      if (dev and c["device"] == dev)
+                      or (not c["device"] and c["type"] in expected_types)]
+        if not candidates:
+            self.notify(f"No saved profile for {dev or 'this device'} — create one with a", C_WARN)
+            return None
+        if len(candidates) == 1:
+            return candidates[0]
+        choice = select_box(self.stdscr, f"Choose a profile for {dev}",
+                            [(c["uuid"], c["name"], True, c["type"]) for c in candidates])
+        if not choice:
+            return None
+        return next(c for c in candidates if c["uuid"] == choice)
+
+    def act_edit(self):
+        item = self.resolve_profile_item()
+        if item is None:
+            return
+        key = f"con:{item['uuid']}"
+        det = self.detail_cache.get(key) or q_con_details(item["uuid"])
+        self.detail_cache[key] = det
+        m4 = det.get("ipv4.method", "auto")
+        m6 = det.get("ipv6.method", "auto")
+        addr = det.get("ipv4.addresses", "")
+        form = FormBox(self.stdscr, f"Edit \u201c{elide(item['name'], 36)}\u201d", [
+            _f("name", "Profile name", required=True, value=item["name"]),
+            _f("ipv4_method", "IPv4", "choice",
+               choices=sorted({m4, "auto", "manual", "link-local", "disabled"}), value=m4),
+            _f("ipv4_addr", "Address/prefix", value="" if addr in ("--",) else addr),
+            _f("ipv4_gw", "Gateway", value=det.get("ipv4.gateway", "").replace("--", "")),
+            _f("dns", "DNS, comma-separated", value=det.get("ipv4.dns", "").replace("--", "")),
+            _f("ipv6_method", "IPv6", "choice",
+               choices=sorted({m6, "auto", "disabled", "ignore"}), value=m6),
+            _f("autoconnect", "Autoconnect", "bool", value=item["autoconnect"]),
+        ], note="Changes take effect the next time the profile connects. Press A for advanced settings (MTU, routes, metered, ...).")
+        res = form.run()
+        if not res:
+            return
+        self.detail_cache.pop(key, None)
+        self.do_action("edit", edit_connection, item["uuid"], res,
+                       note="Saving…", success=f"\u201c{res['name']}\u201d saved")
+
+    def act_advanced(self):
+        item = self.resolve_profile_item()
+        if item is None:
+            return
+        key = f"con:{item['uuid']}"
+        det = self.detail_cache.get(key) or q_con_details(item["uuid"])
+        self.detail_cache[key] = det
+        con_type = det.get("connection.type", item.get("type", ""))
+        alias = TYPE_ALIAS.get(con_type)
+
+        def clean(v):
+            return "" if v in (None, "--") else v
+
+        fields = []
+        if alias:
+            fields.append(_f("mtu", "MTU (0 = automatic)",
+                             value=clean(det.get(f"{alias}.mtu", "0")) or "0"))
+            fields.append(_f("cloned_mac", "Cloned MAC (blank / random / stable / xx:xx:..)",
+                             value=clean(det.get(f"{alias}.cloned-mac-address", ""))))
+        metered_raw = det.get("connection.metered", "unknown")
+        metered_choice = metered_raw if metered_raw in ("yes", "no") else "default"
+        fields += [
+            _f("routes", "Extra static routes (nmcli syntax)",
+               value=clean(det.get("ipv4.routes", ""))),
+            _f("dns_search", "DNS search domains, comma-separated",
+               value=clean(det.get("ipv4.dns-search", ""))),
+            _f("ignore_auto_dns", "Ignore DNS pushed by DHCP/VPN", "bool",
+               value=det.get("ipv4.ignore-auto-dns", "no") == "yes"),
+            _f("never_default", "Never use as default route (VPN: \"only for its own network\")",
+               "bool", value=det.get("ipv4.never-default", "no") == "yes"),
+            _f("ipv4_required", "Require IPv4 for the connection to be considered up",
+               "bool", value=det.get("ipv4.may-fail", "yes") == "no"),
+            _f("metered", "Metered connection", "choice",
+               choices=["default", "yes", "no"], value=metered_choice),
+            _f("priority", "Autoconnect priority (integer, higher wins)",
+               value=clean(det.get("connection.autoconnect-priority", "0")) or "0"),
+            _f("zone", "Firewall zone (requires firewalld)",
+               value=clean(det.get("connection.zone", ""))),
+        ]
+        form = FormBox(self.stdscr, f"Advanced: {elide(item['name'], 34)}", fields,
+                       note="For experienced users — if unsure, leave these as they are. "
+                            "0 / blank generally means \"use the default\".")
+        res = form.run()
+        if not res:
+            return
+        self.detail_cache.pop(key, None)
+        self.do_action("adv", apply_advanced, item["uuid"], alias, res,
+                       note="Saving advanced settings…",
+                       success=f"Advanced settings saved: {item['name']}")
+
+    def act_log(self):
+        if not self.log:
+            message_box(self.stdscr, "Log", ["No events yet."])
+            return
+        self.pager("Event log", [f"{t}  {msg}" for t, msg in reversed(self.log)])
+
+    # -- main loop -------------------------------------------------------
+
+    def move(self, delta):
+        n = len(self.items())
+        if n:
+            self.sel[self.tab] = max(0, min(n - 1, self.sel[self.tab] + delta))
+
+    def loop(self):
+        while True:
+            self.frame += 1
+            self.handle_results()
+            if (not self.loading and time.time() - self.last_refresh > REFRESH_INTERVAL
+                    and not self.worker.is_busy):
+                self.request_refresh()
+            self.draw()
+
+            ch = self.stdscr.getch()
+            if ch == -1:
+                continue
+            if ch in (ord("q"), ord("Q")):
+                return
+            if ch == curses.KEY_RESIZE:
+                self.stdscr.erase()
+                continue
+            if ch in (curses.KEY_RIGHT, ord("l"), 9):
+                self.tab = (self.tab + 1) % len(TABS)
+                self.status = ""
+            elif ch in (curses.KEY_LEFT, ord("h"), curses.KEY_BTAB, 353):
+                self.tab = (self.tab - 1) % len(TABS)
+                self.status = ""
+            elif ord("1") <= ch <= ord(str(len(TABS))):
+                self.tab = ch - ord("1")
+                self.status = ""
+            elif ch in (curses.KEY_DOWN, ord("j")):
+                self.move(1)
+            elif ch in (curses.KEY_UP, ord("k")):
+                self.move(-1)
+            elif ch == curses.KEY_NPAGE:
+                self.move(10)
+            elif ch == curses.KEY_PPAGE:
+                self.move(-10)
+            elif ch == ord("g"):
+                self.sel[self.tab] = 0
+            elif ch == ord("G"):
+                self.sel[self.tab] = max(0, len(self.items()) - 1)
+            elif ch in (10, 13, curses.KEY_ENTER):
+                self.act_enter()
+            elif ch == ord("d"):
+                self.act_disconnect()
+            elif ch in (ord("x"), curses.KEY_DC):
+                self.act_delete()
+            elif ch == ord("a"):
+                self.act_add()
+            elif ch == ord("e"):
+                self.act_edit()
+            elif ch == ord("A"):
+                self.act_advanced()
+            elif ch == ord("t"):
+                self.act_toggle_auto()
+            elif ch == ord("i"):
+                self.act_info()
+            elif ch == ord("w"):
+                self.act_radio("wifi")
+            elif ch == ord("W"):
+                self.act_radio("wwan")
+            elif ch == ord("s"):
+                self.request_refresh(rescan=True, note="Scanning Wi-Fi…")
+            elif ch in (ord("r"), 18):
+                self.detail_cache.clear()
+                self.request_refresh(note="Refreshing…")
+            elif ch == ord("L"):
+                self.act_log()
+            elif ch in (ord("?"), curses.KEY_F1):
+                message_box(self.stdscr, "Keys", HELP_TEXT)
+
+
+def main(stdscr):
+    App(stdscr).loop()
+
+
+def disable_flow_control(fd):
+    """Turn off XON/XOFF — otherwise Ctrl+S freezes terminal output.
+
+    Returns the previous settings so they can be restored on exit.
+    """
+    try:
+        old = termios.tcgetattr(fd)
+    except (termios.error, ValueError, OSError):
+        return None
+    new = list(old)
+    new[0] = new[0] & ~(termios.IXON | termios.IXOFF)  # iflag
+    try:
+        termios.tcsetattr(fd, termios.TCSANOW, new)
+    except (termios.error, ValueError, OSError):
+        return None
+    return old
+
+
+def preflight():
+    if NMCLI is None:
+        print("nmcli not found. Install NetworkManager and try again.",
+              file=sys.stderr)
+        return 1
+    rc, out, err = run([NMCLI, "-t", "-f", "RUNNING", "general"], timeout=6)
+    if rc != 0:
+        print("NetworkManager is not responding:", err_line(rc, err, out), file=sys.stderr)
+        return 1
+    if out.strip() and out.strip() != "running":
+        print("The NetworkManager service is not running: systemctl start NetworkManager",
+              file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        locale.setlocale(locale.LC_ALL, "")
+    except locale.Error:
+        pass
+    code = preflight()
+    if code:
+        sys.exit(code)
+    try:
+        tty_fd = sys.stdin.fileno()
+    except (AttributeError, ValueError):
+        tty_fd = None
+    saved_tty = disable_flow_control(tty_fd) if tty_fd is not None else None
+    try:
+        curses.wrapper(main)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if saved_tty is not None:
+            try:
+                termios.tcsetattr(tty_fd, termios.TCSANOW, saved_tty)
+            except (termios.error, ValueError, OSError):
+                pass

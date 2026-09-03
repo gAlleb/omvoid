@@ -54,7 +54,7 @@ sudo -v
 ( while kill -0 "$$" 2>/dev/null; do sudo -n true; sleep 50; done ) &
 
 # Install prerequisites
-# run_step preflight/migrations.sh
+run_step preflight/migrations.sh
 run_step preflight/first-run-mode.sh
 run_step preflight/update.sh
 run_step preflight/gum.sh
@@ -106,6 +106,7 @@ show_subtext "Installing default applications [4/5]"
 run_step apps/icons.sh
 run_step apps/tui.sh
 run_step apps/audioutils.sh
+run_step apps/netui.sh
 run_step apps/webapps.sh
 run_step apps/xtras.sh
 run_step apps/mimetypes.sh

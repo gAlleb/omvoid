@@ -13,7 +13,8 @@
   "custom/keyboard": {
     "exec": "~/.config/waybar/scripts/layout-switcher-mango.sh",
     "return-type": "json",
-    "format": "  {}",
+    "format": "{}",
+
     "tooltip": false
   },
 
@@ -87,7 +88,7 @@
     "tooltip-format-disconnected": "Disconnected",
     "interval": 3,
     "spacing": 1,
-    "on-click": "omvoid-launch-tui nmtui"
+    "on-click": "omvoid-launch-tui netui"
   },
 
   "custom/playerctl": {
@@ -96,7 +97,7 @@
       "exec": "~/.config/waybar/scripts/playerctl/playerctl-waybar.sh",
       "on-click": "~/.config/waybar/scripts/playerctl/playerctl-waybar-on-click.sh",
     	"on-click-right": "setsid -f kitty --class=rmpc -o font_size=12 -e rmpc",
-    	"on-click-middle": "~/.config/waybar/scripts/playerctl/playerctl-notify.sh",
+    	"on-click-middle": "setsid -f kitty --class=ratune -o font_size=12 -e ratune",
       "signal": 9,
   },
 

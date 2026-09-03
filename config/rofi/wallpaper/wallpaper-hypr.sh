@@ -101,13 +101,13 @@ executeCommand() {
     echo "${selected_wallpaper}" > "${CURRENT_WALLPAPER_PATH_FILE}"
     magick "${selected_wallpaper}" ~/.config/bg.jpg
     if pgrep -x "noctalia" > /dev/null; then
-      echo "Noctalia is running. Updating wallpaper..."
+    echo "Noctalia is running. Updating wallpaper..."
     
-      # 3. Pass the path argument. 
-      # Note: Double quotes are critical to preserve spaces in file paths.
-      noctalia msg wallpaper-set  "${selected_wallpaper}"
+    # 3. Pass the path argument. 
+    # Note: Double quotes are critical to preserve spaces in file paths.
+    noctalia msg wallpaper-set  "${selected_wallpaper}"
     else
-      echo "Noctalia is not running. Falling back to alternative setter."
+    echo "Noctalia is not running. Falling back to alternative setter."
     fi
 }
 

@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Выполняет невыполненные миграции из migrations/ репозитория.
+#
+# Миграция нужна тогда, когда правки в репозитории мало: надо ещё починить уже
+# установленную машину -- перенести файл, убрать устаревший кэш, переставить
+# симлинк. Новый файл в репозитории до такой машины доедет сам, а вот удалить
+# то, чего в репозитории уже нет, может только миграция.
+#
+#   omvoid-migrate            выполнить невыполненные
+#   omvoid-migrate --pending  только показать список, ничего не делая
+#
+# Имя файла -- unix-время создания, поэтому сортировка по имени и есть порядок
+# выполнения. Выполненные отмечаются маркерами, как шаги установки.
+
+set -euo pipefail
+
+OMVOID_PATH="${OMVOID_PATH:-$HOME/.local/share/omvoid}"
+MIGRATIONS_DIR="$OMVOID_PATH/migrations"
+STATE_DIR="${OMVOID_MIGRATION_STATE:-$HOME/.local/state/omvoid/migrations}"
+
+mode="run"
+case "${1:-}" in
+--pending | --check) mode="pending" ;;
+"") ;;
+*)
+  echo "Использование: omvoid-migrate [--pending]" >&2
+  exit 1
+  ;;
+esac
+
+[[ -d $MIGRATIONS_DIR ]] || exit 0
+
+pending() {
+  local file name
+  for file in "$MIGRATIONS_DIR"/*.sh; do
+    [[ -f $file ]] || continue
+    name=$(basename "$file")
+    [[ -f "$STATE_DIR/$name" ]] || printf '%s\n' "$name"
+  done
+}
+
+if [[ $mode == "pending" ]]; then
+  list=$(pending)
+  [[ -n $list ]] || exit 0
+  printf '%s\n' "$list"
+  exit 0
+fi
+
+mkdir -p "$STATE_DIR"
+
+for file in "$MIGRATIONS_DIR"/*.sh; do
+  [[ -f $file ]] || continue
+  name=$(basename "$file")
+  [[ -f "$STATE_DIR/$name" ]] && continue
+
+  echo -e "\e[32mмиграция ${name%.sh}\e[0m"
+  # В отдельном bash, а не source: упавшая миграция не должна утащить за собой
+  # ни оставшиеся, ни вызвавшего. Маркер ставится только после успеха, поэтому
+  # упавшая повторится в следующий раз.
+  OMVOID_PATH="$OMVOID_PATH" bash -euo pipefail "$file"
+  touch "$STATE_DIR/$name"
+done

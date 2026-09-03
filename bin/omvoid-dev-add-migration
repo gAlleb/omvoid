@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Создаёт заготовку миграции с именем из текущего unix-времени -- так порядок
+# выполнения совпадает с порядком создания.
+#
+#   omvoid-dev-add-migration "перенести обёртки mise в новый каталог"
+
+set -euo pipefail
+
+OMVOID_PATH="${OMVOID_PATH:-$HOME/.local/share/omvoid}"
+MIGRATIONS_DIR="$OMVOID_PATH/migrations"
+mkdir -p "$MIGRATIONS_DIR"
+
+description="${1:-опишите, что чинит эта миграция}"
+file="$MIGRATIONS_DIR/$(date +%s).sh"
+
+cat >"$file" <<TEMPLATE
+echo "$description"
+
+# Выполняется на уже установленной машине один раз. Пиши идемпотентно: маркер
+# защищает от повтора, но во время отладки миграцию гоняют руками.
+# Падение оставит её невыполненной, и она повторится при следующем обновлении.
+TEMPLATE
+
+chmod +x "$file"
+echo "создана: ${file/#$HOME/\~}"
+
+# На свежей машине такая миграция не нужна -- install/preflight/migrations.sh
+# отметит все существующие как выполненные, чтобы новая установка не чинила то,
+# что и так собрано правильно.
+
+if [[ -n ${EDITOR:-} ]] && [[ -t 0 ]]; then
+  "$EDITOR" "$file"
+fi

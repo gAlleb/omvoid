@@ -1,0 +1,161 @@
+#!/bin/bash
+
+# Обновляет omvoid и систему целиком.
+#
+# Нужен потому, что просто git pull ничего не меняет: config/ попадает в
+# ~/.config копированием, а повторный install.sh конфиги не перекопирует --
+# у шага config/config.sh стоит маркер. До этого скрипта обновление второй
+# машины делалось руками и по памяти.
+#
+#   omvoid-update      спрашивает перед заменой изменённых конфигов
+#   omvoid-update -y   ничего не спрашивает
+
+set -euo pipefail
+
+OMVOID_PATH="${OMVOID_PATH:-$HOME/.local/share/omvoid}"
+assume_yes=false
+[[ ${1:-} == "-y" ]] && assume_yes=true
+
+step() { echo -e "\n\e[32m==> $1\e[0m"; }
+
+confirm() {
+  $assume_yes && return 0
+  if command -v gum >/dev/null; then
+    gum confirm "$1"
+  else
+    read -rp "$1 [y/N] " answer
+    [[ $answer == [yY]* ]]
+  fi
+}
+
+cd "$OMVOID_PATH"
+
+# --- репозиторий -------------------------------------------------------------
+step "Репозиторий"
+if [[ -n $(git status --porcelain) ]]; then
+  # Незакоммиченные правки -- обычное состояние машины, на которой этот
+  # дистрибутив и разрабатывается. Затирать их через pull нельзя.
+  dirty=$(git status --short)
+  echo "есть незакоммиченные изменения ($(wc -l <<<"$dirty") шт.), git pull пропускаю:"
+  head -8 <<<"$dirty" | sed 's/^/  /'
+  (($(wc -l <<<"$dirty") > 8)) && echo "  ... и ещё $(($(wc -l <<<"$dirty") - 8))"
+else
+  git pull --ff-only
+fi
+
+# --- системные пакеты --------------------------------------------------------
+step "Системные пакеты"
+# xbps обновляется первым: устаревший менеджер иначе падает посреди синхронизации.
+sudo xbps-install -Suy xbps
+sudo xbps-install -Suy
+
+# --- конфиги -----------------------------------------------------------------
+step "Конфиги"
+
+# Часть файлов репозиторий кладёт один раз, а дальше ими владеет система, и
+# копия в git давно не истина. Их расхождение -- норма, а не то, что надо
+# чинить: config/rclone/rclone.conf в репозитории вообще пустая заготовка, и
+# обновление затёрло бы настоящую настройку облака.
+is_runtime_owned() {
+  case "$1" in
+  rclone/rclone.conf) return 0 ;;  # заготовка на 0 байт, живой файл настоящий
+  nvim/lazy-lock.json) return 0 ;; # версии плагинов пишет lazy.nvim
+  bg.jpg) return 0 ;;              # генерируется при смене обоев
+  *.so) return 0 ;;                # собранные бинарники
+  crystal-dock/*) return 0 ;;      # crystal-dock пишет туда своё состояние
+  esac
+
+  # autostart.conf переписывается на ходу: omvoid-cmd-first-run удаляет из него
+  # свою же строку после первого запуска. Плюс машинно-специфичное -- яркость
+  # экрана, разблокировка gpg, автозапуски -- живёт именно здесь.
+  case "$1" in
+  mango/conf/autostart.conf) return 0 ;;
+  esac
+
+  # Шаблоны с подстановкой при установке (config/service/mpd/run несёт
+  # __USERNAME__). Копировать их как есть нельзя ни в какую сторону, поэтому в
+  # список они не попадают вовсе. Проверяем содержимым, а не перечнем: перечень
+  # пришлось бы помнить, а маркер виден сам.
+  grep -q '__USERNAME__' "$OMVOID_PATH/config/$1" 2>/dev/null && return 0
+
+  # Шрифт в этих файлах правит sed'ом omvoid-font-set при каждой смене шрифта.
+  # Их расхождение с репозиторием -- это и есть текущий выбранный шрифт, а
+  # обновление сбросило бы его на тот, что записан в git.
+  case "$1" in
+  alacritty/font.toml | kitty/kitty.conf | ghostty/config) return 0 ;;
+  fontconfig/fonts.conf | swayosd/style.css | mako/config) return 0 ;;
+  wal/templates/dunstrc) return 0 ;;
+  rofi/*.rasi | rofi/applaunch/*.rasi | rofi/wallpaper/themes/*.rasi) return 0 ;;
+  esac
+
+  return 1
+}
+
+mapfile -t changed < <(
+  cd "$OMVOID_PATH/config"
+  find . -type f -printf '%P\n' | sort
+)
+
+diverged=()
+for rel in "${changed[@]}"; do
+  is_runtime_owned "$rel" && continue
+  target="$HOME/.config/$rel"
+  if [[ ! -f $target ]] || ! cmp -s "$OMVOID_PATH/config/$rel" "$target"; then
+    diverged+=("$rel")
+  fi
+done
+
+if ((${#diverged[@]} == 0)); then
+  echo "все конфиги совпадают с репозиторием"
+elif $assume_yes; then
+  # Без вопросов -- значит и без выбора: под -y обновляем всё разошедшееся,
+  # прежние версии всё равно сохраняются рядом как .bak.
+  omvoid-refresh-config "${diverged[@]}" ||
+    echo "часть файлов пропущена, причина выше" >&2
+else
+  echo "расходятся с репозиторием (${#diverged[@]}):"
+  # Выбор пофайлово, а не "заменить всё": часть расхождений -- это ручная
+  # правка живого файла, которую заменять как раз не надо.
+  if command -v gum >/dev/null; then
+    mapfile -t chosen < <(gum choose --no-limit --height 20 \
+      --header "Пробел -- отметить, Enter -- обновить отмеченные" \
+      "${diverged[@]}" || true)
+  else
+    printf '  %s\n' "${diverged[@]}"
+    chosen=()
+    confirm "Заменить все версиями из репозитория?" && chosen=("${diverged[@]}")
+  fi
+
+  if ((${#chosen[@]})); then
+    # Отказ по отдельному файлу не повод обрывать всё обновление: под set -e
+    # ненулевой код здесь остановил бы и миграции, и обновление инструментов.
+    omvoid-refresh-config "${chosen[@]}" ||
+      echo "часть файлов пропущена, причина выше" >&2
+  else
+    echo "ничего не выбрано, пропускаю"
+  fi
+fi
+
+# --- миграции ----------------------------------------------------------------
+# После конфигов: миграция может рассчитывать на файл, который только что приехал.
+step "Миграции"
+omvoid-migrate
+
+# --- инструменты -------------------------------------------------------------
+if command -v mise >/dev/null; then
+  step "Инструменты mise"
+  omvoid-update-mise
+fi
+
+step "Скиллы для агентов"
+omvoid-link-skills
+
+# --- перечитать конфиги ------------------------------------------------------
+step "Перечитываем"
+command -v mmsg >/dev/null && mmsg dispatch reload_config || true
+pgrep -x waybar >/dev/null && omvoid-reload-waybar || true
+
+# --- личные хуки -------------------------------------------------------------
+omvoid-hook post-update
+
+echo -e "\n\e[32mГотово.\e[0m"

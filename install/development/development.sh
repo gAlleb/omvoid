@@ -27,7 +27,7 @@ sudo xbps-install -y \
 # Solo Wayland batch 
 sudo xbps-install -y \
   Waybar wl-clipboard wl-clip-persist cliphist wf-recorder \
-  dunst satty slurp grim awww walker \
+  dunst satty slurp grim awww \
   wlogout swaybg SwayOSD crystal-dock wlr-randr wlopm swaylock \
   swayidle qt5-wayland xorg-server-xwayland
 
