@@ -1,5 +1,5 @@
 {
-  "special": {
+    "special": {
         "background": "#121015",
         "foreground": "#c3c3c4",
         "cursor": "#c3c3c4"
@@ -21,6 +21,6 @@
         "color13": "#D2695C",
         "color14": "#E0956E",
         "color15": "#c3c3c4"
-    }
+    },
+    "wallpaper": "~/.config/omvoid/current/background"
 }
-

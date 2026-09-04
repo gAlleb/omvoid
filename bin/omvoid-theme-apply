@@ -63,22 +63,36 @@ run_bg() {
 have() { omvoid-cmd-present "$@"; }
 running() { omvoid-cmd-running "$@"; }
 
+# wal is installed by pipx into ~/.local/bin, and that directory only reaches
+# PATH through .bash_profile. The installer sources this script from a shell
+# that never read it, so a bare "wal" is not found there -- which is why the
+# scripts this engine replaced all called it by full path. Prefer PATH anyway:
+# a hardcoded path is wrong the moment pywal comes from somewhere else.
+WAL=$(command -v wal || true)
+[[ -n $WAL ]] || WAL="$HOME/.local/bin/wal"
+
+if [[ ! -x $WAL ]]; then
+  echo "omvoid-theme-apply: wal not found (looked on PATH and in ~/.local/bin)" >&2
+  echo "  pywal16 is installed by install/development/development.sh" >&2
+  exit 1
+fi
+
 # --- the palette -------------------------------------------------------------
 
 if $dry_run; then
-  echo "  [would run] wal -c"
-  [[ -n $theme ]] && echo "  [would run] wal --theme $theme"
+  echo "  [would run] $WAL -c"
+  [[ -n $theme ]] && echo "  [would run] $WAL --theme $theme"
   if [[ -n $image ]]; then
-    [[ $mode == "light" ]] && echo "  [would run] wal -l -i $image" || echo "  [would run] wal -i $image"
+    [[ $mode == "light" ]] && echo "  [would run] $WAL -l -i $image" || echo "  [would run] $WAL -i $image"
   fi
 else
-  wal -c
+  "$WAL" -c
   if [[ -n $theme ]]; then
-    wal --theme "$theme"
+    "$WAL" --theme "$theme"
   elif [[ $mode == "light" ]]; then
-    wal -l -i "$image"
+    "$WAL" -l -i "$image"
   else
-    wal -i "$image"
+    "$WAL" -i "$image"
   fi
   wal_status=$?
 
@@ -86,7 +100,12 @@ else
   # to generate. A half-written cache once took the whole session down.
   if ((wal_status != 0)); then
     echo "omvoid-theme-apply: wal failed ($wal_status), skipping the reloads" >&2
-    have notify-send && notify-send -u critical "Theme not applied" "wal failed, see output"
+    # Only where there is a session bus to talk to. Under the installer there
+    # is none, and notify-send then prints its own complaint on top of the real
+    # error, which is the one worth reading.
+    if have notify-send && [[ -n ${DBUS_SESSION_BUS_ADDRESS:-} ]]; then
+      notify-send -u critical "Theme not applied" "wal failed, see output"
+    fi
     exit 1
   fi
 fi

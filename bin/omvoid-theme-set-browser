@@ -1,32 +1,90 @@
 #!/bin/bash
 
-if [[ $1 == "wal" ]]; then
+# Paints the browser chrome with the current palette.
+#
+# The colour travels in a managed-policy file, which a browser reads when it
+# starts. --refresh-platform-policy only asks an ALREADY RUNNING browser to
+# re-read that file sooner.
+#
+# Hence the running check below, and it is not a nicety. With
+# --no-startup-window and no browser up, the command refreshes nothing -- it
+# BECOMES the browser, in the background, and never returns. Called straight
+# from a theme change it took the whole chain down with it: on a fresh machine
+# the first login set the colours and then stopped there, so the wallpaper and
+# every reload after it never happened at all.
+#
+# Names are discovered, not listed. Void ships no browser forks, so Brave comes
+# from a third-party repository under whatever name that repository chose --
+# brave-browser-stable, brave-origin, brave-origin-bin, brave-origin-nightly.
+# A hardcoded name means the colour silently stops arriving the day the source
+# changes.
+
+set -uo pipefail
+
+if [[ ${1:-} == "wal" ]]; then
   CHROMIUM_THEME=~/.cache/wal/chromium.theme
 else
   CHROMIUM_THEME=~/.config/omvoid/current/theme/chromium.theme
 fi
 
-if omvoid-cmd-present chromium || omvoid-cmd-present brave-browser-stable || omvoid-cmd-present brave-origin-stable || omvoid-cmd-present brave-origin-nightly; then
+if [[ -f $CHROMIUM_THEME ]]; then
+  rgb=$(<"$CHROMIUM_THEME")
+  THEME_HEX_COLOR=$(printf '#%02x%02x%02x' ${rgb//,/ })
+else
+  # Use a default, neutral grey if theme doesn't have a color
+  THEME_HEX_COLOR="#1c2027"
+fi
 
-  if [[ -f $CHROMIUM_THEME ]]; then
-    rgb=$(<$CHROMIUM_THEME)
-    THEME_HEX_COLOR=$(printf '#%02x%02x%02x' ${rgb//,/ })
-  else
-    # Use a default, neutral grey if theme doesn't have a color
-    THEME_HEX_COLOR="#1c2027"
-  fi
+POLICY="{\"BrowserThemeColor\": \"$THEME_HEX_COLOR\"}"
 
-  if omvoid-cmd-present chromium; then 
-     echo "{\"BrowserThemeColor\": \"$THEME_HEX_COLOR\"}" | tee "/etc/chromium/policies/managed/color.json" >/dev/null
-    chromium --refresh-platform-policy --no-startup-window
-  fi 
-  
-  if omvoid-cmd-present brave-browser-stable || omvoid-cmd-present brave-origin-stable || omvoid-cmd-present brave-origin-nightly; then 
-    echo "{\"BrowserThemeColor\": \"$THEME_HEX_COLOR\"}" | tee "/etc/brave/policies/managed/color.json" >/dev/null
-      brave-browser-stable --refresh-platform-policy --no-startup-window 2>/dev/null || true
-      brave-origin-stable --refresh-platform-policy --no-startup-window 2>/dev/null || true
-      brave-origin-nightly --refresh-platform-policy --no-startup-window 2>/dev/null || true
-  fi
-  
-fi 
+# Every command on PATH whose name starts with the prefix, one per underlying
+# binary: the same browser is often reachable under several names, and nudging
+# it once is enough.
+browsers_named() {
+  local name path real
+  local -A seen=()
+  while read -r name; do
+    path=$(command -v "$name" 2>/dev/null) || continue
+    [[ -x $path ]] || continue
+    real=$(readlink -f "$path")
+    [[ -n ${seen[$real]:-} ]] && continue
+    seen[$real]=1
+    printf '%s\n' "$name"
+  done < <(compgen -c "$1" | sort -u)
+}
 
+# Is anything of this family running. Not omvoid-cmd-running: that matches a
+# name exactly, and the process is named after the binary inside the package
+# ("brave"), not after the command used to start it.
+family_running() { pgrep "^$1" >/dev/null 2>&1; }
+
+# The file is written whether or not anything is running: it is what a browser
+# started later will read, and that is the durable half of this script.
+write_policy() {
+  local dir="$1"
+  [[ -d $dir ]] || return 0
+  echo "$POLICY" | tee "$dir/color.json" >/dev/null
+}
+
+# Nudging is for what is actually up. timeout is the second line of defence:
+# a browser that stalls on the refresh must not stall the theme change.
+refresh() {
+  timeout 10 "$1" --refresh-platform-policy --no-startup-window >/dev/null 2>&1 || true
+}
+
+for family in chromium:/etc/chromium/policies/managed brave:/etc/brave/policies/managed; do
+  prefix="${family%%:*}"
+  policy_dir="${family#*:}"
+
+  mapfile -t found < <(browsers_named "$prefix")
+  ((${#found[@]})) || continue
+
+  write_policy "$policy_dir"
+  family_running "$prefix" || continue
+
+  for browser in "${found[@]}"; do
+    refresh "$browser"
+  done
+done
+
+exit 0
