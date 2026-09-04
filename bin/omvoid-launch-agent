@@ -1,0 +1,91 @@
+#!/bin/bash
+
+# Opens an AI coding agent in a terminal.
+#
+#   omvoid-launch-agent          the chosen one, asking once if none is chosen
+#   omvoid-launch-agent --set    choose again
+#   omvoid-launch-agent claude   this one, without changing the choice
+#
+# The agents themselves are lazy mise stubs in ~/.local/bin, put there by
+# omvoid-mise-install -- nothing is downloaded until first run.
+
+set -uo pipefail
+
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omvoid"
+CHOICE_FILE="$STATE_DIR/agent"
+WORK_DIR="$HOME/Work"
+
+# Every agent omvoid knows how to wrap. Only those actually present are offered:
+# the stubs are installed one at a time, and offering a missing one would open a
+# terminal that dies with "command not found".
+KNOWN=(claude codex opencode agy copilot crush grok pi omp ori)
+
+available() {
+  local agent
+  for agent in "${KNOWN[@]}"; do
+    omvoid-cmd-present "$agent" && printf '%s\n' "$agent"
+  done
+}
+
+choose() {
+  local list
+  list=$(available)
+  if [[ -z $list ]]; then
+    echo "omvoid-launch-agent: no agent installed, add one with omvoid-mise-install" >&2
+    return 1
+  fi
+
+  # Single one installed: nothing to ask about.
+  if [[ $(wc -l <<<"$list") -eq 1 ]]; then
+    printf '%s\n' "$list"
+    return 0
+  fi
+
+  local picked
+  picked=$(rofi -dmenu -i -p "Agent" \
+    -theme "$HOME/.config/rofi/menu-style-minimal.rasi" <<<"$list")
+  [[ -n $picked ]] || return 1
+  printf '%s\n' "$picked"
+}
+
+agent=""
+force_choice=false
+case "${1:-}" in
+--set) force_choice=true ;;
+"") ;;
+-*) echo "omvoid-launch-agent: unknown argument: $1" >&2; exit 1 ;;
+*) agent="$1" ;;
+esac
+
+if [[ -z $agent ]]; then
+  $force_choice || agent=$(cat "$CHOICE_FILE" 2>/dev/null)
+
+  # A remembered name can stop being installed -- ask again rather than open a
+  # terminal on a command that is gone.
+  if [[ -n $agent ]] && ! omvoid-cmd-present "$agent"; then
+    agent=""
+  fi
+
+  if [[ -z $agent ]]; then
+    agent=$(choose) || exit 0
+    mkdir -p "$STATE_DIR"
+    printf '%s\n' "$agent" >"$CHOICE_FILE"
+  fi
+fi
+
+omvoid-cmd-present "$agent" || {
+  echo "omvoid-launch-agent: $agent is not installed" >&2
+  exit 1
+}
+
+# Where to start. A keybinding has no directory of its own, so the launch lands
+# in $HOME -- and agents refuse to remember trust for the home directory, so
+# every start would ask again and forget the answer. $HOME is therefore swapped
+# for ~/Work; a launch from inside a project keeps that project.
+start_dir="$PWD"
+[[ $start_dir == "$HOME" ]] && start_dir="$WORK_DIR"
+[[ -d $start_dir ]] || mkdir -p "$start_dir"
+
+# The same terminal ALT+Return opens. setsid so the agent outlives this script:
+# it is spawned by the compositor, which does not wait for anything.
+setsid -f alacritty --working-directory "$start_dir" -e "$agent" >/dev/null 2>&1
