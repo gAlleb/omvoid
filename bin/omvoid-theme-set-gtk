@@ -1,13 +1,18 @@
 #!/bin/bash
 
-# Отдаёт цвета текущей палитры приложениям на GTK3 и GTK4/libadwaita.
+# Hands the current palette to GTK3 and GTK4/libadwaita applications.
 #
-# Nautilus и прочий libadwaita GTK-темы игнорируют: единственное, что они
-# слушают, -- переопределения @define-color в gtk.css. Поэтому файл с цветами
-# кладётся рядом и подключается строкой @import.
+# Nautilus and the rest of libadwaita ignore GTK themes; the only thing they
+# read is @define-color overrides in gtk.css. So the colours are written to a
+# file beside it and pulled in with an @import.
 #
-# Строка дописывается в самый конец: в этих же файлах может стоять @import от
-# Noctalia, а в CSS выигрывает тот, кто объявлен последним.
+# The line goes last: Noctalia puts an @import of its own into the same files,
+# and in CSS the one declared last wins.
+#
+# None of this depends on a particular GTK theme -- gtk.css is a user override
+# GTK reads whatever theme is set. WhiteSur only enters because its installer
+# makes gtk.css a symlink into its own 290 KB stylesheet, so that is the file
+# actually being appended to.
 
 set -euo pipefail
 
@@ -15,27 +20,21 @@ SOURCE="$HOME/.cache/wal/colors-gtk.css"
 IMPORT='@import url("omvoid.css"); /* omvoid: colours from pywal */'
 
 if [[ ! -f $SOURCE ]]; then
-  echo "omvoid-theme-set-gtk: нет $SOURCE -- pywal ещё не разворачивал шаблон" >&2
+  echo "omvoid-theme-set-gtk: no $SOURCE — pywal has not rendered the template yet" >&2
   exit 1
 fi
 
-# Дописывает @import в конец файла, предварительно убрав свою же прежнюю строку,
-# чтобы повторные запуски не плодили дубликаты.
 # Appends the @import at the end of the file, dropping our own previous line
 # first so repeated runs do not pile up duplicates.
-#
-# The write is guarded. These files can be hundreds of kilobytes of theme CSS,
-# and something -- most likely another tool that also manages GTK colours --
-# once left gtk-Light.css holding nothing but imports. This script then kept
-# appending to the wreckage instead of noticing. Refusing to shrink a file is
-# cheap; rebuilding a 283 KB theme by hand is not.
 ensure_import() {
   local css="$1"
   [[ -f $css ]] || return 0
 
   local before after tmp
   before=$(wc -c <"$css")
-  tmp=$(mktemp)
+
+  # In the same directory on purpose: mv is only atomic within one filesystem.
+  tmp=$(mktemp "$(dirname "$css")/.omvoid-gtk.XXXXXX")
 
   # Drop our previous line and any blank line it left behind, or every run
   # would add one and the file would slowly grow a tail of empty lines.
@@ -45,9 +44,6 @@ ensure_import() {
   printf '\n%s\n' "$IMPORT" >>"$tmp"
   after=$(wc -c <"$tmp")
 
-  # A GTK theme file is tens of kilobytes. Anything much smaller has been
-  # rewritten by someone else -- appending to the wreckage silently is how a
-  # 283 KB theme went unnoticed for a day.
   if ((before < 4096)); then
     echo "omvoid-theme-set-gtk: ${css/#$HOME/\~} is only $before bytes — looks rewritten by another tool" >&2
   fi
@@ -61,8 +57,20 @@ ensure_import() {
     return 1
   fi
 
-  cat "$tmp" >"$css"  # not mv: gtk.css is a symlink and must stay one
-  rm -f "$tmp"
+  # Replaced in one step, never emptied first.
+  #
+  # This used to be `cat "$tmp" >"$css"`, and the redirection truncates the file
+  # before writing a single byte. Noctalia's own GTK template
+  # (/usr/share/noctalia/assets/templates/gtk/apply.sh) reads this very file
+  # with content=$(cat …) and writes it back with its import appended, and both
+  # of us are triggered by the same event -- a wallpaper change. A read landing
+  # inside that window saw an empty file and faithfully wrote back nothing but
+  # imports. That is how 290 KB of WhiteSur turned into a hundred bytes.
+  #
+  # mv is safe for the symlink: the caller resolved it with readlink -f, so what
+  # is being replaced is the real file, and the link still points at its path.
+  chmod --reference="$css" "$tmp" 2>/dev/null || chmod 644 "$tmp"
+  mv -f "$tmp" "$css"
 }
 
 for version in 3.0 4.0; do
@@ -71,12 +79,19 @@ for version in 3.0 4.0; do
 
   cp -f "$SOURCE" "$dir/omvoid.css"
 
-  # gtk.css и gtk-dark.css у WhiteSur -- симлинки на gtk-Light.css/gtk-Dark.css.
-  # Правим то, на что они указывают, иначе запись пошла бы мимо.
+  # gtk.css and gtk-dark.css are symlinks under WhiteSur, pointing at
+  # gtk-Light.css / gtk-Dark.css. Edit what they point at, or the write misses.
   for entry in gtk.css gtk-dark.css; do
-    [[ -e $dir/$entry ]] || continue
-    ensure_import "$(readlink -f "$dir/$entry")"
+    if [[ -e $dir/$entry ]]; then
+      ensure_import "$(readlink -f "$dir/$entry")"
+    elif [[ $entry == gtk.css ]]; then
+      # Nothing to append to. A theme usually ships this file, but without one
+      # it simply does not exist -- and then nothing would import the colours
+      # at all, silently. gtk-dark.css is not created: GTK does not require it,
+      # it is a theme convention.
+      printf '%s\n' "$IMPORT" >"$dir/$entry"
+    fi
   done
 done
 
-echo "цвета GTK обновлены (gtk-3.0, gtk-4.0)"
+echo "GTK colours updated (gtk-3.0, gtk-4.0)"
