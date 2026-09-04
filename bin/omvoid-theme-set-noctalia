@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# Hands the wallpaper to Noctalia.
+#
+#   running     -> tell it directly, it changes immediately
+#   not running -> write the path into its settings, so it starts with the right one
+#
+# The second case is the point. Wallpapers are usually changed from waybar,
+# with Noctalia shut down; nothing then reaches it, and switching over later
+# brings back whatever it had last. Its theme follows too: its config carries
+# [theme] source = "wallpaper", so the colours are derived from this path.
+#
+# Two files hold that path, and both have to be written:
+#
+#   ~/.config/noctalia/config.toml         what the user configures by hand
+#   ~/.local/state/noctalia/settings.toml  what Noctalia writes back itself
+#
+# The state file wins. Writing only the config one looks like it worked --
+# the file really does change -- and Noctalia still comes up with the old
+# wallpaper and the old palette.
+#
+# Editing another program's settings is only safe while that program is not
+# running -- which is exactly the case we do it in. A running Noctalia would
+# rewrite the file from memory anyway.
+
+set -uo pipefail
+
+image="${1:-}"
+[[ -n $image && -f $image ]] || exit 0
+
+if omvoid-cmd-running noctalia; then
+  noctalia msg wallpaper-set "$image" >/dev/null 2>&1 || true
+  exit 0
+fi
+
+# Only the path lines inside [wallpaper.last] and [wallpaper.monitors.*] are
+# touched. [wallpaper.default] is left alone: that is the fallback for when no
+# wallpaper has been chosen, not a record of the current one.
+for settings in \
+  "$HOME/.config/noctalia/config.toml" \
+  "${XDG_STATE_HOME:-$HOME/.local/state}/noctalia/settings.toml"; do
+
+  [[ -f $settings ]] || continue
+
+  python3 - "$settings" "$image" <<'PY'
+import re, sys, pathlib
+
+config_path, image = pathlib.Path(sys.argv[1]), sys.argv[2]
+lines = config_path.read_text(encoding="utf-8").splitlines(keepends=True)
+
+section = ""
+changed = False
+for i, line in enumerate(lines):
+    header = re.match(r'\s*\[([^\]]+)\]', line)
+    if header:
+        section = header.group(1)
+        continue
+    if not re.match(r'\s*path\s*=', line):
+        continue
+    if section == "wallpaper.last" or section.startswith("wallpaper.monitors."):
+        indent = line[:len(line) - len(line.lstrip())]
+        replacement = f'{indent}path = "{image}"\n'
+        if line != replacement:
+            lines[i] = replacement
+            changed = True
+
+if changed:
+    tmp = config_path.with_suffix(".toml.omvoid-tmp")
+    tmp.write_text("".join(lines), encoding="utf-8")
+    tmp.replace(config_path)
+PY
+done

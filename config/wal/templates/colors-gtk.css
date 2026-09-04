@@ -8,11 +8,21 @@
  *
  * Набор имён повторяет тот, что пишет Noctalia: он покрывает и GTK3, и GTK4.
  *
- * Тональный ряд строится от color1 -- цвета темы, а не от background.
+ * The ramp is built from the image's own background colour.
+ *
+ * Not from colorN: those are ANSI slots, not the picture's mood. color1 once
+ * came out coral on a deep purple wallpaper and framed it in brown; color4 has
+ * the same failure waiting on some other image. The background is derived from
+ * the picture, so it cannot disagree with it.
+ *
+ * Saturation is restored AFTER lightening, never before. Lightening mixes
+ * toward white and drains the hue -- on a typical background it falls from 0.43
+ * to 0.17 at lighten(10) and to 0.06 at lighten(30), which is what made an
+ * earlier attempt look grey. Saturating afterwards brings it back to ~0.30.
  * Иначе все поверхности сливаются: в палитрах pywal color0 обычно равен
  * background, и получается плоская чернота вместо оттенка темы.
  *
- * saturate(18) поднимает насыщенность базы: у color1 она бывает около 0.08,
+ * saturate(26) поднимает насыщенность базы: у color1 она бывает около 0.08,
  * и без этого весь ряд читается серым, хотя тон у него тёплый. saturate
  * ЗАДАЁТ насыщенность, а не прибавляет -- значение одинаково на всех темах.
  *
@@ -20,62 +30,108 @@
  * превратился бы в 2%, а не в 20%.
  */
 
-@define-color accent_color {color5};
-@define-color accent_bg_color {color5};
-@define-color accent_fg_color {color1.saturate(18).darken(62)};
+@define-color accent_color {color6};
+@define-color accent_bg_color {color6};
+@define-color accent_fg_color {background};
 
 @define-color destructive_bg_color {color1};
-@define-color destructive_fg_color {color1.saturate(18).darken(62)};
+@define-color destructive_fg_color {background};
 
 @define-color error_bg_color {color1};
-@define-color error_fg_color {color1.saturate(18).darken(62)};
+@define-color error_fg_color {background};
 
 @define-color success_bg_color {color2};
-@define-color success_fg_color {color1.saturate(18).darken(62)};
+@define-color success_fg_color {background};
 
 @define-color warning_bg_color {color3};
-@define-color warning_fg_color {color1.saturate(18).darken(62)};
+@define-color warning_fg_color {background};
 
-@define-color window_bg_color {color1.saturate(18).darken(62)};
+@define-color window_bg_color {background};
 @define-color window_fg_color {foreground};
 
-@define-color view_bg_color {color1.saturate(18).darken(62)};
+@define-color view_bg_color {background};
 @define-color view_fg_color {foreground};
 
-@define-color headerbar_bg_color {color1.saturate(18).darken(45)};
+@define-color headerbar_bg_color {background.lighten(10).saturate(30)};
 @define-color headerbar_fg_color {foreground};
-@define-color headerbar_backdrop_color {color1.saturate(18).darken(72)};
-@define-color headerbar_border_color {color1.saturate(18).lighten(10)};
+@define-color headerbar_backdrop_color {background};
+@define-color headerbar_border_color {background.lighten(30).saturate(25)};
 
-@define-color popover_bg_color {color1.saturate(18).darken(45)};
+@define-color popover_bg_color {background.lighten(10).saturate(30)};
 @define-color popover_fg_color {foreground};
 
-@define-color card_bg_color {color1.saturate(18).darken(45)};
+@define-color card_bg_color {background.lighten(10).saturate(30)};
 @define-color card_fg_color {foreground};
 
-@define-color dialog_bg_color {color1.saturate(18).darken(45)};
+@define-color dialog_bg_color {background.lighten(10).saturate(30)};
 @define-color dialog_fg_color {foreground};
 
-@define-color overview_bg_color {color1.saturate(18).darken(62)};
+@define-color overview_bg_color {background};
 @define-color overview_fg_color {foreground};
 
-@define-color sidebar_bg_color {color1.saturate(18).darken(45)};
+@define-color sidebar_bg_color {background.lighten(10).saturate(30)};
 @define-color sidebar_fg_color {foreground};
-@define-color sidebar_backdrop_color {color1.saturate(18).darken(72)};
-@define-color sidebar_border_color {color1.saturate(18).lighten(10)};
+@define-color sidebar_backdrop_color {background};
+@define-color sidebar_border_color {background.lighten(30).saturate(25)};
 
-@define-color secondary_sidebar_bg_color {color1.saturate(18).darken(45)};
+@define-color secondary_sidebar_bg_color {background.lighten(10).saturate(30)};
 @define-color secondary_sidebar_fg_color {foreground};
-@define-color secondary_sidebar_border_color {color1.saturate(18).lighten(10)};
+@define-color secondary_sidebar_border_color {background.lighten(30).saturate(25)};
 
 /* GTK3 знает ещё эти два */
-@define-color theme_selected_bg_color {color5};
-@define-color theme_selected_fg_color {color1.saturate(18).darken(62)};
+@define-color theme_selected_bg_color {color6};
+@define-color theme_selected_fg_color {background};
 
 /* Неактивное окно: те же цвета приглушённее */
-@define-color theme_unfocused_bg_color {color1.saturate(18).darken(62)};
-@define-color theme_unfocused_base_color {color1.saturate(18).darken(62)};
-@define-color theme_unfocused_fg_color {color1.saturate(18).lighten(10)};
-@define-color theme_unfocused_text_color {color1.saturate(18).lighten(10)};
-@define-color theme_unfocused_selected_bg_color {color1.saturate(18).lighten(10)};
-@define-color theme_unfocused_selected_fg_color {color1.saturate(18).darken(62)};
+@define-color theme_unfocused_bg_color {background};
+@define-color theme_unfocused_base_color {background};
+@define-color theme_unfocused_fg_color {background.lighten(30).saturate(25)};
+@define-color theme_unfocused_text_color {background.lighten(30).saturate(25)};
+@define-color theme_unfocused_selected_bg_color {background.lighten(30).saturate(25)};
+@define-color theme_unfocused_selected_fg_color {background};
+
+/*
+ * The same palette again, as CSS custom properties.
+ *
+ * libadwaita deprecated @define-color overrides for its palette in 1.6 and no
+ * longer reads them in 1.9 -- Nautilus kept its old colours while everything
+ * else changed. The @define-color block above is still needed: GTK3 apps and
+ * older libadwaita read only that one.
+ */
+
+:root {
+    --accent-color: {color6};
+    --accent-bg-color: {color6};
+    --accent-fg-color: {background};
+    --destructive-bg-color: {color1};
+    --destructive-fg-color: {background};
+    --error-bg-color: {color1};
+    --error-fg-color: {background};
+    --success-bg-color: {color2};
+    --success-fg-color: {background};
+    --warning-bg-color: {color3};
+    --warning-fg-color: {background};
+    --window-bg-color: {background};
+    --window-fg-color: {foreground};
+    --view-bg-color: {background};
+    --view-fg-color: {foreground};
+    --headerbar-bg-color: {background.lighten(10).saturate(30)};
+    --headerbar-fg-color: {foreground};
+    --headerbar-backdrop-color: {background};
+    --headerbar-border-color: {background.lighten(30).saturate(25)};
+    --popover-bg-color: {background.lighten(10).saturate(30)};
+    --popover-fg-color: {foreground};
+    --card-bg-color: {background.lighten(10).saturate(30)};
+    --card-fg-color: {foreground};
+    --dialog-bg-color: {background.lighten(10).saturate(30)};
+    --dialog-fg-color: {foreground};
+    --overview-bg-color: {background};
+    --overview-fg-color: {foreground};
+    --sidebar-bg-color: {background.lighten(10).saturate(30)};
+    --sidebar-fg-color: {foreground};
+    --sidebar-backdrop-color: {background};
+    --sidebar-border-color: {background.lighten(30).saturate(25)};
+    --secondary-sidebar-bg-color: {background.lighten(10).saturate(30)};
+    --secondary-sidebar-fg-color: {foreground};
+    --secondary-sidebar-border-color: {background.lighten(30).saturate(25)};
+}

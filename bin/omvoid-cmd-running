@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Is a program running right now. The counterpart to omvoid-cmd-present, which
+# answers whether it is installed.
+#
+# The difference matters when reloading configs: sending SIGUSR2 to waybar or
+# poking makoctl is only meaningful for a process that exists, otherwise it is
+# noise on stderr.
+#
+# Names are matched whole (pgrep -x), or "wal" would match "waybar".
+# Returns 0 only when every name listed is running.
+
+for proc in "$@"; do
+  pgrep -x "$proc" >/dev/null 2>&1 || exit 1
+done
+
+exit 0

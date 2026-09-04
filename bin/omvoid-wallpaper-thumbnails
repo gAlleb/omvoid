@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Builds the thumbnail cache the rofi wallpaper picker draws from.
+#
+# Only missing thumbnails are generated, so this is cheap to call on every run.
+# The picker needs them to render at all, and the installer warms the cache so
+# the first ALT+W is not slow on a fresh machine — the same loop used to live in
+# both places, and in a third script besides.
+
+set -uo pipefail
+
+WALLPAPER_DIR="$HOME/.config/wallpaper"
+CACHE_DIR="$HOME/.cache/omvoid_wallpaper"
+
+omvoid-cmd-present magick || exit 0
+[[ -d $WALLPAPER_DIR ]] || exit 0
+
+while IFS= read -r pic; do
+  relative="${pic#"$WALLPAPER_DIR"/}"
+  thumb="$CACHE_DIR/thumbnails/${relative%.*}.png"
+  [[ -f $thumb ]] && continue
+  mkdir -p "$(dirname "$thumb")"
+  magick "$pic" -thumbnail '320x180>' "$thumb" 2>/dev/null
+done < <(find -L "$WALLPAPER_DIR" -type f \
+  \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \))
+
+exit 0

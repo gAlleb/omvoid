@@ -8,80 +8,105 @@
 .theme-dark,
 .theme-light {{
   /* Фон */
-  --background-primary:              {color1.saturate(18).darken(62)};
-  --background-primary-alt:          {color1.saturate(18).darken(72)};
-  --background-secondary:            {color1.saturate(18).darken(45)};
-  --background-secondary-alt:        {color1.saturate(18).darken(52)};
-  --background-modifier-border:      {color1.saturate(18).lighten(10)};
-  --background-modifier-border-hover: {color5};
-  --background-modifier-border-focus: {color5};
-  --background-modifier-form-field:  {color1.saturate(18).darken(45)};
-  --background-modifier-box-shadow:  {color1.saturate(18).darken(62)};
+  --background-primary:              {background};
+  --background-primary-alt:          {background};
+  --background-secondary:            {background.lighten(10).saturate(30)};
+  --background-secondary-alt:        {background.lighten(6).saturate(30)};
+  --background-modifier-border:      {background.lighten(30).saturate(25)};
+  --background-modifier-border-hover: {color6};
+  --background-modifier-border-focus: {color6};
+  --background-modifier-form-field:  {background.lighten(10).saturate(30)};
+  --background-modifier-box-shadow:  {background};
   --background-modifier-success:     {color2};
   --background-modifier-error:       {color1};
-  --background-modifier-cover:       {color1.saturate(18).darken(62)};
+  --background-modifier-cover:       {background};
 
   /* Текст */
   --text-normal:                     {foreground};
   --text-muted:                      {color7};
-  --text-faint:                      {color1.saturate(18).lighten(10)};
-  --text-on-accent:                  {color1.saturate(18).darken(62)};
+  --text-faint:                      {background.lighten(30).saturate(25)};
+  --text-on-accent:                  {background};
   --text-error:                      {color1};
   --text-success:                    {color2};
-  --text-accent:                     {color5};
-  --text-accent-hover:               {color6.saturate(26)};
-  --text-selection:                  {color1.saturate(18).lighten(10)};
+  --text-accent:                     {color6};
+  --text-accent-hover:               {color5.saturate(34)};
+  --text-selection:                  {background.lighten(30).saturate(25)};
   --text-highlight-bg:               {color3};
 
   /* Взаимодействие */
-  --interactive-normal:              {color1.saturate(18).darken(45)};
-  --interactive-hover:               {color1.saturate(18).lighten(10)};
-  --interactive-accent:              {color5};
-  --interactive-accent-hover:        {color6.saturate(26)};
+  --interactive-normal:              {background.lighten(10).saturate(30)};
+  --interactive-hover:               {background.lighten(30).saturate(25)};
+  --interactive-accent:              {color6};
+  --interactive-accent-hover:        {color5.saturate(34)};
   --interactive-success:             {color2};
 
   /* Акцент */
-  --color-accent:                    {color5};
-  --color-accent-1:                  {color5};
-  --color-accent-2:                  {color6.saturate(26)};
+  --color-accent:                    {color6};
+  --color-accent-1:                  {color6};
+  --color-accent-2:                  {color5.saturate(34)};
 
   /* Заголовки */
-  --h1-color:                        {color5};
-  --h2-color:                        {color5};
-  --h3-color:                        {color6.saturate(26)};
+  --h1-color:                        {color6};
+  --h2-color:                        {color6};
+  --h3-color:                        {color5.saturate(34)};
   --h4-color:                        {color3};
   --h5-color:                        {color2};
   --h6-color:                        {color7};
 
   /* Код и цитаты */
-  --code-background:                 {color1.saturate(18).darken(45)};
+  --code-background:                 {background.lighten(10).saturate(30)};
   --code-normal:                     {foreground};
-  --code-comment:                    {color1.saturate(18).lighten(10)};
-  --blockquote-border-color:         {color5};
-  --bold-color:                      {color5};
-  --italic-color:                    {color6.saturate(26)};
+  --code-comment:                    {background.lighten(30).saturate(25)};
+  --blockquote-border-color:         {color6};
+  --bold-color:                      {color6};
+  --italic-color:                    {color5.saturate(34)};
 
   /* Разделители, скроллбар, ссылки */
-  --divider-color:                   {color1.saturate(18).lighten(10)};
-  --divider-color-hover:             {color5};
-  --scrollbar-bg:                    {color1.saturate(18).darken(62)};
-  --scrollbar-thumb-bg:              {color1.saturate(18).lighten(10)};
-  --scrollbar-active-thumb-bg:       {color5};
-  --link-color:                      {color5};
-  --link-color-hover:                {color6.saturate(26)};
+  --divider-color:                   {background.lighten(30).saturate(25)};
+  --divider-color-hover:             {color6};
+  --scrollbar-bg:                    {background};
+  --scrollbar-thumb-bg:              {background.lighten(30).saturate(25)};
+  --scrollbar-active-thumb-bg:       {color6};
+  --link-color:                      {color6};
+  --link-color-hover:                {color5.saturate(34)};
   --link-unresolved-color:           {color1};
 
   /* Граф */
-  --graph-line:                      {color1.saturate(18).lighten(10)};
+  --graph-line:                      {background.lighten(30).saturate(25)};
   --graph-node:                      {foreground};
-  --graph-node-focused:              {color5};
+  --graph-node-focused:              {color6};
   --graph-node-tag:                  {color3};
-  --graph-node-attachment:           {color5};
+  --graph-node-attachment:           {color6};
 
   /* Чекбоксы и теги */
-  --checkbox-color:                  {color5};
-  --checkbox-color-hover:            {color6.saturate(26)};
-  --checkbox-border-color:           {color1.saturate(18).lighten(10)};
-  --tag-color:                       {color6.saturate(26)};
-  --tag-background:                  {color1.saturate(18).darken(45)};
+  --checkbox-color:                  {color6};
+  --checkbox-color-hover:            {color5.saturate(34)};
+  --checkbox-border-color:           {background.lighten(30).saturate(25)};
+  --tag-color:                       {color5.saturate(34)};
+  --tag-background:                  {background.lighten(10).saturate(30)};
+
+  /* Chrome: titlebar, tabs, the left ribbon and the status bar. These have
+     their own variables -- setting the content colours alone left the top
+     strip and the ribbon in the theme's original colours. */
+  --titlebar-background:             {background.lighten(10).saturate(30)};
+  --titlebar-background-focused:     {background.lighten(10).saturate(30)};
+  --titlebar-text-color:             {color7};
+  --titlebar-text-color-focused:     {foreground};
+  --titlebar-border-color:           {background.lighten(30).saturate(25)};
+
+  --tab-container-background:        {background.lighten(10).saturate(30)};
+  --tab-background-active:           {background};
+  --tab-text-color:                  {color7};
+  --tab-text-color-active:           {foreground};
+  --tab-text-color-focused-active:   {foreground};
+  --tab-outline-color:               {background.lighten(30).saturate(25)};
+  --tab-divider-color:               {background.lighten(30).saturate(25)};
+
+  --ribbon-background:               {background.lighten(10).saturate(30)};
+  --ribbon-background-collapsed:     {background.lighten(10).saturate(30)};
+  --ribbon-text-color:               {color7};
+
+  --status-bar-background:           {background.lighten(10).saturate(30)};
+  --status-bar-text-color:           {color7};
+  --status-bar-border-color:         {background.lighten(30).saturate(25)};
 }}

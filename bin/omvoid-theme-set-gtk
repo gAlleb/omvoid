@@ -12,7 +12,7 @@
 set -euo pipefail
 
 SOURCE="$HOME/.cache/wal/colors-gtk.css"
-IMPORT='@import url("omvoid.css"); /* omvoid: цвета из pywal */'
+IMPORT='@import url("omvoid.css"); /* omvoid: colours from pywal */'
 
 if [[ ! -f $SOURCE ]]; then
   echo "omvoid-theme-set-gtk: нет $SOURCE -- pywal ещё не разворачивал шаблон" >&2
@@ -21,14 +21,47 @@ fi
 
 # Дописывает @import в конец файла, предварительно убрав свою же прежнюю строку,
 # чтобы повторные запуски не плодили дубликаты.
+# Appends the @import at the end of the file, dropping our own previous line
+# first so repeated runs do not pile up duplicates.
+#
+# The write is guarded. These files can be hundreds of kilobytes of theme CSS,
+# and something -- most likely another tool that also manages GTK colours --
+# once left gtk-Light.css holding nothing but imports. This script then kept
+# appending to the wreckage instead of noticing. Refusing to shrink a file is
+# cheap; rebuilding a 283 KB theme by hand is not.
 ensure_import() {
   local css="$1"
   [[ -f $css ]] || return 0
-  local tmp
+
+  local before after tmp
+  before=$(wc -c <"$css")
   tmp=$(mktemp)
-  grep -vF 'omvoid: цвета из pywal' "$css" >"$tmp" || true
+
+  # Drop our previous line and any blank line it left behind, or every run
+  # would add one and the file would slowly grow a tail of empty lines.
+  # Matched on the import target, not on the comment: the comment wording has
+  # changed once already, and the old line then survived as a duplicate.
+  grep -vF 'url("omvoid.css")' "$css" | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' >"$tmp" || true
   printf '\n%s\n' "$IMPORT" >>"$tmp"
-  cat "$tmp" >"$css"   # не mv: gtk.css бывает симлинком, его надо сохранить
+  after=$(wc -c <"$tmp")
+
+  # A GTK theme file is tens of kilobytes. Anything much smaller has been
+  # rewritten by someone else -- appending to the wreckage silently is how a
+  # 283 KB theme went unnoticed for a day.
+  if ((before < 4096)); then
+    echo "omvoid-theme-set-gtk: ${css/#$HOME/\~} is only $before bytes — looks rewritten by another tool" >&2
+  fi
+
+  # The result may only grow, or shrink by the length of our own previous line.
+  # Anything beyond that means the input was not what we thought it was.
+  if ((after + 200 < before)); then
+    echo "omvoid-theme-set-gtk: ${css/#$HOME/\~} would shrink from $before to $after bytes, refusing" >&2
+    echo "  another tool has probably rewritten it; check its GTK integration" >&2
+    rm -f "$tmp"
+    return 1
+  fi
+
+  cat "$tmp" >"$css"  # not mv: gtk.css is a symlink and must stay one
   rm -f "$tmp"
 }
 

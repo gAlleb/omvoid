@@ -1,0 +1,160 @@
+#!/bin/bash
+
+# Apply a palette: run wal, then reload everything that depends on it.
+#
+# This tail used to be copied into nine scripts — theme switching, the wallpaper
+# picker, the light/dark toggle, the Noctalia hook, the installer's initial
+# wallpaper, two X11 variants and two dead Hyprland leftovers. The copies had
+# already drifted: the light/dark toggle was missing the compositor config
+# reload, the dunstrc symlink and wal-telegram, so those applications kept their
+# previous colours while everything else changed.
+#
+#   omvoid-theme-apply --theme ~/.config/omvoid/current/theme/colors.json
+#   omvoid-theme-apply --image ~/.config/wallpaper/foo.jpg --dark
+#   omvoid-theme-apply --image foo.jpg --light --dry-run
+#
+# --image also sets the wallpaper, records its paths and builds a thumbnail.
+# --theme only changes colours; the background on that path is omvoid-theme-bg-next's job.
+#
+# --no-noctalia is for when Noctalia itself invoked us, so we do not call back.
+
+set -uo pipefail
+
+CACHE_DIR="$HOME/.cache/omvoid_wallpaper"
+WALLPAPER_DIR="$HOME/.config/wallpaper"
+CURRENT_WALLPAPER_PATH_FILE="$CACHE_DIR/current_wallpaper_path"
+
+image="" theme="" mode="" dry_run=false notify_noctalia=true
+
+while (($#)); do
+  case "$1" in
+  --image) image="$2"; shift 2 ;;
+  --theme) theme="$2"; shift 2 ;;
+  --light) mode="light"; shift ;;
+  --dark) mode="dark"; shift ;;
+  --dry-run) dry_run=true; shift ;;
+  --no-noctalia) notify_noctalia=false; shift ;;
+  *) echo "omvoid-theme-apply: unknown argument: $1" >&2; exit 1 ;;
+  esac
+done
+
+if [[ -z $image && -z $theme ]]; then
+  echo "Usage: omvoid-theme-apply (--image <file> [--light|--dark] | --theme <colors.json>) [--dry-run]" >&2
+  exit 1
+fi
+
+# The single place that decides whether a command runs at all. The scripts used
+# to call swaync-client, makoctl and nwg-dock-hyprland unconditionally, and every
+# theme change printed three "command not found".
+run() {
+  if $dry_run; then printf '  [would run] %s\n' "$*"; return 0; fi
+  "$@" 2>/dev/null || true
+}
+
+# For helpers that stay in the foreground once started. The old scripts ran
+# these with a trailing &; calling them like anything else left the whole theme
+# change hanging on swayosd's launcher, which never returns.
+run_bg() {
+  if $dry_run; then printf '  [would run, backgrounded] %s\n' "$*"; return 0; fi
+  "$@" >/dev/null 2>&1 &
+  disown 2>/dev/null || true
+}
+
+have() { omvoid-cmd-present "$@"; }
+running() { omvoid-cmd-running "$@"; }
+
+# --- the palette -------------------------------------------------------------
+
+if $dry_run; then
+  echo "  [would run] wal -c"
+  [[ -n $theme ]] && echo "  [would run] wal --theme $theme"
+  if [[ -n $image ]]; then
+    [[ $mode == "light" ]] && echo "  [would run] wal -l -i $image" || echo "  [would run] wal -i $image"
+  fi
+else
+  wal -c
+  if [[ -n $theme ]]; then
+    wal --theme "$theme"
+  elif [[ $mode == "light" ]]; then
+    wal -l -i "$image"
+  else
+    wal -i "$image"
+  fi
+  wal_status=$?
+
+  # What follows reloads configs, and the compositor reads what wal was supposed
+  # to generate. A half-written cache once took the whole session down.
+  if ((wal_status != 0)); then
+    echo "omvoid-theme-apply: wal failed ($wal_status), skipping the reloads" >&2
+    have notify-send && notify-send -u critical "Theme not applied" "wal failed, see output"
+    exit 1
+  fi
+fi
+
+# --- light or dark: GTK and Qt, which bypass pywal ---------------------------
+# Without --light/--dark the mode and the icons come from the current theme.
+[[ -n $mode ]] && run omvoid-theme-gnome-set "$mode"
+
+# --- the wallpaper and the records of it -------------------------------------
+if [[ -n $image ]]; then
+  relative="${image#$WALLPAPER_DIR/}"
+  thumbnail="$CACHE_DIR/thumbnails/${relative%.*}.png"
+
+  # Set it even when Noctalia draws its own: Noctalia's wallpaper is only visible
+  # while its shell runs, and switching back to waybar reveals whatever lies
+  # underneath. Skipping this means seeing the previous one.
+  if have awww; then
+    run awww img --transition-type any --transition-angle 45 "$image"
+  elif have xwallpaper; then
+    run xwallpaper --zoom "$image"
+  fi
+
+  if $dry_run; then
+    echo "  [would run] record wallpaper paths and thumbnail under $CACHE_DIR"
+  else
+    mkdir -p "$(dirname "$thumbnail")"
+    [[ -f $thumbnail ]] || { have magick && magick "$image" -thumbnail '320x180>' "$thumbnail" 2>/dev/null; }
+    echo "\$wallpaper = $image" >"$CACHE_DIR/wallpaper-hyprland.conf"
+    echo "\$wallpaper_thumbnail = $thumbnail" >"$CACHE_DIR/wallpaper_thumbnail"
+    echo "inputbar { background-image: url(\"$thumbnail\", height); }" >"$CACHE_DIR/wallpaper_thumbnail.rasi"
+    echo "$image" >"$CURRENT_WALLPAPER_PATH_FILE"
+    have magick && magick "$image" "$HOME/.config/bg.jpg" 2>/dev/null
+  fi
+
+  # Noctalia keeps its own copy of the wallpaper and derives its theme from it.
+  # It has to be handed the picture whether it is running or not — see
+  # omvoid-theme-set-noctalia for why.
+  $notify_noctalia && have omvoid-theme-set-noctalia && run omvoid-theme-set-noctalia "$image"
+fi
+
+# --- everything that reads colours out of ~/.cache/wal -----------------------
+have pywalfox && run pywalfox update
+have omvoid-theme-set-browser && run omvoid-theme-set-browser wal
+have omvoid-theme-set-gtk && run omvoid-theme-set-gtk
+have omvoid-theme-set-obsidian && run omvoid-theme-set-obsidian
+have wal-telegram && run wal-telegram --wal
+
+# --- reload what is actually running -----------------------------------------
+running waybar && run pkill -SIGUSR2 waybar
+have mmsg && run mmsg dispatch reload_config
+running dwmblocks && run pkill -SIGUSR1 dwmblocks
+running swaync && have swaync-client && run swaync-client -rs
+running mako && have makoctl && run makoctl reload
+
+if running dunst; then
+  $dry_run && echo "  [would run] repoint the dunstrc symlink and restart dunst" || {
+    mkdir -p "$HOME/.config/dunst"
+    ln -sf "$HOME/.cache/wal/dunstrc" "$HOME/.config/dunst/dunstrc"
+    dunstctl reload 2>/dev/null || true
+    pkill -e --signal SIGKILL dunst >/dev/null 2>&1 || true
+  }
+fi
+
+# A reload script can survive in the configs after its program is gone — check
+# the program, or the script fails inside itself.
+have nwg-dock-hyprland && [[ -x $HOME/.config/nwg-dock-hyprland/reload.sh ]] &&
+  run_bg "$HOME/.config/nwg-dock-hyprland/reload.sh"
+running swayosd-server && [[ -x $HOME/.config/swayosd/launch.sh ]] &&
+  run_bg "$HOME/.config/swayosd/launch.sh"
+
+exit 0

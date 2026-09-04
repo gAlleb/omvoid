@@ -45,9 +45,9 @@ Follow the file you are editing. Across the tree the majority conventions are:
 - `[[ ]]` for string and file tests
 - scripts under `install/` are `source`d — no shebang needed, and **never** call
   `exit` from one, it kills the whole installer
-- comments explain *why*, not what. The tree is bilingual: older scripts comment
-  in English, newer ones in Russian. Match the file you are in; the guides above
-  are in English.
+- comments explain *why*, not what, and are written in **English**. Some older
+  scripts still carry Russian comments; translate them when you touch the file
+  rather than adding more.
 
 ## Naming
 

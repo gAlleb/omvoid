@@ -1,76 +1,34 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-# Wallpapers Path
-CACHE_DIR="$HOME/.cache/omvoid_wallpaper"
-WALLPAPER_DIR="$HOME/.config/wallpaper"
-THEMES_DIR="$HOME/.config/rofi/wallpaper/themes"
-CURRENT_WALLPAPER_PATH_FILE="${CACHE_DIR}/current_wallpaper_path"
+# Picks a random wallpaper and applies it. Runs once during installation, so the
+# desktop comes up already themed instead of grey.
+#
+# Sourced by install/desktop/theme.sh, which means two rules:
+#   - never call exit, it would take the whole installer down
+#   - never call exec, it would replace the installer's shell
+# Everything therefore lives in a function that returns.
+#
+# At this point nothing is running yet — no bar, no notification daemon. That is
+# fine: omvoid-theme-apply checks what exists before poking it, so the same code
+# path works during install and afterwards.
 
-if [ ! -d "${CACHE_DIR}" ] ; then
-    mkdir -p "${CACHE_DIR}"
-fi
+omvoid_init_wallpaper() {
+  local wallpaper_dir="$HOME/.config/wallpaper"
+  local cache_dir="$HOME/.cache/omvoid_wallpaper"
 
-if [ ! -d ~/.config/dunst ] ; then
-    mkdir -p ~/.config/dunst
-fi 
+  [[ -d $wallpaper_dir ]] || { echo "omvoid-init-wallpaper: no $wallpaper_dir" >&2; return 1; }
 
-find -L "${WALLPAPER_DIR}" -type f \( -iname \*.jpg -o -iname \*.jpeg -o -iname \*.png -o -iname \*.webp \) | while read -r wallpaper_path; do
-    # Get the relative path to maintain subdirectory structure in the cache
-    relative_path="${wallpaper_path#${WALLPAPER_DIR}/}"
-    thumbnail_path="${CACHE_DIR}/thumbnails/${relative_path%.*}.png"
+  local -a pics
+  mapfile -t pics < <(find -L "$wallpaper_dir" -type f \
+    \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) | sort)
 
-    # Create the directory in the cache if it doesn't exist
-    if [ ! -d "$(dirname "${thumbnail_path}")" ]; then
-        mkdir -p "$(dirname "${thumbnail_path}")"
-    fi
+  ((${#pics[@]})) || { echo "omvoid-init-wallpaper: no wallpapers found" >&2; return 1; }
 
-    # If the thumbnail doesn't exist, create it
-    if [ ! -f "${thumbnail_path}" ]; then
-        # Using magick to create a small thumbnail
-        magick "${wallpaper_path}" -thumbnail '320x180>' "${thumbnail_path}"
-    fi
-done
+  # Warm the thumbnail cache so the first ALT+W on a fresh machine is not slow.
+  omvoid-wallpaper-thumbnails
 
-# Retrieve image files as a list
-PICS=($(find -L "${WALLPAPER_DIR}" -type f \( -iname \*.jpg -o -iname \*.jpeg -o -iname \*.png -o -iname \*.gif  -o -iname \*.webp \) | sort ))
-
-# Use date variable to increase randomness
-randomNumber=$(( ($(date +%s) + RANDOM) + $$ ))
-randomPicture="${PICS[$(( randomNumber % ${#PICS[@]} ))]}"
-randomChoice="[${#PICS[@]}] Random"
-
-executeCommand() {
-    # The selected wallpaper path is passed as the first argument ($1)
-    local selected_wallpaper="$1"
-    local relative_path="${selected_wallpaper#${WALLPAPER_DIR}/}"
-    local selected_thumbnail_path="${CACHE_DIR}/thumbnails/${relative_path%.*}.png"
-
-    ~/.local/bin/wal -c
-
-    # Generate the new color scheme using wal with the determined flag
-    ~/.local/bin/wal -i ${selected_wallpaper}
-
-    # Update other applications
-    omvoid-theme-set-browser wal
-    wal-telegram --wal
-    echo "\$wallpaper = ${selected_wallpaper}" > $CACHE_DIR/wallpaper-hyprland.conf
-    ln -sf ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc
-    echo "\$wallpaper_thumbnail = $selected_thumbnail_path" > ${CACHE_DIR}/wallpaper_thumbnail
-    echo "inputbar { background-image: url(\"$selected_thumbnail_path\", height); }" > ${CACHE_DIR}/wallpaper_thumbnail.rasi
-    echo "${selected_wallpaper}" > "${CURRENT_WALLPAPER_PATH_FILE}"
-    magick "${selected_wallpaper}" ~/.config/bg.jpg
+  local pick="${pics[RANDOM % ${#pics[@]}]}"
+  omvoid-theme-apply --image "$pick" --dark
 }
 
-# Execution
-main() {
-    executeCommand "${randomPicture}"
-}
-
-# Check if rofi is already running
-if pidof rofi > /dev/null; then
-  pkill rofi
-  exit 0
-fi
-
-main
-
+omvoid_init_wallpaper

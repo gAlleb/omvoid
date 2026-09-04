@@ -1,67 +1,45 @@
 #!/bin/bash
 
-# omvoid-theme-set: Set a theme, specified by its name.
-# Usage: omvoid-theme-set <theme-name>
+# Switch to a curated theme by name.
+#
+#   omvoid-theme-set rain-world
+#   omvoid-theme-set "Rain World"      as omvoid-theme-list prints them
+#
+# The palette comes from the theme's colors.json; everything that has to be
+# reloaded afterwards is omvoid-theme-apply's job.
 
-if [[ -z "$1" && "$1" != "CNCLD" ]]; then
+set -uo pipefail
+
+THEMES_DIR="$HOME/.config/omvoid/themes"
+CURRENT_THEME_DIR="$HOME/.config/omvoid/current/theme"
+
+# A rofi menu passes CNCLD when the user dismisses it. The old condition meant
+# to catch that but tested it against an empty argument, which can never equal
+# it — so cancelling produced a "theme does not exist" error instead of silence.
+[[ ${1:-} == "CNCLD" ]] && exit 0
+
+if [[ -z ${1:-} ]]; then
   echo "Usage: omvoid-theme-set <theme-name>" >&2
   exit 1
 fi
 
-if [ ! -d ~/.config/dunst ] ; then
-    mkdir -p ~/.config/dunst
-fi 
-
-THEMES_DIR="$HOME/.config/omvoid/themes/"
-CURRENT_THEME_DIR="$HOME/.config/omvoid/current/theme"
-
+# omvoid-theme-list prints display names ("Rain World"), and a rofi entry may
+# carry pango markup. Normalise back to the directory name.
 THEME_NAME=$(echo "$1" | sed -E 's/<[^>]+>//g' | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
 THEME_PATH="$THEMES_DIR/$THEME_NAME"
 
-# Check if the theme entered exists
-if [[ ! -d "$THEME_PATH" ]]; then
+if [[ ! -d $THEME_PATH ]]; then
   echo "Theme '$THEME_NAME' does not exist in $THEMES_DIR" >&2
   exit 2
 fi
 
-# Update theme symlinks
 ln -nsf "$THEME_PATH" "$CURRENT_THEME_DIR"
 
-# Change gnome modes
+# No argument: mode and icon theme are read from the theme itself.
 omvoid-theme-gnome-set
-omvoid-theme-set-browser
 
-# run wal 
-wal -c 
-wal --theme "$CURRENT_THEME_DIR/colors.json"
-wal_status=$?
+omvoid-theme-apply --theme "$CURRENT_THEME_DIR/colors.json" || exit $?
 
-# Если wal упал, дальше идти нельзя: ниже стоит перезагрузка конфига
-# композитора, а он читает то, что wal должен был сгенерировать. Именно так
-# опечатка в шаблоне однажды уронила всю сессию.
-if (( wal_status != 0 )); then
-  echo "wal завершился с ошибкой ($wal_status) -- пропускаю перезагрузку конфигов" >&2
-  notify-send -u critical "Тема не применена" "wal упал, см. вывод" 2>/dev/null || true
-  exit 1
-fi
-
-# После wal, а не до: оба читают ~/.cache/wal, который wal только что переписал.
-omvoid-theme-set-gtk
-omvoid-theme-set-obsidian
-pkill -SIGUSR2 waybar
-mmsg dispatch reload_config
-swaync-client -rs
-ln -sf ~/.cache/wal/dunstrc ~/.config/dunst/dunstrc
-dunstctl reload
-makoctl reload 
-pkill -e --signal SIGKILL dunst
-wal-telegram --wal
-$HOME/.config/nwg-dock-hyprland/reload.sh &
-$HOME/.config/swayosd/launch.sh &
-
-# Set new background
+# The background is picked separately: a theme ships several, and this steps
+# through them rather than always taking the first.
 omvoid-theme-bg-next
-
-
-
-

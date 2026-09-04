@@ -1,20 +1,61 @@
 #!/bin/bash
 
-# Change gnome modes
-if [[ -f ~/.config/omvoid/current/theme/light.mode ]]; then
+# Light or dark for GTK and Qt. Neither reads the palette from ~/.cache/wal, so
+# they need the mode stated explicitly — which is why they sit outside the
+# reload fan-out.
+#
+#   omvoid-theme-gnome-set          mode and icons come from the current theme
+#   omvoid-theme-gnome-set light    mode given explicitly (the wallpaper path has
+#   omvoid-theme-gnome-set dark     no theme; the mode is picked from a menu)
+
+mode="${1:-}"
+THEME_DIR=~/.config/omvoid/current/theme
+
+if [[ -z $mode ]]; then
+  [[ -f $THEME_DIR/light.mode ]] && mode="light" || mode="dark"
+  from_theme=true
+else
+  from_theme=false
+fi
+
+omvoid-cmd-present gsettings || exit 0
+
+# On X11 gsettings alone is not enough: settings.ini for gtk-3.0 and gtk-4.0 is
+# needed too, and a separate script handles that. Theme names are hardcoded the
+# same way they were hardcoded in the dwm wallpaper scripts — icons.theme was
+# never consulted on that path.
+#
+# NOTE: this branch is untested; no X11 session was available.
+if [[ ${XDG_SESSION_TYPE:-} == "x11" ]] && omvoid-cmd-present omvoid-theme-gnome-set-xorg; then
+  if [[ $mode == "light" ]]; then
+    omvoid-theme-gnome-set-xorg "WhiteSur-Light" "WhiteSur-light" "0"
+    omvoid-cmd-present kvantummanager && kvantummanager --set WhiteSur-opaque
+  else
+    omvoid-theme-gnome-set-xorg "WhiteSur-Dark" "WhiteSur-grey-dark" "1"
+    omvoid-cmd-present kvantummanager && kvantummanager --set WhiteSur-opaqueDark
+  fi
+  exit 0
+fi
+
+if [[ $mode == "light" ]]; then
   gsettings set org.gnome.desktop.interface color-scheme "prefer-light"
   gsettings set org.gnome.desktop.interface gtk-theme "WhiteSur-Light"
-  kvantummanager --set WhiteSur-opaque
+  omvoid-cmd-present kvantummanager && kvantummanager --set WhiteSur-opaque
 else
   gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
   gsettings set org.gnome.desktop.interface gtk-theme "WhiteSur-Dark"
-  kvantummanager --set WhiteSur-opaqueDark
+  omvoid-cmd-present kvantummanager && kvantummanager --set WhiteSur-opaqueDark
 fi
 
-# Change gnome icon theme color
-GNOME_ICONS_THEME=~/.config/omvoid/current/theme/icons.theme
-if [[ -f $GNOME_ICONS_THEME ]]; then
-  gsettings set org.gnome.desktop.interface icon-theme "$(<$GNOME_ICONS_THEME)"
+# Icons: a curated theme names its own in icons.theme. The wallpaper path has no
+# theme, so it falls back to the stock WhiteSur pair for the chosen mode —
+# exactly what the wallpaper scripts did before they were merged.
+if $from_theme && [[ -f $THEME_DIR/icons.theme ]]; then
+  gsettings set org.gnome.desktop.interface icon-theme "$(<"$THEME_DIR/icons.theme")"
+elif [[ $mode == "light" ]]; then
+  gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-light"
 else
-  gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-red-dark"
+  gsettings set org.gnome.desktop.interface icon-theme "WhiteSur-grey-dark"
 fi
+
+exit 0
