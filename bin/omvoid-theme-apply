@@ -103,7 +103,12 @@ if [[ -n $image ]]; then
   # Set it even when Noctalia draws its own: Noctalia's wallpaper is only visible
   # while its shell runs, and switching back to waybar reveals whatever lies
   # underneath. Skipping this means seeing the previous one.
-  if have awww; then
+  # Which setter applies is decided by the session, not by what is installed.
+  # Both are: awww is on every machine here, and under dwm it would still have
+  # been picked and then failed, because it needs a Wayland compositor -- and
+  # xwallpaper below would never be reached. DISPLAY cannot be the test either,
+  # XWayland sets it under Wayland too; WAYLAND_DISPLAY is what separates them.
+  if [[ -n ${WAYLAND_DISPLAY:-} ]] && have awww; then
     run awww img --transition-type any --transition-angle 45 "$image"
   elif have xwallpaper; then
     run xwallpaper --zoom "$image"
@@ -136,7 +141,7 @@ have wal-telegram && run wal-telegram --wal
 
 # --- reload what is actually running -----------------------------------------
 running waybar && run pkill -SIGUSR2 waybar
-have mmsg && run mmsg dispatch reload_config
+running mango && have mmsg && run mmsg dispatch reload_config
 running dwmblocks && run pkill -SIGUSR1 dwmblocks
 running swaync && have swaync-client && run swaync-client -rs
 running mako && have makoctl && run makoctl reload
@@ -151,8 +156,10 @@ if running dunst; then
 fi
 
 # A reload script can survive in the configs after its program is gone — check
-# the program, or the script fails inside itself.
-have nwg-dock-hyprland && [[ -x $HOME/.config/nwg-dock-hyprland/reload.sh ]] &&
+# the program, or the script fails inside itself. Running, not merely installed:
+# reload.sh kills the dock and starts it again, so on a session without one it
+# would not reload anything, it would launch a Hyprland dock into it.
+running nwg-dock-hyprland && [[ -x $HOME/.config/nwg-dock-hyprland/reload.sh ]] &&
   run_bg "$HOME/.config/nwg-dock-hyprland/reload.sh"
 running swayosd-server && [[ -x $HOME/.config/swayosd/launch.sh ]] &&
   run_bg "$HOME/.config/swayosd/launch.sh"

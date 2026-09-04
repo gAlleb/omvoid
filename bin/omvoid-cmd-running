@@ -7,11 +7,18 @@
 # poking makoctl is only meaningful for a process that exists, otherwise it is
 # noise on stderr.
 #
-# Names are matched whole (pgrep -x), or "wal" would match "waybar".
+# Names are matched whole, or "wal" would match "waybar".
 # Returns 0 only when every name listed is running.
 
 for proc in "$@"; do
-  pgrep -x "$proc" >/dev/null 2>&1 || exit 1
+  # The kernel keeps a process name in 15 characters, and pgrep -x compares
+  # against that field. A longer name never matches: "nwg-dock-hyprland" is 17,
+  # so asking about it always answered "not running" -- pgrep says as much, but
+  # on stderr, which is discarded here. Compare the same 15 characters it does.
+  #
+  # Not pgrep -f: that matches whole command lines, and would find the script
+  # doing the asking whenever the name appears in its own arguments.
+  pgrep -x "${proc:0:15}" >/dev/null 2>&1 || exit 1
 done
 
 exit 0
