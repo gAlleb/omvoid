@@ -92,6 +92,7 @@ run_step development/agent-skills.sh
 #run_step development/node.sh
 run_step development/mihomo.sh
 run_step development/brave-repo.sh
+run_step development/noctalia.sh
 run_step development/mw.sh
 
 # Desktop
