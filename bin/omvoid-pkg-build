@@ -90,7 +90,11 @@ fi
 masterdir="$VOID_PACKAGES/masterdir-x86_64"
 [[ -d $masterdir ]] || masterdir="$VOID_PACKAGES/masterdir"
 
-if ! sudo test -x "$masterdir/bin/sh"; then
+# Plainly, not through sudo. The build root belongs to the user who built it, so
+# a read test needs no privilege -- and asking for one made a failed sudo look
+# exactly like a missing shell, which sent this straight to "rm -rf" on a build
+# root that was perfectly fine.
+if ! test -x "$masterdir/bin/sh"; then
   if [[ -d $masterdir ]]; then
     echo "==> the build root has no shell — rebuilding it"
     sudo rm -rf "$masterdir"

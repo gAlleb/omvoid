@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Rewrites mutt-wizard's install paths in the user's own mutt configuration.
+#
+#   omvoid-fix-muttpaths        show what would change, change nothing
+#   omvoid-fix-muttpaths -y     apply, keeping a .bak beside each file
+#
+# Needed once per machine that used mutt-wizard before it was a package.
+# Upstream's "make install" puts it in /usr/local and mw writes that path into
+# the configuration it generates -- ~/.config/mutt/muttrc and every account file
+# get a "source /usr/local/share/mutt-wizard/..." line. The package installs into
+# /usr, because xbps-src refuses to package anything under /usr/local, so those
+# lines have to follow. Everything mw writes from now on already points at /usr.
+#
+# Only ~/.config/mutt is touched, deliberately. The same string occurs in the
+# maildir -- cron sends mail about /usr/local/bin scripts -- and rewriting stored
+# mail would corrupt it.
+
+set -euo pipefail
+
+MUTT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/mutt"
+apply=false
+[[ ${1:-} == "-y" ]] && apply=true
+
+[[ -d $MUTT_DIR ]] || { echo "no $MUTT_DIR — nothing to do"; exit 0; }
+
+# --exclude '*.bak': the run before this one left them, and they are supposed to
+# still hold the old paths.
+mapfile -t files < <(grep -rl --exclude='*.bak' \
+  '/usr/local/\(share\|lib\)/mutt-wizard' "$MUTT_DIR" 2>/dev/null || true)
+
+if ((${#files[@]} == 0)); then
+  echo "nothing to change: no /usr/local paths in $MUTT_DIR"
+  exit 0
+fi
+
+echo "files to change: ${#files[@]}"
+for f in "${files[@]}"; do
+  echo
+  echo "  ${f#"$HOME"/}"
+  grep -n '/usr/local/\(share\|lib\)/mutt-wizard' "$f" | sed 's/^/    - /'
+  grep -n '/usr/local/\(share\|lib\)/mutt-wizard' "$f" |
+    sed 's#/usr/local/\(share\|lib\)/mutt-wizard#/usr/\1/mutt-wizard#g' | sed 's/^/    + /'
+done
+
+if ! $apply; then
+  echo
+  echo "nothing written. Run with -y to apply."
+  exit 0
+fi
+
+for f in "${files[@]}"; do
+  cp -a "$f" "$f.bak"
+  # "#" as the delimiter, not "|": the pattern needs \| for the alternation, and
+  # with | as the delimiter sed reads that as an escaped delimiter and matches
+  # nothing -- it reported success and changed not a byte.
+  sed -i 's#/usr/local/\(share\|lib\)/mutt-wizard#/usr/\1/mutt-wizard#g' "$f"
+done
+
+echo
+echo "changed ${#files[@]} files, each with a .bak beside it"
+echo "check that mail still opens, then remove them:"
+echo "  find $MUTT_DIR -name '*.bak' -delete"

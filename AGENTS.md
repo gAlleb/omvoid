@@ -34,6 +34,8 @@ duplicated here:
 - [`mise-stubs.md`](default/agents/skills/omvoid/mise-stubs.md) — lazy CLI wrappers backed by mise
 - [`agent-usage.md`](default/agents/skills/omvoid/agent-usage.md) — AI usage collectors and the waybar module
 - [`iso.md`](default/agents/skills/omvoid/iso.md) — the installation image, and writing install steps that survive a chroot
+- [`void-runit.md`](default/agents/skills/omvoid/void-runit.md) — services on Void: the three directories, why /var/service is a trap in a chroot
+- [`void-xbps.md`](default/agents/skills/omvoid/void-xbps.md) — xbps and xbps-src: repositories, keys, building and publishing packages
 
 Those same files are symlinked into `~/.claude/skills/omvoid` and the equivalent
 directories for other agents, so they also apply when working outside this repo.

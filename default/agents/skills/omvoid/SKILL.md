@@ -50,6 +50,8 @@ Read the matching guide before touching one of these areas:
 - [`mise-stubs.md`](mise-stubs.md) — lazy CLI wrappers backed by mise
 - [`agent-usage.md`](agent-usage.md) — AI agent usage collectors and the waybar module
 - [`iso.md`](iso.md) — the installation image, and writing install steps that survive a chroot
+- [`void-runit.md`](void-runit.md) — services on Void: the three directories, why /var/service is a trap in a chroot
+- [`void-xbps.md`](void-xbps.md) — xbps and xbps-src: repositories, keys, building and publishing packages
 
 ## Conventions that apply everywhere
 

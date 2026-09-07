@@ -20,7 +20,7 @@ set -euo pipefail
 
 VOID_PACKAGES="${VOID_PACKAGES:-$HOME/.local/pkgs/void-packages}"
 BINPKGS="$VOID_PACKAGES/hostdir/binpkgs"
-REPO_DIR="${OMVOID_REPO_DIR:-$HOME/.local/github/voidlinux}"
+REPO_DIR="${OMVOID_REPO_DIR:-$HOME/.local/github/omvoid-repo}"
 PRIVKEY="${OMVOID_REPO_KEY:-$HOME/voidrepo.pem}"
 SIGNEDBY="${OMVOID_REPO_SIGNER:-Stefan}"
 
