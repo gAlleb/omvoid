@@ -1,0 +1,17 @@
+# Template file for 'mutt-wizard'
+pkgname=mutt-wizard
+version=3.3.1
+revision=1
+build_style=gnu-makefile
+make_install_args="PREFIX=/usr"
+depends="neomutt isync msmtp pass notmuch"
+short_desc="Automatic email setup for neomutt"
+maintainer="S <s@omfm.ru>"
+license="GPL-3.0-only"
+homepage="https://github.com/LukeSmithxyz/mutt-wizard"
+distfiles="https://github.com/LukeSmithxyz/mutt-wizard/archive/refs/tags/v${version}.tar.gz"
+checksum=4091fba053786d4143249e61dfddfd679c15f561ec34af17f130a3ca80c39b53
+
+post_install() {
+	vlicense LICENSE
+}

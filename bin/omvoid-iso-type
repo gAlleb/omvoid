@@ -1,0 +1,82 @@
+#!/bin/bash
+
+# Types into the qemu guest through the monitor.
+#
+#   omvoid-iso-type 'dmesg | tail -40'      types the line and presses Enter
+#   omvoid-iso-type -n 'partial'            no Enter at the end
+#
+# The guest has no ssh and no shared filesystem while it sits in an initramfs
+# shell, so this is the only way to ask it anything. qemu's monitor speaks one
+# key at a time, hence the table: every character has to be named the way the
+# monitor names it.
+
+set -euo pipefail
+
+PORT="${OMVOID_QEMU_MONITOR_PORT:-55555}"
+newline=true
+[[ ${1:-} == "-n" ]] && { newline=false; shift; }
+text="${1:-}"
+
+key_for() {
+  local ch="$1"
+  case "$ch" in
+  [a-z0-9]) printf '%s' "$ch" ;;
+  [A-Z]) printf 'shift-%s' "$(tr '[:upper:]' '[:lower:]' <<<"$ch")" ;;
+  ' ') printf 'spc' ;;
+  '-') printf 'minus' ;;
+  '=') printf 'equal' ;;
+  '[') printf 'bracket_left' ;;
+  ']') printf 'bracket_right' ;;
+  ';') printf 'semicolon' ;;
+  "'") printf 'apostrophe' ;;
+  '`') printf 'grave_accent' ;;
+  '\') printf 'backslash' ;;
+  ',') printf 'comma' ;;
+  '.') printf 'dot' ;;
+  '/') printf 'slash' ;;
+  '_') printf 'shift-minus' ;;
+  '+') printf 'shift-equal' ;;
+  '{') printf 'shift-bracket_left' ;;
+  '}') printf 'shift-bracket_right' ;;
+  ':') printf 'shift-semicolon' ;;
+  '"') printf 'shift-apostrophe' ;;
+  '~') printf 'shift-grave_accent' ;;
+  '|') printf 'shift-backslash' ;;
+  '<') printf 'shift-comma' ;;
+  '>') printf 'shift-dot' ;;
+  '?') printf 'shift-slash' ;;
+  '!') printf 'shift-1' ;;
+  '@') printf 'shift-2' ;;
+  '#') printf 'shift-3' ;;
+  '$') printf 'shift-4' ;;
+  '%') printf 'shift-5' ;;
+  '^') printf 'shift-6' ;;
+  '&') printf 'shift-7' ;;
+  '*') printf 'shift-8' ;;
+  '(') printf 'shift-9' ;;
+  ')') printf 'shift-0' ;;
+  *) return 1 ;;
+  esac
+}
+
+exec 3<>"/dev/tcp/127.0.0.1/$PORT" || {
+  echo "omvoid-iso-type: no qemu monitor on port $PORT" >&2
+  exit 1
+}
+
+for ((i = 0; i < ${#text}; i++)); do
+  key=$(key_for "${text:i:1}") || {
+    echo "omvoid-iso-type: cannot type '${text:i:1}'" >&2
+    continue
+  }
+  printf 'sendkey %s\n' "$key" >&3
+  # Sent one at a time with a pause. Without it the monitor drops keys on a
+  # long line and the command arrives mangled -- which looks like the guest
+  # misbehaving rather than the keyboard.
+  sleep 0.03
+done
+$newline && printf 'sendkey ret\n' >&3
+
+# The monitor queues keys; closing too early drops the tail of the line.
+sleep 1
+exec 3<&-

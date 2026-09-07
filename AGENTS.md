@@ -33,6 +33,7 @@ duplicated here:
 - [`theming.md`](default/agents/skills/omvoid/theming.md) — themes, wallpapers, and the pywal fan-out
 - [`mise-stubs.md`](default/agents/skills/omvoid/mise-stubs.md) — lazy CLI wrappers backed by mise
 - [`agent-usage.md`](default/agents/skills/omvoid/agent-usage.md) — AI usage collectors and the waybar module
+- [`iso.md`](default/agents/skills/omvoid/iso.md) — the installation image, and writing install steps that survive a chroot
 
 Those same files are symlinked into `~/.claude/skills/omvoid` and the equivalent
 directories for other agents, so they also apply when working outside this repo.

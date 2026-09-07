@@ -1,0 +1,96 @@
+#!/bin/bash
+
+# Prints the package list to bake into the ISO, one per line.
+#
+#   omvoid-iso-packages          everything
+#   omvoid-iso-packages -v       with the reason each excluded package was dropped
+#
+# The list is read out of install/ rather than kept beside it. A second copy
+# would drift the first time a package is added to an install step and not here,
+# and the drift would be invisible: the image would simply install slower.
+
+set -euo pipefail
+
+OMVOID_PATH="${OMVOID_PATH:-$HOME/.local/share/omvoid}"
+verbose=false
+[[ ${1:-} == "-v" ]] && verbose=true
+
+# What the live medium and its installer need, independent of omvoid. Taken
+# from mkiso.sh's "base" flavour, which we no longer use: it insists on owning
+# -p and -I, and ours would replace its set rather than extend it.
+#
+# cryptsetup and lvm2 earn their place twice over -- the stock installer wants
+# them, and so will ours, which unlike the stock one can set up an encrypted
+# disk.
+LIVE_BASE="
+  dialog cryptsetup lvm2 mdadm xtools-minimal xmirror chrony tmux
+  grub-i386-efi grub-x86_64-efi
+  pipewire alsa-pipewire
+  void-docs-browse
+"
+
+# Packages that must NOT be baked, with the reason. Anything here is skipped
+# even when an install step asks for it.
+# The graphics drivers are deliberately NOT here. They looked like the obvious
+# thing to leave out -- one machine needs at most one of them -- but config/gpu.sh
+# installs by detected vendor, and offline a missing package is not a slower
+# install, it is a dead one: xbps fails, set -e ends the run. Both Intel drivers
+# together are a few megabytes against a four-gigabyte image.
+declare -A EXCLUDE=(
+  [gtkspellmm]="built locally by xbps-src, not in any repository"
+  [xbps]="the package manager updates itself; baking a version pins it"
+)
+
+emit() {
+  local name
+  for name in $1; do
+    [[ -n $name ]] && printf '%s\n' "$name"
+  done
+}
+
+# Every xbps-install in install/, with line continuations joined first: the big
+# lists are written across a dozen lines and a line-by-line reader sees only the
+# first of them.
+from_install_steps() {
+  python3 - "$OMVOID_PATH" <<'PY'
+import pathlib, re, sys
+root = pathlib.Path(sys.argv[1]) / "install"
+names = set()
+for f in sorted(root.rglob("*.sh")):
+    joined = re.sub(r"\\\n\s*", " ", f.read_text())
+    for line in joined.splitlines():
+        line = line.strip()
+        if line.startswith("#") or "xbps-install" not in line:
+            continue
+        # xbps-install has to be the command, not a word inside a message:
+        # guard.sh prints "xbps-install was not found", and a looser match
+        # turned "was" and "not" into packages to install.
+        parts = re.split(r"[;|]|&&|\|\|", line)
+        rest = ""
+        for part in parts:
+            part = part.strip()
+            part = re.sub(r"^sudo\s+", "", part)
+            m = re.match(r"xbps-install\s+((?:-\S+\s+)*)(.*)", part)
+            if m:
+                rest += " " + m.group(2)
+        if not rest.strip():
+            continue
+        for p in rest.split():
+            # A package name, not a shell fragment: no quotes, no $, no slashes.
+            if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._+-]*", p) and not p.endswith("."):
+                names.add(p)
+for n in sorted(names):
+    print(n)
+PY
+}
+
+{
+  emit "$LIVE_BASE"
+  from_install_steps
+} | sort -u | while read -r pkg; do
+  if [[ -n ${EXCLUDE[$pkg]:-} ]]; then
+    $verbose && echo "# skipped $pkg — ${EXCLUDE[$pkg]}" >&2
+    continue
+  fi
+  printf '%s\n' "$pkg"
+done

@@ -136,8 +136,8 @@ if ls /sys/class/power_supply/BAT* &>/dev/null; then
   # This computer runs on a battery
   # sudo ln -s /etc/sv/power-profiles-daemon /var/service || true
   #powerprofilesctl set balanced || true
-  if [ ! -L "/var/service/tlp" ]; then
-    sudo ln -s /etc/sv/tlp /var/service || true
+  if [ ! -L "/etc/runit/runsvdir/default/tlp" ]; then
+    omvoid-service-enable tlp || true
   else 
     echo "Seems that tlp service is already running" || true
   fi

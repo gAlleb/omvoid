@@ -1,0 +1,8 @@
+# Nothing built ever belongs here. Images go to ~/.cache/omvoid/iso/, and the
+# downloads baked into them are cached in /var/cache/omvoid-iso on the build
+# machine. This directory holds only the scripts that describe how the image is
+# put together.
+*.iso
+*.img
+*.tar.*
+include/

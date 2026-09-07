@@ -21,15 +21,21 @@ fi
 
 package=$1
 command_name=${2:-$1}
-bin=${3:-$command_name}
 
-# Имя пакета может нести бэкенд и версию (npm:@scope/foo, github:a/b, node@22).
-# В имя файла это не годится, поэтому срезаем, если имя команды не задано явно.
+# The package name can carry a backend and a version (npm:@scope/foo, github:a/b,
+# node@22). Neither belongs in a file name, so they are stripped when no command
+# name was given explicitly.
 if (($# < 2)); then
   command_name=${command_name##*:}
   command_name=${command_name##*/}
   command_name=${command_name%%@*}
 fi
+
+# After the stripping, not before. Taken before it, the binary kept the version
+# suffix -- the stub for node@24 ran "mise x node@24 -- node@24" and died with
+# "couldn'"'"'t exec process: No such file or directory" on its every run. It never
+# showed on the agent CLIs: their names carry no version to strip.
+bin=${3:-$command_name}
 
 mkdir -p "$STUB_DIR"
 target="$STUB_DIR/$command_name"

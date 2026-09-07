@@ -1,34 +1,14 @@
 #!/bin/bash
 
+
 # Install mihomo (MetaCubeX) — not in Void repos, fetched from GitHub releases.
 # The runit service is created but NOT linked into /var/service: enabling it is
 # a manual step (ln -s /etc/sv/mihomo /var/service).
 
-sudo xbps-install -y curl
-
-# Pick the right "compatible" asset (max CPU compatibility) for this arch
-case "$(uname -m)" in
-  x86_64) ASSET_RE='mihomo-linux-amd64-compatible-v[0-9][^"]*\.gz' ;;
-  aarch64) ASSET_RE='mihomo-linux-arm64-v[0-9][^"]*\.gz' ;;
-  *) echo "mihomo: unsupported architecture $(uname -m)"; exit 1 ;;
-esac
-
-# Resolve the latest release asset URL from the GitHub API
-URL=$(curl -fsSL "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest" \
-  | grep -oE "https://[^\"]*${ASSET_RE}" \
-  | head -n1)
-
-if [ -z "$URL" ]; then
-  echo "mihomo: could not find latest release asset"
-  exit 1
-fi
-
-echo "mihomo: downloading $URL"
-tmp=$(mktemp -d)
-curl -fsSL "$URL" -o "$tmp/mihomo.gz"
-gunzip "$tmp/mihomo.gz"
-sudo install -m 0755 "$tmp/mihomo" /usr/local/bin/mihomo
-rm -rf "$tmp"
+# The binary is a package now. It used to be resolved from the GitHub releases
+# API and downloaded on every machine, which also meant every machine got
+# whatever version happened to be current that day.
+sudo xbps-install -y mihomo
 
 # Config dir referenced by the service (left for the user to populate)
 sudo mkdir -p /etc/mihomo
@@ -68,7 +48,7 @@ run_tmp=$(mktemp)
 cat > "$run_tmp" <<'EOF'
 #!/bin/sh
 exec 2>&1
-exec /usr/local/bin/mihomo -d /etc/mihomo
+exec /usr/bin/mihomo -d /etc/mihomo
 EOF
 sudo mkdir -p /etc/sv/mihomo
 sudo install -m 0755 "$run_tmp" /etc/sv/mihomo/run
@@ -84,10 +64,11 @@ EOF
 if sudo visudo -cf "$sudo_tmp" >/dev/null; then
   sudo install -m 0440 -o root -g root "$sudo_tmp" /etc/sudoers.d/omvoid-mihomo
 else
-  echo "mihomo: generated sudoers file is invalid, aborting"
-  rm -f "$sudo_tmp"
-  exit 1
+  # Said, not fatal. This step is sourced, so "exit" would end the whole
+  # install over a convenience rule: without the file the menu asks for a
+  # password, and nothing else about the machine is different.
+  echo "mihomo: generated sudoers file is invalid — skipping it" >&2
 fi
 rm -f "$sudo_tmp"
 
-echo "mihomo: installed. Enable with: sudo ln -s /etc/sv/mihomo /var/service"
+echo "mihomo: installed. Enable with: omvoid-service-enable mihomo"

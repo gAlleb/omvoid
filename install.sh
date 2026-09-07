@@ -50,8 +50,20 @@ source "$OMVOID_INSTALL/preflight/guard.sh"
 
 # Cache sudo credentials and keep them alive for the whole run, so the install
 # never stalls on a password prompt mid-step (which trap ERR would catch).
-sudo -v
-( while kill -0 "$$" 2>/dev/null; do sudo -n true; sleep 50; done ) &
+# Neither of these from the medium.
+#
+# "sudo -v" refuses to be satisfied by a NOPASSWD rule while an ordinary %wheel
+# rule also matches the user -- it asks for a password regardless, and in a
+# chroot there is nobody to type one, so install.sh died on its third line.
+# Plain sudo is fine there: the wizard grants NOPASSWD for the whole run, and
+# "sudo -n true" answers as root. Verified in the guest, not assumed.
+#
+# The keepalive is skipped for a second reason: a loop left running inside the
+# chroot holds the target open, and the installer cannot unmount it afterwards.
+if [[ -z ${OMVOID_IN_CHROOT:-} ]]; then
+  sudo -v
+  ( while kill -0 "$$" 2>/dev/null; do sudo -n true; sleep 50; done ) &
+fi
 
 # Install prerequisites
 run_step preflight/migrations.sh
@@ -62,7 +74,11 @@ run_step preflight/gum.sh
 # Configuration
 show_logo
 show_subtext "Let's install OMVOID! [1/5]"
-run_step config/identification.sh
+# Sourced directly, never marker-gated: this step only exports variables, and a
+# marker would make it skipped on a retry -- leaving every later step that uses
+# them with nothing. install.sh offers a retry by name when it fails, so that
+# path has to work.
+source "$OMVOID_INSTALL/config/identification.sh"
 run_step config/config.sh
 run_step config/swap.sh
 run_step config/xcompose.sh
@@ -80,10 +96,16 @@ run_step config/power.sh
 # Development
 show_logo
 show_subtext "Installing terminal and main tools [2/5]"
+# First in this block, before anything installs from the other repositories.
+# It used to sit after development.sh, which installs python3-pywal16 -- one of
+# our own packages -- so on a machine that had not been through an omvoid install
+# before, xbps knew only Void's repositories and the step died with "not found in
+# repository pool". The image never showed it: there the wizard installs every
+# package from the medium first, so the step has nothing left to look up.
+run_step development/omvoid-repo.sh
 run_step development/docker.sh
 run_step development/mango.sh
 run_step development/development.sh
-run_step development/omvoid-repo.sh
 run_step development/sddm.sh
 run_step development/pipewire.sh
 run_step development/mise.sh
@@ -91,8 +113,6 @@ run_step development/agent-skills.sh
 # ЗАКОММЕНТИРОВАНО: node ставится через mise (см. development/mise.sh)
 #run_step development/node.sh
 run_step development/mihomo.sh
-run_step development/brave-repo.sh
-run_step development/noctalia.sh
 run_step development/mw.sh
 
 # Desktop
@@ -121,10 +141,20 @@ show_subtext "Installing void-packages repo and building apps [5/5]"
 show_logo
 show_subtext "We're done, you gorgeous!"
 show_subtext "✨ 🌟 ✨"
-if [ ! -L "/var/service/sddm" ]; then
-  sudo ln -s /etc/sv/sddm /var/service
-fi
-if gum confirm "Reboot now to finish?" 2>/dev/tty; then
+# Last, on purpose: runit picks a service up within seconds, and sddm takes over
+# the console. Enabled any earlier, the rest of the install would run behind a
+# login screen.
+#
+# Through the helper rather than by linking into /var/service, which is a
+# symlink into a tmpfs made at boot -- correct here, and pointing at nothing
+# when the system is being built in a chroot.
+omvoid-service-enable sddm
+# Never from a chroot: /proc is the live system's, so "reboot" there restarts
+# the machine that is still running the install, halfway through it. The wizard
+# that started this run finishes the job and asks about rebooting itself.
+if [[ -n ${OMVOID_IN_CHROOT:-} ]]; then
+  echo "Done. The installer will finish up and offer to reboot."
+elif gum confirm "Reboot now to finish?" 2>/dev/tty; then
   sudo reboot
 else
   echo "Reboot skipped. Reboot manually when ready: sudo reboot"

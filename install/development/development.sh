@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "$OMVOID_INSTALL/lib/sources.sh"
+
 # Main batch
 sudo xbps-install -y \
   wget curl unzip fzf nano tmux xmlstarlet libqalculate \
@@ -41,21 +43,36 @@ sudo xbps-install -y \
 sudo xbps-install -y \
   python3-pipx python3-cairo-devel 
 
-pipx install pywal16
+# pywal16, the sixteen-colour fork, as a package rather than through pipx.
+# pipx put it in ~/.local/bin, which is not on PATH during an install -- so the
+# installer could not find "wal" at the one moment it needed it.
+sudo xbps-install -y python3-pywal16
+
+# Brave and noctalia. Each used to be a step of its own -- development/brave-repo.sh
+# and development/noctalia.sh -- holding one install line and a note saying the
+# repository was configured elsewhere. Two extra xbps transactions for two
+# packages, in a step that already installs from those repositories.
+#
+# No -S: on an install from the image these are already in place from the
+# medium's mirror, and syncing would reach for a network that may not be there.
+# Their repositories and keys come from development/omvoid-repo.sh, which runs
+# first in this block.
+sudo xbps-install -y brave-origin-bin noctalia
 
 xdg-user-dirs-update 
 
 sudo usermod -aG mpd,transmission $USER 
 
-if [ ! -L "/var/service/swayosd-libinput-backend/" ]; then
-    sudo ln -s /etc/sv/swayosd-libinput-backend /var/service
-fi
-
+# /var/service does not exist in a system being installed -- it is a symlink
+# into a tmpfs made at boot. See the note in install/config/services.sh.
+omvoid-service-enable swayosd-libinput-backend
 # Add Gimp Photoshop plugin
-git clone https://github.com/Diolinux/PhotoGIMP.git /tmp/PhotoGIMP
-
-if [ -d ~/.config/GIMP ]; then
-  mv ~/.config/GIMP ~/.config/GIMP_original
-fi
-
-cp -r /tmp/PhotoGIMP/.config/GIMP ~/.config/
+# PhotoGIMP is not installed any more -- left here rather than deleted so the
+# way it was set up is not lost.
+# git clone "${GIT_SOURCES[PhotoGIMP]}" /tmp/PhotoGIMP
+#
+# if [ -d ~/.config/GIMP ]; then
+#   mv ~/.config/GIMP ~/.config/GIMP_original
+# fi
+#
+# cp -r /tmp/PhotoGIMP/.config/GIMP ~/.config/

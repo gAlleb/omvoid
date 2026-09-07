@@ -1,5 +1,2 @@
-# Download and install mutt-wizard:
-git clone https://github.com/lukesmithxyz/mutt-wizard /tmp/mutt-wizard
-cd /tmp/mutt-wizard
-sudo make install
-
+# mutt-wizard, a package now rather than a clone and make install.
+sudo xbps-install -y mutt-wizard

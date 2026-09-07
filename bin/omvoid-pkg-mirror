@@ -1,0 +1,150 @@
+#!/bin/bash
+
+# Fills the local package mirror the installer installs from.
+#
+#   omvoid-pkg-mirror              everything omvoid installs
+#   omvoid-pkg-mirror -v           list what was downloaded
+#   omvoid-pkg-mirror --clean      throw the mirror away and start over
+#
+# This is the whole reason an install can run without a network: every package
+# omvoid needs, and everything those depend on, sits on the installation medium.
+# xbps resolves the dependencies itself, so the list here is only what we ask
+# for by name.
+#
+# Nothing is pinned. The versions are whatever the repositories hold when this
+# runs, which is why it is a deliberate step and not part of the image build:
+# refreshing the mirror is a decision, and it is the moment the image's package
+# versions are chosen.
+
+set -uo pipefail
+
+OMVOID_PATH="${OMVOID_PATH:-$HOME/.local/share/omvoid}"
+MIRROR="${OMVOID_MIRROR:-$HOME/.cache/omvoid/mirror}"
+
+verbose=false
+case "${1:-}" in
+-v) verbose=true ;;
+--clean)
+  echo "removing $MIRROR"
+  rm -rf "$MIRROR"
+  ;;
+-h)
+  sed -n '3,8p' "$0" | sed 's/^# \?//'
+  exit 0
+  ;;
+esac
+
+# Checked here and not only in omvoid-iso-build: the mirror is built first, so a
+# missing tool shows up at this step or not at all. curl probes the repositories
+# for reachability, python3 reads the package list out of install/.
+missing=()
+for tool in xbps-install xbps-rindex curl python3; do
+  command -v "$tool" >/dev/null || missing+=("$tool")
+done
+if ((${#missing[@]})); then
+  echo "omvoid-pkg-mirror: missing tools: ${missing[*]}" >&2
+  echo "  sudo xbps-install -y curl python3" >&2
+  exit 1
+fi
+
+source "$OMVOID_PATH/install/lib/sources.sh"
+
+mkdir -p "$MIRROR"
+
+# What a machine needs before anything of ours: the base system, the bootloader,
+# and the tools the installer itself uses on the target.
+BASE_PACKAGES="base-system grub-x86_64-efi cryptsetup lvm2 xtools"
+
+# By path, not through PATH. Run from a detached shell or from cron the repo's
+# bin/ is not on it, and what comes back is an empty list -- the mirror is left
+# exactly as it was, and the image built next is quietly short of packages.
+mapfile -t packages < <("$OMVOID_PATH/bin/omvoid-iso-packages")
+((${#packages[@]})) || {
+  echo "omvoid-pkg-mirror: omvoid-iso-packages returned nothing" >&2
+  exit 1
+}
+
+# Every repository omvoid installs from -- but only those that answer.
+#
+# xbps has no timeout of its own: a repository that accepts the connection and
+# then says nothing stops the whole thing, with no message and no way to tell it
+# apart from a slow download. That is not hypothetical -- git.voiders.dev is
+# blocked from some networks at the TLS handshake, and it hung this for seven
+# minutes before anyone knew why.
+#
+# So each one is asked first, with a deadline. A repository that is unreachable
+# from here is skipped and said out loud: the packages it holds must then come
+# from somewhere else, or the mirror is short of them and the build will say so.
+repo_args=()
+for repo in "${XBPS_REPOS[@]}"; do
+  if curl -fsS --max-time 20 -o /dev/null "$repo/x86_64-repodata" 2>/dev/null; then
+    repo_args+=(--repository="$repo")
+    echo "    reachable: $repo"
+  else
+    echo "    UNREACHABLE, skipped: $repo" >&2
+  fi
+done
+
+echo "==> mirror:     $MIRROR"
+echo "==> packages:   ${#packages[@]} named, plus their dependencies"
+echo "==> repositories: ${#XBPS_REPOS[@]} beyond Void's own"
+echo
+
+# Against an empty root, deliberately.
+#
+# Without --rootdir, xbps works out what THIS machine is missing, and everything
+# already installed here is left out -- so the mirror comes out full of holes
+# that only show up on a target where those packages are genuinely absent. An
+# empty root makes it compute the whole dependency tree from nothing, which is
+# what a fresh machine needs.
+EMPTY_ROOT="$MIRROR/.emptyroot"
+rm -rf "$EMPTY_ROOT"
+mkdir -p "$EMPTY_ROOT/var/db/xbps/keys" "$EMPTY_ROOT/usr/share"
+cp -f /var/db/xbps/keys/*.plist "$EMPTY_ROOT/var/db/xbps/keys/" 2>/dev/null || true
+
+# And the third-party keys from the repository itself, not only from this
+# machine. Here they exist because omvoid is installed here; on a fresh checkout
+# they do not, and xbps then refuses everything from the other repositories as
+# unsigned -- with nobody to confirm a fingerprint, the mirror comes out holding
+# Void's packages and none of ours.
+cp -f "$OMVOID_PATH"/default/repokeyes/*/*.plist \
+  "$EMPTY_ROOT/var/db/xbps/keys/" 2>/dev/null || true
+
+# Void's own repository configuration goes across too.
+#
+# --rootdir changes where xbps looks for everything, configuration included: it
+# reads $rootdir/usr/share/xbps.d, and an empty directory has none. Without this
+# the pool holds only the repositories named on the command line, and even
+# base-system cannot be found.
+cp -a /usr/share/xbps.d "$EMPTY_ROOT/usr/share/" 2>/dev/null || true
+
+# -D downloads and verifies without installing anything. The equivalent of
+# "pacman -Syw", which is how Omarchy builds the mirror on its own medium.
+#
+# --repository entries go to the top of the list, so Void's own repository is
+# still there underneath and dependencies resolve from it.
+if ! xbps-install --sync "${repo_args[@]}" --rootdir "$EMPTY_ROOT" \
+  --cachedir "$MIRROR" --download-only --yes $BASE_PACKAGES "${packages[@]}"; then
+  echo "omvoid-pkg-mirror: some packages could not be downloaded" >&2
+  echo "  the mirror is still usable for everything that did arrive" >&2
+fi
+
+# Signatures made with other people's keys cannot be checked here, and a local
+# directory repository is not asked for any.
+rm -f "$MIRROR"/*.sig2 2>/dev/null
+rm -rf "$EMPTY_ROOT"
+
+echo
+echo "==> indexing"
+xbps-rindex --add "$MIRROR"/*.xbps 2>&1 | tail -1 | sed 's/^/    /'
+
+count=$(ls -1 "$MIRROR"/*.xbps 2>/dev/null | wc -l)
+size=$(du -sh "$MIRROR" 2>/dev/null | cut -f1)
+echo
+echo "$count packages, $size"
+# Not "$verbose && ls ...": as the last line of the script that hands back the
+# status of a false test, and a mirror that built perfectly reports failure to
+# whatever ran it.
+if $verbose; then
+  ls -1 "$MIRROR"/*.xbps | sed 's|.*/|  |'
+fi

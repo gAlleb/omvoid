@@ -1,0 +1,83 @@
+#!/bin/bash
+
+# Signs the packages built by omvoid-pkg-build and puts them in the repository
+# machines install from.
+#
+#   omvoid-pkg-publish            copy, index and sign
+#   omvoid-pkg-publish --push     and offer to push the repository
+#
+# Two different things are called a repository here, and mixing them up is easy:
+#
+#   hostdir/binpkgs      what xbps-src just built. Local, unsigned, and enough
+#                        for building an image -- xbps takes packages from a
+#                        path without a signature.
+#   the published one    what installed machines point at. Reached over https,
+#                        so it has to be signed, or xbps refuses every package.
+#
+# The signing key never leaves this machine.
+
+set -euo pipefail
+
+VOID_PACKAGES="${VOID_PACKAGES:-$HOME/.local/pkgs/void-packages}"
+BINPKGS="$VOID_PACKAGES/hostdir/binpkgs"
+REPO_DIR="${OMVOID_REPO_DIR:-$HOME/.local/github/voidlinux}"
+PRIVKEY="${OMVOID_REPO_KEY:-$HOME/voidrepo.pem}"
+SIGNEDBY="${OMVOID_REPO_SIGNER:-Stefan}"
+
+push=false
+[[ ${1:-} == "--push" ]] && push=true
+
+[[ -d $BINPKGS ]] || {
+  echo "omvoid-pkg-publish: nothing built yet — run omvoid-pkg-build first" >&2
+  exit 1
+}
+mapfile -t packages < <(ls -1 "$BINPKGS"/*.xbps 2>/dev/null)
+((${#packages[@]})) || {
+  echo "omvoid-pkg-publish: no .xbps in $BINPKGS" >&2
+  exit 1
+}
+
+[[ -d $REPO_DIR ]] || {
+  echo "omvoid-pkg-publish: no repository checkout at $REPO_DIR" >&2
+  echo "  clone it there, or set OMVOID_REPO_DIR" >&2
+  exit 1
+}
+[[ -f $PRIVKEY ]] || {
+  echo "omvoid-pkg-publish: no signing key at $PRIVKEY" >&2
+  echo "  set OMVOID_REPO_KEY, or create one with:" >&2
+  echo "    openssl genrsa -des3 -out $PRIVKEY 4096" >&2
+  exit 1
+}
+
+echo "==> copying ${#packages[@]} packages into $REPO_DIR"
+cp -f "${packages[@]}" "$REPO_DIR/"
+
+echo "==> indexing"
+xbps-rindex -a "$REPO_DIR"/*.xbps
+
+# The passphrase for the key is asked here, by xbps-rindex itself.
+echo "==> signing the index"
+xbps-rindex --privkey "$PRIVKEY" --sign --signedby "$SIGNEDBY" "$REPO_DIR"
+echo "==> signing the packages"
+xbps-rindex --privkey "$PRIVKEY" --sign-pkg "$REPO_DIR"/*.xbps
+
+echo
+echo "repository ready: $REPO_DIR"
+git -C "$REPO_DIR" status --short 2>/dev/null | head -10 | sed 's/^/  /'
+
+if $push; then
+  echo
+  # Publishing is outward-facing and cannot be undone by deleting later: what is
+  # pushed has been distributed. Asked every time, deliberately.
+  read -r -p "Commit and push this to the public repository? [y/N] " reply
+  if [[ ${reply,,} == y* ]]; then
+    git -C "$REPO_DIR" add -A
+    git -C "$REPO_DIR" commit -m "update packages"
+    git -C "$REPO_DIR" push
+  else
+    echo "  not pushed"
+  fi
+else
+  echo
+  echo "to publish:  omvoid-pkg-publish --push"
+fi

@@ -4,47 +4,21 @@
 sudo xbps-install -y chrony dbus elogind polkit rtkit NetworkManager dbus-elogind cronie turnstile libspa-bluetooth bluez
 # bluez-deprecated bluez-hid2hci are in bluez
 
-# Create symbolic links only if they don't exist
-if [ ! -L "/var/service/chronyd" ]; then
-    sudo ln -s /etc/sv/chronyd /var/service
-fi
+# Enabled through omvoid-service-enable, not by linking into /var/service.
+#
+# /var/service is a symlink to ../run/runit/runsvdir/current, and /run is a
+# tmpfs made at boot. On a running machine linking there works; in a system
+# being installed it points at nothing, every link fails silently, and the
+# machine comes up with no services at all. The helper writes to
+# /etc/runit/runsvdir/default, which is right in both cases.
+omvoid-service-enable chronyd dbus bluetoothd polkitd NetworkManager rtkit cronie
 
-if [ ! -L "/var/service/dbus" ]; then
-    sudo ln -s /etc/sv/dbus /var/service
-fi
+# elogind and turnstiled are deliberately left off.
+# omvoid-service-enable elogind turnstiled
 
-if [ ! -L "/var/service/bluetoothd" ]; then
-    sudo ln -s /etc/sv/bluetoothd /var/service
-fi
-
-#if [ ! -L "/var/service/elogind" ]; then
-#    sudo ln -s /etc/sv/elogind /var/service
-#fi
-
-# if [ ! -L "/var/service/turnstiled" ]; then
-#    sudo ln -s /etc/sv/turnstiled /var/service
-# fi
-
-if [ ! -L "/var/service/polkitd" ]; then
-    sudo ln -s /etc/sv/polkitd /var/service
-fi
-
-if [ ! -L "/var/service/NetworkManager" ]; then
-    sudo ln -s /etc/sv/NetworkManager /var/service
-fi
-
-if [ ! -L "/var/service/rtkit" ]; then
-    sudo ln -s /etc/sv/rtkit /var/service
-fi
-
-if [ ! -L "/var/service/cronie" ]; then
-    sudo ln -s /etc/sv/cronie /var/service
-fi
-
-# Remove dhcpcd service directory if it exists
-if [ -d "/var/service/dhcpcd" ]; then
-    sudo rm -r /var/service/dhcpcd
-fi
+# dhcpcd is what a fresh Void enables. NetworkManager does the same job and the
+# two fight over the same interfaces.
+omvoid-service-enable --disable dhcpcd
 
 # Add user to necessary groups
 sudo usermod -aG network,dbus,polkitd $USER

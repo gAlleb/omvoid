@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Takes a picture of what the qemu guest is showing.
+#
+#   omvoid-iso-screen [out.png]
+#
+# Needed because a guest that fails early stops at a text console: there is no
+# ssh into it and no log on the host. The qemu monitor can dump the framebuffer,
+# which turns "send me a screenshot" into something checkable directly.
+
+set -euo pipefail
+
+PORT="${OMVOID_QEMU_MONITOR_PORT:-55555}"
+out="${1:-$HOME/.cache/omvoid/iso/screen.png}"
+ppm="${out%.*}.ppm"
+
+exec 3<>"/dev/tcp/127.0.0.1/$PORT" 2>/dev/null || {
+  echo "omvoid-iso-screen: no qemu monitor on port $PORT — is the guest running?" >&2
+  exit 1
+}
+
+printf 'screendump %s\n' "$ppm" >&3
+# The monitor answers asynchronously; give it a moment to finish writing.
+sleep 1
+exec 3<&-
+
+[[ -f $ppm ]] || {
+  echo "omvoid-iso-screen: qemu wrote nothing to $ppm" >&2
+  exit 1
+}
+
+if command -v magick >/dev/null; then
+  magick "$ppm" "$out" && rm -f "$ppm"
+  echo "$out"
+else
+  echo "$ppm"
+fi

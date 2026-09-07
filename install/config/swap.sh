@@ -1,5 +1,8 @@
 #!/bin/sh
-set -eu
+# No "set -eu" here. Steps under install/ are sourced, so the options land in
+# the installer's own shell and stay on for every step after this one -- -u then
+# turned the next step, xcompose.sh, into an "unbound variable" abort. install.sh
+# already runs with -e for all of them.
 
 SWAPFILE=/swapfile
 SIZE_MB=4096

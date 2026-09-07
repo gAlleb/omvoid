@@ -1,0 +1,503 @@
+#!/bin/bash
+
+# The OMVOID installer.
+#
+# Asks everything up front, then installs without stopping.
+#
+# What it does is deliberately ordinary: partition, unpack packages from the
+# mirror on this medium, and then run omvoid's own install.sh inside the new
+# system. That last part is the point. install.sh is what configures a machine
+# installed the long way, so using it here means there is one description of an
+# omvoid system rather than two that drift apart.
+#
+# No network is needed. Every package, including its dependencies, is on the
+# medium; omvoid-pkg-mirror put it there when the image was built.
+#
+# Why not the stock void-installer: it cannot set up an encrypted disk at all --
+# its only mention of LUKS is a line that skips such partitions. It stays one
+# keypress away for anything unusual.
+#
+# The encryption recipe is fixed, chosen rather than offered:
+#
+#   LUKS1, not LUKS2   GRUB reads LUKS2 only partially: of the key derivation
+#                      functions it supports PBKDF2, not the argon2 cryptsetup
+#                      now defaults to. GRUB unlocks the disk here.
+#   no LVM             one filesystem in the container. Volumes buy nothing
+#                      when there is one of them.
+#   key in /boot       without it the passphrase is asked twice, by GRUB and
+#                      again by the initramfs. The key lives inside the
+#                      encrypted root, unreachable from outside.
+
+set -euo pipefail
+
+TARGET="/mnt"
+CRYPT_NAME="void"
+MIRROR="${OMVOID_MIRROR:-/var/cache/omvoid/mirror}"
+LOGO="/usr/local/share/omvoid/logo.txt"
+LOG="/var/log/omvoid-install.log"
+ANSWERS="${OMVOID_ANSWERS:-/tmp/omvoid-install.conf}"
+
+# Everything a machine needs before anything of ours.
+BASE_PACKAGES="base-system grub-x86_64-efi cryptsetup lvm2 xtools"
+
+die() {
+  echo >&2
+  echo "omvoid-install: $*" >&2
+  echo "  log: $LOG" >&2
+  exit 1
+}
+
+banner() {
+  clear 2>/dev/null || true
+  [[ -f $LOGO ]] && cat "$LOGO"
+  echo
+}
+
+STEP_TOTAL=8
+STEP_NOW=0
+step() {
+  STEP_NOW=$((STEP_NOW + 1))
+  printf '\n\033[1m[%d/%d] %s\033[0m\n' "$STEP_NOW" "$STEP_TOTAL" "$*"
+}
+ask_step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
+note() { printf '      %s\n' "$*"; }
+
+# --- refuse to run anywhere it could destroy something real ------------------
+
+[[ $EUID -eq 0 ]] || die "run as root"
+
+# The live medium mounts itself here. On an installed system it does not exist,
+# and this script would then be pointed at the disk it is running from.
+[[ -d /run/initramfs/live ]] ||
+  die "this only runs from the OMVOID live image — it formats a disk"
+
+# Everything is written down as it happens. A failed install with nothing left
+# behind can only be guessed at.
+mkdir -p "$(dirname "$LOG")"
+exec > >(tee -a "$LOG") 2>&1
+
+# Every prompt is drawn straight on the terminal, never through the log.
+#
+# Everything here is teed to a file, which makes stdout and stderr pipes. gum
+# renders its interface to stderr, and to a pipe it renders nothing at all --
+# the question appears as a heading with no question under it, waiting for an
+# answer nobody can see. install/config/identification.sh already knew this;
+# adding the log undid it.
+ask() {
+  local prompt="$1" default="${2:-}" reply
+  if command -v gum >/dev/null; then
+    gum input --prompt "$prompt " --value "$default" 2>/dev/tty
+  else
+    read -r -p "$prompt [$default] " reply </dev/tty >/dev/tty
+    printf '%s' "${reply:-$default}"
+  fi
+}
+
+confirm() {
+  if command -v gum >/dev/null; then
+    gum confirm "$1" 2>/dev/tty
+  else
+    local reply
+    read -r -p "$1 [y/N] " reply </dev/tty >/dev/tty
+    [[ ${reply,,} == y* ]]
+  fi
+}
+
+choose() {
+  if command -v gum >/dev/null; then
+    gum choose --header "$1" 2>/dev/tty
+  else
+    local options=() n=1 reply
+    mapfile -t options
+    echo "$1" >/dev/tty
+    for o in "${options[@]}"; do echo "  $((n++)). $o" >/dev/tty; done
+    read -r -p "number: " reply </dev/tty >/dev/tty
+    printf '%s' "${options[$((reply - 1))]}"
+  fi
+}
+
+# --- simple or advanced ------------------------------------------------------
+
+banner
+
+if ! confirm "Install OMVOID with the guided installer? (No opens void-installer)"; then
+  exec void-installer
+fi
+
+# --- the questions, all of them, before anything is written ------------------
+#
+# Written to a file as they are answered, and read back if that file already
+# exists. That makes an unattended install possible: put the file on the medium
+# and nothing is asked at all.
+
+if [[ -f $ANSWERS ]]; then
+  # shellcheck disable=SC1090
+  . "$ANSWERS"
+  banner
+  note "using answers from $ANSWERS"
+else
+  banner
+  ask_step "Disk"
+  mapfile -t disks < <(lsblk -dnp -o NAME,SIZE,MODEL -e 7,11 | sed 's/  */ /g')
+  ((${#disks[@]})) || die "no disks found"
+  disk_line=$(printf '%s\n' "${disks[@]}" |
+    choose "Which disk should OMVOID be installed on? Everything on it is erased.")
+  DISK=$(awk '{print $1}' <<<"$disk_line")
+
+  ask_step "Encryption"
+  if confirm "Encrypt the disk? The passphrase is asked at every boot."; then
+    ENCRYPT=yes
+  else
+    ENCRYPT=no
+  fi
+
+  ask_step "System"
+  HOSTNAME=$(ask "Hostname:" "void")
+  TIMEZONE=$(ask "Timezone:" "Europe/Moscow")
+  KEYMAP=$(ask "Console keymap:" "us")
+  LOCALE=$(ask "Locale (this becomes LANG):" "en_US.UTF-8")
+  # Generated as well as the one above. Someone who reads and writes in two
+  # languages needs both present, and only one of them can be LANG.
+  EXTRA_LOCALES=$(ask "Other locales to generate, space separated:" "")
+
+  ask_step "User"
+  USERNAME=$(ask "Username:" "")
+  FULLNAME=$(ask "Full name:" "")
+
+  ask_step "Git"
+  GIT_NAME=$(ask "git user.name:" "$FULLNAME")
+  GIT_EMAIL=$(ask "git user.email:" "")
+
+  ask_step "Weather"
+  # The waybar forecast and the tmux status line are set from this. Asked here
+  # because install.sh asks for it too, and nothing should be asked twice.
+  CITY=$(ask "City for the weather report:" "")
+
+  cat >"$ANSWERS" <<EOF
+DISK="$DISK"
+ENCRYPT="$ENCRYPT"
+HOSTNAME="$HOSTNAME"
+TIMEZONE="$TIMEZONE"
+KEYMAP="$KEYMAP"
+LOCALE="$LOCALE"
+EXTRA_LOCALES="$EXTRA_LOCALES"
+USERNAME="$USERNAME"
+FULLNAME="$FULLNAME"
+GIT_NAME="$GIT_NAME"
+GIT_EMAIL="$GIT_EMAIL"
+CITY="$CITY"
+EOF
+fi
+
+[[ -n ${USERNAME:-} ]] || die "a username is required"
+[[ -b ${DISK:-} ]] || die "not a block device: ${DISK:-<none>}"
+[[ -d $MIRROR ]] || die "no package mirror at $MIRROR — this medium is incomplete"
+
+# NVMe and loop devices number their partitions p1, p2; sd* do not.
+if [[ $DISK == *[0-9] ]]; then PART_PREFIX="${DISK}p"; else PART_PREFIX="$DISK"; fi
+
+# --- the last chance to stop -------------------------------------------------
+
+ask_step "About to erase $DISK"
+lsblk "$DISK"
+echo
+note "encryption: $ENCRYPT"
+note "hostname:   $HOSTNAME"
+note "user:       $USERNAME"
+echo
+confirm "Everything on $DISK will be destroyed. Continue?" ||
+  die "nothing was changed"
+
+[[ $ENCRYPT == yes ]] && STEP_TOTAL=9
+
+# --- partitions --------------------------------------------------------------
+#
+# Two of them. The EFI partition stays unencrypted because the firmware has to
+# read it; everything else goes inside the container.
+
+step "Partitioning $DISK"
+wipefs -a "$DISK" >/dev/null
+sfdisk "$DISK" >/dev/null <<EOF
+label: gpt
+size=512M, type=uefi, name="EFI"
+type=linux, name="void"
+EOF
+partx -u "$DISK" 2>/dev/null || partprobe "$DISK" 2>/dev/null || true
+sleep 1
+
+EFI_PART="${PART_PREFIX}1"
+ROOT_PART="${PART_PREFIX}2"
+[[ -b $EFI_PART && -b $ROOT_PART ]] || die "partitions did not appear on $DISK"
+
+if [[ $ENCRYPT == yes ]]; then
+  step "Creating the encrypted container"
+  note "You will be asked for the passphrase, then for it again to unlock."
+  # Straight on the terminal: everything here is teed to a log, and a passphrase
+  # prompt that goes through a pipe is a prompt nobody sees.
+  cryptsetup luksFormat --type luks1 "$ROOT_PART" </dev/tty >/dev/tty 2>&1
+  cryptsetup luksOpen "$ROOT_PART" "$CRYPT_NAME" </dev/tty >/dev/tty 2>&1
+  ROOT_DEV="/dev/mapper/$CRYPT_NAME"
+else
+  ROOT_DEV="$ROOT_PART"
+fi
+
+step "Filesystems"
+mkfs.vfat -F32 -n EFI "$EFI_PART" >/dev/null
+mkfs.ext4 -F -L root "$ROOT_DEV" >/dev/null
+
+mount "$ROOT_DEV" "$TARGET"
+mkdir -p "$TARGET/boot/efi"
+mount "$EFI_PART" "$TARGET/boot/efi"
+
+# --- the system --------------------------------------------------------------
+#
+# Installed, not copied. Everything comes from the mirror on this medium, so
+# this works with the network unplugged and always produces the same versions
+# the image was built with.
+
+step "Installing packages"
+
+# xbps refuses unsigned packages unless it knows the keys. The live medium
+# already trusts everything we ship, so its keys go across first.
+mkdir -p "$TARGET/var/db/xbps/keys"
+cp -f /var/db/xbps/keys/*.plist "$TARGET/var/db/xbps/keys/" 2>/dev/null || true
+
+# The mirror is made visible inside the target as a repository of its own.
+#
+# Not only for this install: omvoid's install.sh runs in here afterwards, and
+# several of its steps call "xbps-install -S", which means syncing repositories.
+# With a local path to sync from, those work offline and instantly. Without it,
+# six steps would reach for the network on a machine that may not have one, and
+# the first of them would end the install.
+#
+# Removed again at the end -- the mirror lives on the medium, not on the disk.
+mkdir -p "$TARGET/var/cache/omvoid/mirror" "$TARGET/etc/xbps.d"
+
+# Declared before the first mount, not after: a failure in between would
+# otherwise leave the medium mounted inside the target with nothing to undo it.
+cleanup() {
+  for d in sys proc dev; do umount -R -f "$TARGET/$d" 2>/dev/null || true; done
+  umount -f "$TARGET/var/cache/omvoid/mirror" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+mount --bind "$MIRROR" "$TARGET/var/cache/omvoid/mirror"
+echo "repository=/var/cache/omvoid/mirror" >"$TARGET/etc/xbps.d/00-omvoid-mirror.conf"
+
+mapfile -t packages < <(omvoid-iso-packages)
+note "${#packages[@]} packages plus dependencies, from $MIRROR"
+
+XBPS_ARCH=x86_64 xbps-install --repository="$MIRROR" --rootdir "$TARGET" \
+  --yes --sync $BASE_PACKAGES "${packages[@]}" ||
+  die "installing packages failed"
+
+# --- identity ----------------------------------------------------------------
+
+step "System settings"
+echo "$HOSTNAME" >"$TARGET/etc/hostname"
+ln -sf "/usr/share/zoneinfo/$TIMEZONE" "$TARGET/etc/localtime"
+echo "LANG=$LOCALE" >"$TARGET/etc/locale.conf"
+
+# Every locale that should exist on the machine, the LANG one included.
+#
+# Uncommented in place where the file already lists it -- Void ships them all,
+# commented out -- and appended only when it does not. Appending blindly leaves
+# a duplicate every time this runs.
+enable_locale() {
+  local name="$1" file="$TARGET/etc/default/libc-locales"
+  [[ -n $name ]] || return 0
+  if grep -qE "^#\s*${name} " "$file" 2>/dev/null; then
+    sed -i "s|^#\s*\(${name} .*\)|\1|" "$file"
+  elif ! grep -qE "^${name} " "$file" 2>/dev/null; then
+    echo "$name UTF-8" >>"$file"
+  fi
+  note "locale: $name"
+}
+
+enable_locale "$LOCALE"
+for extra in ${EXTRA_LOCALES:-}; do enable_locale "$extra"; done
+sed -i "s/^KEYMAP=.*/KEYMAP=$KEYMAP/" "$TARGET/etc/rc.conf" 2>/dev/null || true
+
+for d in dev proc sys; do mount --rbind "/$d" "$TARGET/$d" --make-rslave; done
+
+# The new system needs a resolver only if something reaches for the network;
+# nothing here does, but a step of omvoid's might.
+cp -f /etc/resolv.conf "$TARGET/etc/resolv.conf" 2>/dev/null || true
+
+in_target() { chroot "$TARGET" /bin/bash -c "$1"; }
+
+in_target "xbps-reconfigure -f glibc-locales" >/dev/null 2>&1 || true
+
+# dbus generates this at boot, but install.sh runs before any boot and anything
+# autolaunching a session bus needs it to exist first.
+[[ -s $TARGET/etc/machine-id ]] ||
+  in_target "dbus-uuidgen --ensure=/etc/machine-id" 2>/dev/null || true
+
+step "Account"
+in_target "useradd -m -G wheel,audio,video,input,network,storage,users -c '$FULLNAME' '$USERNAME'"
+# In /etc/sudoers itself, where a hand-installed Void keeps it -- not as a file
+# in sudoers.d.
+#
+# "@includedir /etc/sudoers.d" is the last line of /etc/sudoers, so everything in
+# that directory is read after it, and sudoers gives the win to the last matching
+# rule. A %wheel line sitting in sudoers.d therefore cancels every NOPASSWD file
+# whose name sorts before "wheel" -- install/development/mihomo.sh writes
+# "omvoid-mihomo", and passwordless control of that service quietly stopped
+# working on machines installed from the image, while it kept working on machines
+# installed by hand. Same repository, different behaviour, no error anywhere.
+in_target "sed -i 's/^# *%wheel ALL=(ALL:ALL) ALL\$/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers"
+if ! in_target "grep -q '^%wheel ALL=(ALL:ALL) ALL' /etc/sudoers && visudo -c -q" 2>/dev/null; then
+  # The stock line was not where it was expected. Better a working machine than a
+  # tidy one -- but named to sort first, so later NOPASSWD rules still win.
+  note "could not uncomment %wheel in /etc/sudoers — using /etc/sudoers.d/00-wheel"
+  echo '%wheel ALL=(ALL:ALL) ALL' >"$TARGET/etc/sudoers.d/00-wheel"
+  chmod 440 "$TARGET/etc/sudoers.d/00-wheel"
+fi
+
+echo
+note "Set the password for $USERNAME:"
+until in_target "passwd '$USERNAME'" </dev/tty >/dev/tty 2>&1; do note "try again"; done
+note "Set the root password:"
+until in_target "passwd root" </dev/tty >/dev/tty 2>&1; do note "try again"; done
+
+# --- omvoid itself -----------------------------------------------------------
+#
+# A checkout in the user's home, because that is what omvoid is: not a package,
+# but a repository that stays on the machine and keeps owning its configs. With
+# its history, or omvoid-update would have nothing to pull into.
+
+step "Configuring the system"
+omvoid_repo="$TARGET/home/$USERNAME/.local/share/omvoid"
+mkdir -p "$(dirname "$omvoid_repo")"
+cp -a /usr/local/share/omvoid/repo "$omvoid_repo"
+
+# tmux plugins are baked onto the medium, but config.sh looks for them at the
+# live path -- which does not exist inside the chroot. Put them where it looks;
+# it copies them into the user's home and the staging copy goes away below.
+if [[ -d /usr/local/share/omvoid/tmux-plugins ]]; then
+  mkdir -p "$TARGET/usr/local/share/omvoid"
+  cp -a /usr/local/share/omvoid/tmux-plugins "$TARGET/usr/local/share/omvoid/"
+fi
+
+# The answers already given, so install.sh asks nothing.
+mkdir -p "$TARGET/home/$USERNAME/.local/state/omvoid"
+cat >"$TARGET/home/$USERNAME/.local/state/omvoid/install-answers" <<EOF
+OMVOID_GIT_NAME="$GIT_NAME"
+OMVOID_GIT_EMAIL="$GIT_EMAIL"
+OMVOID_CITY="$CITY"
+EOF
+
+# Ownership last, after everything written as root.
+#
+# Done any earlier it misses whatever is created afterwards, and the first thing
+# install.sh does is redirect its output into ~/.local/state/omvoid -- into a
+# directory it cannot write. With set -e that ends the install on its first
+# line, with no log to say why and not a single step run.
+in_target "chown -R '$USERNAME:$USERNAME' /home/$USERNAME/.local"
+
+# install.sh runs as the user and uses sudo for the system half. There is no
+# password to give it here, so sudo is opened for the duration and closed again
+# immediately afterwards -- leaving it open would ship a machine anyone can take
+# root on.
+#
+# The name has to sort AFTER "wheel". sudoers.d is read in lexical order and the
+# last matching rule wins, so 00-omvoid-install was read first and then undone by
+# %wheel's ordinary rule -- install.sh died on its own "sudo -v" with "a terminal
+# is required to read the password", inside a chroot where there is nobody to
+# type one.
+echo "$USERNAME ALL=(ALL) NOPASSWD: ALL" >"$TARGET/etc/sudoers.d/zz-omvoid-install"
+chmod 440 "$TARGET/etc/sudoers.d/zz-omvoid-install"
+
+note "running omvoid's own install.sh inside the new system"
+in_target "su - '$USERNAME' -c 'OMVOID_IN_CHROOT=1 bash ~/.local/share/omvoid/install.sh'" ||
+  note "install.sh reported problems — see $LOG"
+
+rm -f "$TARGET/etc/sudoers.d/zz-omvoid-install"
+rm -rf "$TARGET/usr/local/share/omvoid"
+
+# --- boot --------------------------------------------------------------------
+
+step "Bootloader"
+xgenfstab "$TARGET" >"$TARGET/etc/fstab" 2>/dev/null ||
+  in_target "xgenfstab / > /etc/fstab"
+
+if [[ $ENCRYPT == yes ]]; then
+  # The UUID of the container, not of the filesystem inside it.
+  luks_uuid=$(blkid -o value -s UUID "$ROOT_PART")
+
+  # A key file so the passphrase is typed once. It lives inside the encrypted
+  # root, so it is only readable once the disk is already open.
+  dd bs=1 count=64 if=/dev/urandom of="$TARGET/boot/volume.key" status=none
+  # Asks for the existing passphrase, so it needs the terminal too.
+  cryptsetup luksAddKey "$ROOT_PART" "$TARGET/boot/volume.key" </dev/tty >/dev/tty 2>&1
+  chmod 000 "$TARGET/boot/volume.key"
+  chmod -R g-rwx,o-rwx "$TARGET/boot"
+
+  echo "$CRYPT_NAME  $ROOT_PART  /boot/volume.key  luks" >"$TARGET/etc/crypttab"
+  mkdir -p "$TARGET/etc/dracut.conf.d"
+  echo 'install_items+=" /boot/volume.key /etc/crypttab "' \
+    >"$TARGET/etc/dracut.conf.d/10-crypt.conf"
+
+  sed -i 's/^#\?GRUB_ENABLE_CRYPTODISK=.*/GRUB_ENABLE_CRYPTODISK=y/' "$TARGET/etc/default/grub"
+  grep -q '^GRUB_ENABLE_CRYPTODISK=y' "$TARGET/etc/default/grub" ||
+    echo 'GRUB_ENABLE_CRYPTODISK=y' >>"$TARGET/etc/default/grub"
+
+  sed -i "s|^GRUB_CMDLINE_LINUX_DEFAULT=\"|GRUB_CMDLINE_LINUX_DEFAULT=\"rd.luks.uuid=$luks_uuid |" \
+    "$TARGET/etc/default/grub"
+fi
+
+mountpoint -q /sys/firmware/efi/efivars ||
+  mount -t efivarfs none /sys/firmware/efi/efivars 2>/dev/null || true
+
+in_target "grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=OMVOID" ||
+  die "grub-install failed"
+
+# Builds the initramfs, with the crypt key and modules when encrypted. Skipping
+# this is how an encrypted install ends up unable to open its own disk.
+#
+# It reconfigures every installed package, which on a full system is a few
+# minutes. Shown as it goes: silence here is indistinguishable from a hang.
+note "reconfiguring packages and building the initramfs — a few minutes"
+in_target "xbps-reconfigure -fa" 2>&1 | while read -r line; do
+  printf '\r      %-70.70s' "$line"
+done
+printf '\r      %-70s\n' "done"
+
+# --- done --------------------------------------------------------------------
+
+step "Done"
+
+# The temporary repository goes away with the medium it points at. Left behind,
+# the installed machine would carry a repository entry for a directory that is
+# empty, and every xbps command would complain about it.
+rm -f "$TARGET/etc/xbps.d/00-omvoid-mirror.conf"
+rm -f "$TARGET/etc/resolv.conf"
+rmdir "$TARGET/var/cache/omvoid/mirror" "$TARGET/var/cache/omvoid" 2>/dev/null || true
+
+cleanup
+umount -R "$TARGET" 2>/dev/null || true
+
+banner
+cat <<EOF
+
+  OMVOID is installed on $DISK.
+
+    user:      $USERNAME
+    hostname:  $HOSTNAME
+$([[ $ENCRYPT == yes ]] && echo "    disk:      encrypted, the passphrase is asked once, by GRUB")
+
+  Take the installation medium out before the machine starts again,
+  or it will boot the installer instead of the system.
+
+EOF
+
+if confirm "Reboot now?"; then
+  echo
+  note "Rebooting. Remove the medium."
+  sleep 2
+  reboot
+else
+  echo
+  note "Reboot when ready:  reboot"
+  echo
+fi

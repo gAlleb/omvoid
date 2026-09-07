@@ -1,0 +1,112 @@
+#!/bin/bash
+
+# Boots an OMVOID ISO in qemu, against a scratch disk.
+#
+#   omvoid-iso-test                 boot the newest built ISO, install onto the disk
+#   omvoid-iso-test -b              boot the disk alone, to see what was installed
+#   omvoid-iso-test -n              start from an empty disk again
+#   omvoid-iso-test -i <file.iso>   a particular image
+#
+# UEFI is used when the firmware is available, because that is what the real
+# machines boot -- and an encrypted install depends on it: the EFI partition
+# stays unencrypted so the firmware can read it, and GRUB unlocks the rest.
+# Without OVMF the guest falls back to BIOS, which still proves the image boots
+# and installs, but tests a different boot path than the one we ship.
+#
+#   sudo xbps-install -y edk2-ovmf
+
+set -euo pipefail
+
+ISO_DIR="$HOME/.cache/omvoid/iso"
+DISK="$ISO_DIR/test-disk.qcow2"
+DISK_SIZE="24G"
+MEMORY="4G"
+CPUS="2"
+
+iso=""
+disk_only=false
+fresh=false
+
+while getopts "i:bnh" opt; do
+  case "$opt" in
+  i) iso="$OPTARG" ;;
+  b) disk_only=true ;;
+  n) fresh=true ;;
+  h)
+    sed -n '3,9p' "$0" | sed 's/^# \?//'
+    exit 0
+    ;;
+  *) exit 1 ;;
+  esac
+done
+
+command -v qemu-system-x86_64 >/dev/null || {
+  echo "omvoid-iso-test: qemu-system-x86_64 not installed" >&2
+  exit 1
+}
+
+if ! $disk_only; then
+  [[ -n $iso ]] || iso=$(ls -t "$ISO_DIR"/*.iso 2>/dev/null | head -1)
+  [[ -n $iso && -f $iso ]] || {
+    echo "omvoid-iso-test: no ISO found in $ISO_DIR — build one with omvoid-iso-build" >&2
+    exit 1
+  }
+fi
+
+$fresh && rm -f "$DISK"
+if [[ ! -f $DISK ]]; then
+  echo "==> new scratch disk, $DISK_SIZE"
+  qemu-img create -f qcow2 "$DISK" "$DISK_SIZE" >/dev/null
+fi
+
+# The monitor is on telnet rather than a unix socket so it can be driven with
+# bash's /dev/tcp alone, without socat. It is what makes "screendump" available:
+# a guest that stops at a text console can be read without asking a person to
+# take a photograph of their screen.
+MONITOR_PORT="${OMVOID_QEMU_MONITOR_PORT:-55555}"
+
+args=(
+  -enable-kvm
+  -m "$MEMORY" -smp "$CPUS"
+  -drive "file=$DISK,format=qcow2,if=virtio"
+  -display gtk,zoom-to-fit=off
+  # Plain VGA, not virtio. virtio-vga with a forced resolution produced a mode
+  # whose row stride qemu drew wrongly: the whole screen came out sheared along
+  # a diagonal. Nothing here needs a fast framebuffer -- it is a text installer.
+  -vga std
+  -net nic -net user
+  -monitor "telnet:127.0.0.1:$MONITOR_PORT,server,nowait"
+)
+
+# The firmware is a pair: read-only code, and a writable copy of the variable
+# store per machine -- otherwise the guest cannot remember its own boot entry,
+# and an installed system would never come up again.
+# OVMF_CODE.fd first, deliberately. The single-file OVMF.fd carries code and
+# variables together, and mounted read-only it cannot remember anything -- an
+# installed guest would lose its boot entry and never come up again.
+firmware_code=$(ls /usr/share/{edk2/x64,ovmf,OVMF,edk2-ovmf}/OVMF_CODE.fd 2>/dev/null | head -1 || true)
+[[ -n $firmware_code ]] || firmware_code=$(ls /usr/share/{edk2/x64,ovmf,OVMF,edk2-ovmf}/OVMF.fd 2>/dev/null | head -1 || true)
+firmware_vars=$(ls /usr/share/{edk2/x64,ovmf,OVMF,edk2-ovmf}/OVMF_VARS.fd 2>/dev/null | head -1 || true)
+
+if [[ -n $firmware_code ]]; then
+  echo "==> UEFI ($firmware_code)"
+  args+=(-drive "if=pflash,format=raw,readonly=on,file=$firmware_code")
+  if [[ -n $firmware_vars ]]; then
+    local_vars="$ISO_DIR/ovmf-vars.fd"
+    [[ -f $local_vars ]] || cp "$firmware_vars" "$local_vars"
+    args+=(-drive "if=pflash,format=raw,file=$local_vars")
+  fi
+else
+  echo "==> BIOS — OVMF not installed, so the UEFI path is not what is being tested"
+  echo "    sudo xbps-install -y edk2-ovmf"
+fi
+
+if $disk_only; then
+  echo "==> booting the installed disk"
+  args+=(-boot c)
+else
+  echo "==> booting $(basename "$iso")"
+  args+=(-cdrom "$iso" -boot d)
+fi
+
+exec qemu-system-x86_64 "${args[@]}"

@@ -34,6 +34,6 @@ sudo chmod +x /etc/sv/runsvdir-$USER/finish
 
 echo "File '/etc/sv/runsvdir-$USER/finish' created and made executable."
 
-sudo ln -s /etc/sv/runsvdir-$USER /var/service/
+omvoid-service-enable "runsvdir-$USER"
 
 echo "Per-user service is enabled"

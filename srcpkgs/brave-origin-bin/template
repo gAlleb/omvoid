@@ -1,0 +1,26 @@
+# Taken from upstream, not written here. Refresh it with:
+#     omvoid-pkg-fetch brave-origin-bin
+# The people who maintain it follow the releases; we follow them.
+#
+# Template file for 'brave-browser'
+pkgname=brave-origin-bin
+version=1.95.62
+revision=1
+archs="x86_64"
+hostmakedepends="rpmextract"
+short_desc="Web browser"
+maintainer="jacob Pedersen <jake@jpedmedia.com>"
+license="GPL-3.0-or-later"
+homepage="https://www.brave.com/"
+#changelog="https://www.brave.com/latest/"
+distfiles="https://github.com/brave/brave-browser/releases/download/v${version}/brave-origin-nightly-${version}-1.x86_64.rpm"
+checksum=8a3347df715e49590b64053aa08ee87c72735058c01e416b923e1b385402708e
+
+do_install() {
+	rm -f etc/cron.daily/brave-origin-nightly
+
+	vcopy "*" /
+
+	vmkdir usr/share/pixmaps
+}
+

@@ -1,0 +1,78 @@
+#!/bin/bash
+
+# Enables a runit service, and keeps working inside a chroot.
+#
+#   omvoid-service-enable sddm dbus NetworkManager
+#   omvoid-service-enable --disable dhcpcd
+#
+# Everything used to link into /var/service, which is right on a running system
+# and wrong everywhere else: it is a symlink to ../run/runit/runsvdir/current,
+# and /run is a tmpfs made at boot. In a system being installed it points at
+# nothing, every link fails, and the machine comes up with no services at all --
+# no network, no display manager, nothing. That is not a hypothetical: it is
+# what the first image-installed machine did.
+#
+# The permanent place is /etc/runit/runsvdir/default. Linking there works both
+# on a live system, where runit notices within seconds, and in a chroot.
+
+set -uo pipefail
+
+RUNSVDIR="${OMVOID_RUNSVDIR:-/etc/runit/runsvdir/default}"
+SV_DIR="${OMVOID_SVDIR:-/etc/sv}"
+
+disable=false
+if [[ ${1:-} == "--disable" ]]; then
+  disable=true
+  shift
+fi
+
+(($#)) || {
+  echo "Usage: omvoid-service-enable [--disable] <service>..." >&2
+  exit 1
+}
+
+# Tried without privilege first, raised only when that fails. Inside a chroot we
+# are already root and there is often no sudo at all; on a running system the
+# directory belongs to root and sudo is needed. Deciding by attempt rather than
+# by rule covers both without asking which case we are in.
+as_root() {
+  "$@" 2>/dev/null && return 0
+  [[ $EUID -eq 0 ]] && return 1
+  sudo "$@"
+}
+
+as_root mkdir -p "$RUNSVDIR" || {
+  echo "omvoid-service-enable: cannot create $RUNSVDIR" >&2
+  exit 1
+}
+
+status=0
+for service in "$@"; do
+  if $disable; then
+    if as_root rm -f "$RUNSVDIR/$service"; then
+      echo "disabled $service"
+    else
+      echo "omvoid-service-enable: could not disable $service" >&2
+      status=1
+    fi
+    continue
+  fi
+
+  if [[ ! -d $SV_DIR/$service ]]; then
+    echo "omvoid-service-enable: no service directory for '$service'" >&2
+    status=1
+    continue
+  fi
+
+  # Checked, not assumed. The whole point of this script is that the failure it
+  # replaces was silent.
+  if as_root ln -sfn "$SV_DIR/$service" "$RUNSVDIR/$service" &&
+    [[ -L $RUNSVDIR/$service ]]; then
+    echo "enabled $service"
+  else
+    echo "omvoid-service-enable: could not enable $service" >&2
+    status=1
+  fi
+done
+
+exit $status

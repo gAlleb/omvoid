@@ -16,8 +16,14 @@ if [ "$(id -u)" -eq 0 ]; then
   exit 1
 fi
 
-# Network reachable (the install pulls packages, git repos and web apps)
-if ! curl -fsS --max-time 10 -o /dev/null https://github.com; then
-  echo "No network connectivity to github.com. Check your connection and retry."
-  exit 1
+# Network reachable (the install pulls packages, git repos and web apps).
+#
+# Not required when installing from the image: everything needed is on the
+# medium, and demanding a network there would refuse installs that work
+# perfectly well with the cable unplugged.
+if [ -z "${OMVOID_IN_CHROOT:-}" ]; then
+  if ! curl -fsS --max-time 10 -o /dev/null https://github.com; then
+    echo "No network connectivity to github.com. Check your connection and retry."
+    exit 1
+  fi
 fi

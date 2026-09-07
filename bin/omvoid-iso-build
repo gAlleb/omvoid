@@ -1,0 +1,197 @@
+#!/bin/bash
+
+# Builds an installable OMVOID ISO for x86_64.
+#
+#   omvoid-iso-build              a release image (xz squashfs, small and slow)
+#   omvoid-iso-build -f           a draft image (gzip squashfs, big and quick)
+#   omvoid-iso-build -o /path.iso where to put it
+#
+# The medium carries three things: a small live system, the package mirror, and
+# omvoid's installer. It does not carry a configured desktop -- the installer
+# builds one on the target by running omvoid's own install.sh there, so an
+# installed machine and a machine installed the long way are described by the
+# same scripts.
+#
+# Run omvoid-pkg-mirror first. The mirror is what makes the install work with no
+# network, and it is deliberately a separate step: filling it is when the image's
+# package versions are chosen.
+#
+# The heavy lifting is void-mklive, the official Void tool.
+#
+# Not a sandbox: mklive.sh runs as root and uses plain chroot, with the host's
+# /dev, /proc and /sys bind-mounted into the build tree. It keeps its output to
+# itself, but a mistake here has the machine's own privileges. Build on a
+# machine you can afford to reinstall.
+
+set -euo pipefail
+
+OMVOID_PATH="${OMVOID_PATH:-$HOME/.local/share/omvoid}"
+WORK_DIR="$HOME/.cache/omvoid/iso"
+MKLIVE_DIR="$WORK_DIR/void-mklive"
+MKLIVE_REPO="https://github.com/void-linux/void-mklive.git"
+MIRROR="${OMVOID_MIRROR:-$HOME/.cache/omvoid/mirror}"
+
+# What the live medium itself needs, and nothing else. Everything omvoid
+# installs is in the mirror, not here: installing it twice would double the size
+# of the image for no gain.
+#
+#   gum            the installer's prompts
+#   cryptsetup     the encrypted install
+#   xtools         xgenfstab, which writes the target's fstab
+#   dialog xmirror void-installer, kept available for unusual layouts
+#   spice-vdagent  clipboard and screen resizing when the medium is tried in a
+#                  virtual machine, which is where it gets tried most
+LIVE_PACKAGES="gum cryptsetup lvm2 xtools dosfstools e2fsprogs dialog xmirror
+  grub-i386-efi grub-x86_64-efi chrony spice-vdagent"
+
+INCLUDE_SRC="$OMVOID_PATH/iso/include"
+POSTSETUP="$OMVOID_PATH/iso/postsetup.sh"
+
+# Enabled in the live system. Without these the medium comes up without network.
+SERVICES="sshd chronyd dhcpcd acpid"
+
+TITLE="OMVOID"
+squash="xz"
+output=""
+
+while getopts "fo:h" opt; do
+  case "$opt" in
+  f) squash="gzip" ;;
+  o) output="$OPTARG" ;;
+  h)
+    sed -n '3,8p' "$0" | sed 's/^# \?//'
+    exit 0
+    ;;
+  *) exit 1 ;;
+  esac
+done
+
+# --- what must be present ----------------------------------------------------
+
+# python3 belongs here even though Void ships it: omvoid-iso-packages reads the
+# package list out of install/ with it, and without it the list comes back empty
+# -- which is not an error anyone would connect to a missing interpreter.
+missing=()
+for tool in xorriso lz4 isohybrid mksquashfs dracut git python3; do
+  command -v "$tool" >/dev/null || missing+=("$tool")
+done
+if ((${#missing[@]})); then
+  echo "omvoid-iso-build: missing tools: ${missing[*]}" >&2
+  echo "  sudo xbps-install -y xorriso lz4 syslinux squashfs-tools dracut git python3" >&2
+  exit 1
+fi
+
+if [[ ! -d $MIRROR ]] || ! compgen -G "$MIRROR/*.xbps" >/dev/null 2>&1; then
+  echo "omvoid-iso-build: no package mirror at $MIRROR" >&2
+  echo "  run omvoid-pkg-mirror — without it the image has nothing to install" >&2
+  exit 1
+fi
+
+# "sudo -n true", not "sudo -v": -v authenticates even where the rule says
+# NOPASSWD, so it fails on exactly the setup that would have worked.
+if ! sudo -n true 2>/dev/null; then
+  echo "omvoid-iso-build: needs sudo without a prompt — mkiso.sh mounts and chroots" >&2
+  echo "  run it from a terminal, or allow this user NOPASSWD on the build machine" >&2
+  exit 1
+fi
+
+# --- the tool ----------------------------------------------------------------
+
+mkdir -p "$WORK_DIR"
+if [[ -d $MKLIVE_DIR/.git ]]; then
+  echo "==> updating void-mklive"
+  # Our own patch below leaves the clone dirty, and git refuses to pull over
+  # local changes. Everything we change is reapplied on the next line.
+  git -C "$MKLIVE_DIR" checkout --quiet -- . 2>/dev/null || true
+  git -C "$MKLIVE_DIR" pull --quiet --ff-only || echo "  (pull failed, using what is there)"
+else
+  echo "==> fetching void-mklive"
+  git clone --quiet --depth 1 "$MKLIVE_REPO" "$MKLIVE_DIR"
+fi
+
+# --- upstream patches --------------------------------------------------------
+
+# Recent dracut dropped support for the live image being called ext3fs.img; it
+# now looks for rootfs.img. void-mklive still writes the old name, so the image
+# builds cleanly and then fails to boot with "Cannot find init!" and an empty
+# /sysroot.
+#
+# Fixed upstream in void-linux/void-mklive#459. Applied here until it lands; the
+# guard makes it harmless the day it does.
+patch_mklive() {
+  local file="$MKLIVE_DIR/mklive.sh"
+  grep -q 'ext3fs\.img' "$file" || return 0
+  sed -i 's/ext3fs\.img/rootfs.img/g' "$file"
+  echo "==> patched mklive.sh: ext3fs.img -> rootfs.img (upstream #459)"
+}
+patch_mklive
+
+# --- build -------------------------------------------------------------------
+
+# mkiso.sh is deliberately not used. It is the wrapper that adds void-installer,
+# but it also calls mklive.sh with -o, -p, -S and -I of its own, and ours would
+# arrive later on the same command line and replace its set rather than extend
+# it. Since the installer is a single script it copies in, we carry it ourselves.
+include_dir="$WORK_DIR/include"
+rm -rf "$include_dir"
+mkdir -p "$include_dir/usr/bin"
+sed "s/@@MKLIVE_VERSION@@/$(git -C "$MKLIVE_DIR" describe --tags 2>/dev/null || echo omvoid)/" \
+  "$MKLIVE_DIR/installer.sh" >"$include_dir/usr/bin/void-installer"
+chmod 755 "$include_dir/usr/bin/void-installer"
+[[ -d $INCLUDE_SRC ]] && cp -a "$INCLUDE_SRC/." "$include_dir/"
+
+iso_name="omvoid-$(date +%Y%m%d).iso"
+[[ -n $output ]] || output="$WORK_DIR/$iso_name"
+
+mklive_args=(
+  -a x86_64
+  -o "$output"
+  -T "$TITLE"
+  -s "$squash"
+  -p "$LIVE_PACKAGES"
+  -S "$SERVICES"
+  -I "$include_dir"
+)
+[[ -x $POSTSETUP ]] && mklive_args+=(-x "$POSTSETUP")
+
+echo "==> building $output"
+echo "    squashfs: $squash"
+echo "    live system: $(wc -w <<<"$LIVE_PACKAGES") packages"
+echo "    mirror:      $(ls -1 "$MIRROR"/*.xbps | wc -l) packages, $(du -sh "$MIRROR" | cut -f1)"
+echo
+
+# Run from mklive's own directory: it sources ./lib.sh relatively and cannot be
+# called by absolute path. Its package cache lands there too.
+#
+# OMVOID_MIRROR is passed through because postsetup runs as root under sudo and
+# would otherwise look in root's home for it.
+started_at=$(date +%s)
+if ! (cd "$MKLIVE_DIR" && sudo OMVOID_MIRROR="$MIRROR" ./mklive.sh "${mklive_args[@]}"); then
+  echo "omvoid-iso-build: mklive failed — see the output above" >&2
+  exit 1
+fi
+
+# The exit status alone is not proof. mklive traps signals, tears its build tree
+# down and still leaves with zero, so a run that was interrupted looks like a
+# success -- and with an image from an earlier build sitting at the same path,
+# this script chowned that one and reported its size as the result. Twice.
+if [[ ! -f $output ]] || (($(stat -c %Y "$output") < started_at)); then
+  echo "omvoid-iso-build: no image was produced by this run" >&2
+  echo "  $output is missing or left over from an earlier build" >&2
+  exit 1
+fi
+
+sudo chown "$(id -u):$(id -g)" "$output"
+
+# --- what a hard kill would have left behind ---------------------------------
+leftover_mounts=$(mount | grep -c "mklive-build" || true)
+leftover_loops=$(losetup -a 2>/dev/null | grep -c "mklive\|efiboot" || true)
+if ((leftover_mounts || leftover_loops)); then
+  echo
+  echo "omvoid-iso-build: left behind — mounts: $leftover_mounts, loop devices: $leftover_loops" >&2
+  echo "  inspect with: mount | grep mklive-build ; losetup -a" >&2
+fi
+
+echo
+echo "готово: $output"
+ls -lh "$output" | awk '{print "  размер: "$5}'

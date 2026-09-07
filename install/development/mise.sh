@@ -8,10 +8,24 @@
 
 sudo xbps-install -y mise
 
-# Node. Раньше ставился через nvm (install/development/node.sh, закомментирован
-# целиком): тот качал инсталлятор с github и брал последнюю 22.x, из-за чего на
-# двух машинах могли оказаться разные версии. Здесь версия задана явно.
-mise use -g node@24
+# Node. It used to come from nvm (install/development/node.sh, commented out
+# entirely): that fetched its installer from github and took the latest 22.x, so
+# two machines could end up on different versions. Here the version is explicit.
+#
+# A stub like everything else below, not "mise use -g node@24": that one
+# downloads, and installing from the medium there is no network to download
+# from. Trying to write just the version pin instead does not work either --
+# "mise config set" refuses when the config file does not exist yet, which is
+# exactly the case on a fresh machine. The stub needs no network at all: it
+# pins node@24 and fetches it the first time node is actually run.
+# node, and the commands that ship inside the same package. Without their own
+# stubs only "node" exists before the first run -- "npm" is simply not found,
+# which is not what "node is installed" means to anyone. All four point at the
+# same node@24, so the first one used installs it and the rest are then there.
+omvoid-mise-install node@24
+omvoid-mise-install node@24 npm
+omvoid-mise-install node@24 npx
+omvoid-mise-install node@24 corepack
 
 # Ни одна из строк ничего не скачивает: каждая создаёт файл на ~200 байт.
 # Имена без префикса разрешаются через реестр mise и приезжают нативными

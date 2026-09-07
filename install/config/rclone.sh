@@ -50,18 +50,6 @@ sudo mkdir -p /root/.config/rclone
 
 sudo cp -r ~/.local/share/omvoid/config/rclone/rclone.conf /root/.config/rclone/
 
-if [ ! -L "/var/service/autofs" ]; then
-    sudo ln -s /etc/sv/autofs /var/service/ 
-fi 
-
-if [ ! -L "/var/service/netmount" ]; then
-   sudo ln -s /etc/sv/netmount /var/service/ 
-fi 
-
-if [ ! -L "/var/service/rpcbind" ]; then
-   sudo ln -s /etc/sv/rpcbind /var/service/ 
-fi 
-
-if [ ! -L "/var/service/statd/" ]; then
-   sudo ln -s /etc/sv/statd /var/service/ 
-fi 
+# /var/service does not exist in a system being installed -- it is a symlink
+# into a tmpfs made at boot. See the note in install/config/services.sh.
+omvoid-service-enable autofs netmount rpcbind statd

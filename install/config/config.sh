@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "$OMVOID_INSTALL/lib/sources.sh"
+
 # Copy over omvoid configs
 
 if [ ! -d ~/.config ] ; then
@@ -29,11 +31,26 @@ sed -i "s/__USERNAME__/$USER/g" ~/.bash_profile
 
 sudo xbps-install -y tmux
 
-# tmux enable plugins
-if [ ! -d ~/.config/tmux/plugins/tpm ]; then
-  git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm
+# tmux plugins.
+#
+# Taken from the installation medium when there is one -- they are git checkouts
+# and cloning them needs a network the machine may not have. Otherwise cloned as
+# before.
+if [ -d /usr/local/share/omvoid/tmux-plugins ] && [ ! -d ~/.config/tmux/plugins/tpm ]; then
+  mkdir -p ~/.config/tmux/plugins
+  cp -a /usr/local/share/omvoid/tmux-plugins/. ~/.config/tmux/plugins/
+elif [ ! -d ~/.config/tmux/plugins/tpm ]; then
+  # git is not guaranteed yet: development.sh installs it, and that runs later.
+  # It happens to be present when the repository arrived by cloning -- which is
+  # why this never came up -- and absent when it arrived any other way, such as
+  # copied onto a fresh machine.
+  command -v git >/dev/null || sudo xbps-install -y git
+  git clone "${GIT_SOURCES[tpm]}" ~/.config/tmux/plugins/tpm
 fi
-~/.config/tmux/plugins/tpm/bin/install_plugins
+
+# Installs anything the copy above did not bring. Allowed to fail: with no
+# network it can do nothing, and the plugins are already in place.
+~/.config/tmux/plugins/tpm/bin/install_plugins || true
 
 # Ensure application directory exists for update-desktop-database
 mkdir -p ~/.local/share/applications

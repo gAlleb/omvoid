@@ -1,6 +1,8 @@
 #!/bin/bash
+
 sudo xbps-install -y sddm qt6-svg qt6-virtualkeyboard qt6-multimedia layer-shell-qt 
-sudo git clone -b master --depth 1 https://github.com/keyitdev/sddm-astronaut-theme.git /usr/share/sddm/themes/sddm-astronaut-theme
+# The theme is a package now, not a clone into /usr/share.
+sudo xbps-install -y sddm-astronaut-theme
 sudo cp -r /usr/share/sddm/themes/sddm-astronaut-theme/Fonts/* /usr/share/fonts/ 
 echo "[Theme]
 Current=sddm-astronaut-theme" | sudo tee /etc/sddm.conf
@@ -29,4 +31,6 @@ echo "@reboot root cp /home/$USER/.config/bg.jpg /usr/share/sddm/themes/sddm-ast
 
 sudo sed -i 's/Background="Backgrounds\/astronaut.png".*/Background="Backgrounds\/background"/' /usr/share/sddm/themes/sddm-astronaut-theme/Themes/astronaut.conf
 
-#sudo ln -s /etc/sv/sddm /var/service
+# Not enabled here. install.sh switches it on at the very end, after everything
+# else is done -- runit picks the service up within seconds, and sddm would
+# otherwise take over the console with the install still running behind it.

@@ -1,0 +1,161 @@
+#!/bin/bash
+
+# Builds omvoid's own xbps packages from the templates in srcpkgs/.
+#
+#   omvoid-pkg-build WhiteSur-kde    build these
+#   omvoid-pkg-build -l              list the templates there are
+#   omvoid-pkg-build -u              update the void-packages checkout first
+#
+# Names are required. srcpkgs/ is a collection of templates, not a list of
+# things to build: some are kept only for reference, some belong to packages
+# taken ready-made from their maintainers. Building "everything" would build
+# those too, and nobody would notice until it did.
+#
+# The result is a directory of .xbps files, which is already a usable
+# repository: xbps takes packages from a local path without a signature. From
+# there they either go straight into an image, or get signed and published so
+# installed machines can update from them.
+#
+# This replaces the interactive part of install/apps/voidpackages.sh. Building
+# packages is a thing done on one machine, deliberately, not something to ask
+# every person installing omvoid whether they want to sit through.
+
+set -euo pipefail
+
+OMVOID_PATH="${OMVOID_PATH:-$HOME/.local/share/omvoid}"
+VOID_PACKAGES="${VOID_PACKAGES:-$HOME/.local/pkgs/void-packages}"
+BINPKGS="$VOID_PACKAGES/hostdir/binpkgs"
+
+list_only=false
+update=false
+while getopts "luh" opt; do
+  case "$opt" in
+  l) list_only=true ;;
+  u) update=true ;;
+  h)
+    sed -n '3,10p' "$0" | sed 's/^# \?//'
+    exit 0
+    ;;
+  *) exit 1 ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+templates() {
+  local d
+  for d in "$OMVOID_PATH"/srcpkgs/*/; do
+    [[ -f ${d}template ]] && basename "$d"
+  done
+}
+
+if $list_only; then
+  templates
+  exit 0
+fi
+
+if (($# == 0)); then
+  echo "omvoid-pkg-build: name what to build. What is there:" >&2
+  templates | sed 's/^/  /' >&2
+  exit 1
+fi
+to_build=("$@")
+
+# --- the void-packages checkout ----------------------------------------------
+#
+# xbps-src builds inside its own tree and cannot be pointed at ours, so the
+# templates are copied in. A shallow clone is enough: we never look at history.
+
+if [[ ! -d $VOID_PACKAGES/.git ]]; then
+  echo "==> cloning void-packages into $VOID_PACKAGES"
+  mkdir -p "$(dirname "$VOID_PACKAGES")"
+  git clone --depth 1 https://github.com/void-linux/void-packages.git "$VOID_PACKAGES"
+elif $update; then
+  echo "==> updating void-packages"
+  git -C "$VOID_PACKAGES" pull --ff-only || echo "  (pull failed, using what is there)"
+fi
+
+# The bootstrap downloads a build root. Once is enough, and it is slow, so it is
+# skipped when the marker of a finished one is there.
+# The build root is judged by whether it has a shell, not by whether the
+# directory exists.
+#
+# Two things leave it looking present and being useless. "xbps-src zap" empties
+# it without removing it. And every build that pulls bash as a host dependency
+# breaks it on the way out: xbps-src removes those dependencies again when it is
+# done, /bin/sh in the root points at bash, and the next build dies with
+# "Failed to execute command /void-packages/xbps-src (No such file or
+# directory)" -- which says nothing about a missing shell.
+#
+# Rebuilt rather than reported, because the answer is always the same.
+masterdir="$VOID_PACKAGES/masterdir-x86_64"
+[[ -d $masterdir ]] || masterdir="$VOID_PACKAGES/masterdir"
+
+if ! sudo test -x "$masterdir/bin/sh"; then
+  if [[ -d $masterdir ]]; then
+    echo "==> the build root has no shell — rebuilding it"
+    sudo rm -rf "$masterdir"
+  else
+    echo "==> preparing the build root (this takes a while, once)"
+  fi
+  (cd "$VOID_PACKAGES" && ./xbps-src binary-bootstrap) ||
+    { echo "omvoid-pkg-build: could not prepare the build root" >&2; exit 1; }
+fi
+
+# Some of what omvoid packages is redistributable but not free; without this
+# xbps-src refuses to build those templates at all.
+grep -q '^XBPS_ALLOW_RESTRICTED=yes' "$VOID_PACKAGES/etc/conf" 2>/dev/null ||
+  echo XBPS_ALLOW_RESTRICTED=yes >>"$VOID_PACKAGES/etc/conf"
+
+# --- templates ---------------------------------------------------------------
+#
+# Copied every time rather than linked: xbps-src writes into srcpkgs/ as it
+# works, and a symlink would carry that back into the omvoid repository.
+
+echo "==> syncing templates from $OMVOID_PATH/srcpkgs"
+for name in "${to_build[@]}"; do
+  [[ -d $OMVOID_PATH/srcpkgs/$name ]] || {
+    echo "omvoid-pkg-build: no template for '$name'" >&2
+    exit 1
+  }
+  rm -rf "${VOID_PACKAGES:?}/srcpkgs/$name"
+  cp -a "$OMVOID_PATH/srcpkgs/$name" "$VOID_PACKAGES/srcpkgs/"
+done
+
+# --- build -------------------------------------------------------------------
+
+built=()
+failed=()
+for name in "${to_build[@]}"; do
+  echo
+  echo "==> $name"
+  (cd "$VOID_PACKAGES" && ./xbps-src pkg "$name") || true
+
+  # Judged by whether the package exists, not by the exit status.
+  #
+  # xbps-src removes the host dependencies again when it is done, and one of
+  # them here is bash -- which /bin/sh inside the build root points at. Removing
+  # it breaks the root, the cleanup reports "failed to remove autodeps", and the
+  # whole build is called a failure although the package was written correctly
+  # a step earlier.
+  if compgen -G "$BINPKGS/${name}-*.xbps" >/dev/null 2>&1; then
+    built+=("$name")
+  else
+    failed+=("$name")
+    echo "  !! $name failed" >&2
+  fi
+done
+
+echo
+echo "built:  ${built[*]:-none}"
+((${#failed[@]})) && echo "failed: ${failed[*]}" >&2
+
+if [[ -d $BINPKGS ]]; then
+  echo
+  echo "packages are in $BINPKGS"
+  ls -1 "$BINPKGS"/*.xbps 2>/dev/null | sed 's|.*/|  |' | head -20
+  echo
+  echo "use them in an image:    omvoid-iso-build   (it picks this directory up)"
+  echo "publish them:            omvoid-pkg-publish"
+fi
+
+((${#failed[@]} == 0))
