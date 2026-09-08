@@ -37,7 +37,7 @@ curl -fsSL https://raw.githubusercontent.com/gAlleb/omvoid/refs/heads/main/boot.
 > [!WARNING]  
 > Script will ask you for a password few times.
 
-### 📖 [Read the manual](MANUAL.md)
+### 📖 [Read the manual](doc/MANUAL.md)
 
 Themes and wallpapers, keeping several machines in sync, AI agents, and where
 everything lives.

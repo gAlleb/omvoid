@@ -12,6 +12,8 @@ OMVOID itself, see [AGENTS.md](AGENTS.md) and the guides under
 ## Contents
 
 - [Installing](#installing)
+- [Installing from an image](#installing-from-an-image)
+- [What is in it](#what-is-in-it)
 - [Everyday commands](#everyday-commands)
 - [Themes and wallpapers](#themes-and-wallpapers)
 - [Keeping several machines in sync](#keeping-several-machines-in-sync)
@@ -41,6 +43,96 @@ bash ~/.local/share/omvoid/install.sh
 ```
 
 The whole run is logged to `~/.local/state/omvoid/install.log`.
+
+## Installing from an image
+
+The command above turns an existing Void installation into this one. The other
+way round is an image that carries everything with it: a small live system, a
+mirror of every package omvoid installs, and an installer. Nothing is downloaded
+while it runs — a full install takes about twelve minutes, against fifty-four for
+the long way, and most of that difference was the same packages being fetched
+again on every machine.
+
+The image is **not a snapshot** of a configured system. It partitions the disk,
+installs the packages from its own mirror, and then runs this repository's
+`install.sh` inside the new system, exactly as the one-line install does. One
+description of a machine, not two — a snapshot would have become a second source
+of truth and drifted from `install/` without saying so.
+
+### Building one
+
+On any Void machine:
+
+```bash
+sudo xbps-install -y xorriso lz4 syslinux squashfs-tools dracut git python3
+```
+
+```bash
+omvoid-pkg-mirror
+```
+
+```bash
+omvoid-iso-build -f
+```
+
+Both scripts name anything else they need. `omvoid-pkg-mirror` fills
+`~/.cache/omvoid/mirror` from Void's repositories and ours; it is a separate step
+because it is the moment the image's package versions are chosen.
+`omvoid-iso-build` writes the ISO into `~/.cache/omvoid/iso` — `-f` builds a
+draft (bigger, quicker), without it a release image (smaller, slower).
+
+The build needs room: about 12 GB free beyond the mirror, since the root tree,
+the squashfs and the ISO exist at once. A machine that also carries a full omvoid
+desktop will not fit on a 32 GB disk.
+
+### Installing from it
+
+Write the ISO to a stick, boot it, and the installer starts on its own. It asks
+everything at the beginning — disk, encryption, hostname, timezone, keymap,
+locales, user, git identity, city for the weather, and both passwords — and then
+runs to the end without stopping.
+
+Answers are kept in `/tmp/omvoid-install.conf`. Put that file on the medium and
+nothing is asked at all, which is how an unattended install is done. Passwords
+are never written there and are always asked.
+
+> [!WARNING]
+> The installer erases the disk it is given. Installing beside an existing
+> system, or into partitions you made yourself, is not supported yet.
+
+To try it in a virtual machine rather than on hardware:
+
+```bash
+omvoid-iso-test -n
+```
+
+`omvoid-iso-test -b` boots the disk that was installed, without the medium.
+`omvoid-iso-screen` takes a picture of the guest and `omvoid-iso-type` types into
+it, both through qemu's monitor — useful when a guest fails before it has a
+network.
+
+## What is in it
+
+| | |
+|---|---|
+| compositor | **mango** (`mangowc`), Wayland, driven by `mmsg` |
+| bar, dock | Waybar, crystal-dock, SwayOSD, dunst, wlogout |
+| launcher | rofi — applications, wallpapers, themes, clipboard |
+| terminals | alacritty, kitty, tmux |
+| editor | neovim with NvChad |
+| files | nautilus, yazi, ripdrag |
+| screen | grim, slurp and satty for shots, wf-recorder for video, awww for wallpaper |
+| login | sddm with the astronaut theme |
+| audio | pipewire, wireplumber, mpd with rmpc, cava |
+| look | WhiteSur GTK/icon/KDE themes, kvantum, qt5ct and qt6ct, nwg-look |
+| colour | pywal16 — each theme's palette is computed from its wallpaper and fanned out to the bar, terminal, rofi, GTK and the browser |
+| mail | neomutt with mutt-wizard, isync, msmtp, notmuch, pass |
+| network | NetworkManager, mihomo with a web interface |
+| containers | docker, lazydocker |
+| keys | keepassxc, gnome-keyring, seahorse, pam-gnupg |
+| agents | claude, codex, copilot, crush, opencode, grok, ori, pi and others — installed on first use through mise, so they cost nothing until they are run |
+
+Ten themes ship with it, and `ALT+W` builds another from any wallpaper.
 
 ## Everyday commands
 

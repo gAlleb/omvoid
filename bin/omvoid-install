@@ -93,6 +93,26 @@ ask() {
   fi
 }
 
+# Asked twice and never echoed. Kept in a variable only -- deliberately not
+# written to the answers file: that file exists so an install can be repeated
+# unattended, and a password left in it would sit in plain text on the medium.
+ask_secret() {
+  local prompt="$1" first second
+  while :; do
+    if command -v gum >/dev/null; then
+      first=$(gum input --password --prompt "$prompt " 2>/dev/tty)
+      second=$(gum input --password --prompt "repeat: " 2>/dev/tty)
+    else
+      read -rs -p "$prompt " first </dev/tty >/dev/tty; echo >/dev/tty
+      read -rs -p "repeat: " second </dev/tty >/dev/tty; echo >/dev/tty
+    fi
+    [[ -z $first ]] && { printf '  empty, try again\n' >/dev/tty; continue; }
+    [[ $first == "$second" ]] && break
+    printf '  they do not match, try again\n' >/dev/tty
+  done
+  printf '%s' "$first"
+}
+
 confirm() {
   if command -v gum >/dev/null; then
     gum confirm "$1" 2>/dev/tty
@@ -188,6 +208,17 @@ GIT_EMAIL="$GIT_EMAIL"
 CITY="$CITY"
 EOF
 fi
+
+# Outside the block above, so a repeated install asks for these and only these:
+# everything else comes from the answers file, and passwords are never in it.
+#
+# Asked here rather than half an hour later, when the account is created. The
+# installer used to stop in the middle -- a few questions, a long package
+# install, then two more questions -- and there was no reason for it beyond the
+# order the steps happened to be written in.
+ask_step "Passwords"
+USER_PASSWORD=$(ask_secret "Password for ${USERNAME:-the user}:")
+ROOT_PASSWORD=$(ask_secret "Password for root:")
 
 [[ -n ${USERNAME:-} ]] || die "a username is required"
 [[ -b ${DISK:-} ]] || die "not a block device: ${DISK:-<none>}"
@@ -354,11 +385,11 @@ if ! in_target "grep -q '^%wheel ALL=(ALL:ALL) ALL' /etc/sudoers && visudo -c -q
   chmod 440 "$TARGET/etc/sudoers.d/00-wheel"
 fi
 
-echo
-note "Set the password for $USERNAME:"
-until in_target "passwd '$USERNAME'" </dev/tty >/dev/tty 2>&1; do note "try again"; done
-note "Set the root password:"
-until in_target "passwd root" </dev/tty >/dev/tty 2>&1; do note "try again"; done
+# Through chpasswd on standard input, not as an argument: an argument would show
+# the password to anyone running ps while the install is going.
+printf '%s:%s\n%s:%s\n' "$USERNAME" "$USER_PASSWORD" root "$ROOT_PASSWORD" |
+  chroot "$TARGET" chpasswd || die "setting the passwords failed"
+note "passwords set for $USERNAME and root"
 
 # --- omvoid itself -----------------------------------------------------------
 #
@@ -444,6 +475,26 @@ if [[ $ENCRYPT == yes ]]; then
 
   sed -i "s|^GRUB_CMDLINE_LINUX_DEFAULT=\"|GRUB_CMDLINE_LINUX_DEFAULT=\"rd.luks.uuid=$luks_uuid |" \
     "$TARGET/etc/default/grub"
+fi
+
+# Intel machines get intel_iommu=off.
+#
+# On this hardware the console fills with DMAR faults from the first seconds --
+# far enough that a login prompt cannot be used at all. It happens on Void's own
+# images too, so it is the machine rather than anything omvoid does. The cost is
+# that DMA remapping is off: it matters for passing devices through to virtual
+# machines, and for little else here.
+#
+# Checked against the CPU, not the graphics: it is the chipset's IOMMU.
+# The second test keeps a repeated install from writing it twice -- the sed below
+# inserts rather than replaces.
+if grep -q GenuineIntel /proc/cpuinfo &&
+  ! grep -q 'intel_iommu=' "$TARGET/etc/default/grub"; then
+  sed -i 's|^GRUB_CMDLINE_LINUX_DEFAULT="|GRUB_CMDLINE_LINUX_DEFAULT="intel_iommu=off |' \
+    "$TARGET/etc/default/grub"
+  grep -q 'intel_iommu=off' "$TARGET/etc/default/grub" ||
+    echo 'GRUB_CMDLINE_LINUX_DEFAULT="intel_iommu=off"' >>"$TARGET/etc/default/grub"
+  note "Intel CPU — intel_iommu=off added to the kernel command line"
 fi
 
 mountpoint -q /sys/firmware/efi/efivars ||

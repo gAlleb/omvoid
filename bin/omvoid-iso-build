@@ -143,6 +143,14 @@ chmod 755 "$include_dir/usr/bin/void-installer"
 iso_name="omvoid-$(date +%Y%m%d).iso"
 [[ -n $output ]] || output="$WORK_DIR/$iso_name"
 
+# intel_iommu=off on the medium's own boot entries, not only on what gets
+# installed.
+#
+# On Intel hardware here the console fills with DMAR faults within seconds of
+# boot, far enough that a login prompt cannot be used -- and it does the same on
+# Void's own images, so it is the machine. An installer that cannot be reached is
+# no installer. Harmless everywhere else: only the Intel IOMMU driver reads this,
+# and on AMD the kernel ignores it.
 mklive_args=(
   -a x86_64
   -o "$output"
@@ -151,6 +159,7 @@ mklive_args=(
   -p "$LIVE_PACKAGES"
   -S "$SERVICES"
   -I "$include_dir"
+  -C "intel_iommu=off"
 )
 [[ -x $POSTSETUP ]] && mklive_args+=(-x "$POSTSETUP")
 
