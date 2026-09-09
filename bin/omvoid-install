@@ -55,7 +55,18 @@ banner() {
 
 STEP_TOTAL=8
 STEP_NOW=0
+# Each step is timed, and the numbers are printed at the end. Twelve minutes
+# against Omarchy's hundred seconds on the same machine is not something to
+# reason about from the armchair -- the install can say where they went.
+STEP_STARTED=0
+STEP_TIMINGS=/tmp/omvoid-install.timings
+: >"$STEP_TIMINGS"
+
 step() {
+  ((STEP_STARTED)) &&
+    printf '%6d  %s\n' "$((SECONDS - STEP_STARTED))" "$STEP_NAME" >>"$STEP_TIMINGS"
+  STEP_STARTED=$SECONDS
+  STEP_NAME="$*"
   STEP_NOW=$((STEP_NOW + 1))
   printf '\n\033[1m[%d/%d] %s\033[0m\n' "$STEP_NOW" "$STEP_TOTAL" "$*"
 }
@@ -153,6 +164,10 @@ fi
 if [[ -f $ANSWERS ]]; then
   # shellcheck disable=SC1090
   . "$ANSWERS"
+  # The plan is one line in the file and a list here. Converted only on this
+  # path: on the other one MOUNTS is already an array, and "${MOUNTS:-}" would
+  # quietly collapse it to its first element.
+  read -r -a MOUNTS <<<"${MOUNTS:-}"
   banner
   note "using answers from $ANSWERS"
 else
@@ -161,8 +176,100 @@ else
   mapfile -t disks < <(lsblk -dnp -o NAME,SIZE,MODEL -e 7,11 | sed 's/  */ /g')
   ((${#disks[@]})) || die "no disks found"
   disk_line=$(printf '%s\n' "${disks[@]}" |
-    choose "Which disk should OMVOID be installed on? Everything on it is erased.")
+    choose "Which disk should OMVOID be installed on?")
   DISK=$(awk '{print $1}' <<<"$disk_line")
+
+  # Two ways to prepare it. The guided one owns the whole disk, which is what a
+  # machine dedicated to omvoid wants. The other exists for a disk that already
+  # has a system on it: partition it by hand, then say which partition is which,
+  # and -- the point of the whole thing -- keep the EFI partition that is already
+  # there instead of formatting it and taking the other system's bootloader with
+  # it.
+  layout_line=$(printf '%s\n' \
+    "erase $DISK and let the installer partition it" \
+    "partition it myself, and choose where things go" |
+    choose "How should $DISK be prepared?")
+  case "$layout_line" in
+  erase*) LAYOUT=whole ;;
+  *) LAYOUT=advanced ;;
+  esac
+
+  if [[ $LAYOUT == advanced ]]; then
+    note "cfdisk opens now. Make the partitions you want, write, and quit."
+    note "An EFI partition is type 'EFI System'. Keep the existing one if there is one."
+    confirm "Open cfdisk on $DISK?" || die "nothing was changed"
+    cfdisk "$DISK" </dev/tty >/dev/tty 2>&1
+    partx -u "$DISK" 2>/dev/null || partprobe "$DISK" 2>/dev/null || true
+    sleep 1
+
+    mapfile -t parts < <(lsblk -pnl -o NAME,SIZE,FSTYPE,PARTTYPENAME "$DISK" |
+      awk 'NR>1 {$1=$1; print}')
+    ((${#parts[@]})) || die "no partitions on $DISK"
+
+    # Asked per partition, not per role. You made these partitions; the installer
+    # walks through them and asks what each one is. Anything left as "leave alone"
+    # is not touched -- which is the whole point on a disk that already carries
+    # another system.
+    MOUNTS=()
+    for part_line in "${parts[@]}"; do
+      part=$(awk '{print $1}' <<<"$part_line")
+      role=$( {
+        printf 'leave alone\n/\n/home\n/boot/efi\nswap\nsomewhere else\n'
+      } | choose "$part_line")
+
+      case "$role" in
+      "leave alone") continue ;;
+      "somewhere else")
+        mp=$(ask "Mount $part where? (absolute path)" "")
+        [[ $mp == /* ]] || die "not an absolute path: $mp"
+        ;;
+      *) mp="$role" ;;
+      esac
+
+      # Formatting is a separate question for every one of them, and the default
+      # differs: a root is always made fresh, an EFI partition and a /home
+      # usually exist to be kept, and swap holds nothing worth keeping.
+      case "$mp" in
+      /)
+        fmt=yes
+        ROOT_PART="$part"
+        ;;
+      swap)
+        fmt=yes
+        SWAP_PART="$part"
+        ;;
+      /boot/efi)
+        EFI_PART="$part"
+        if confirm "Format $part? Say no to keep what is on it (another system's bootloader)."; then
+          fmt=yes
+        else
+          fmt=no
+        fi
+        ;;
+      *)
+        if confirm "Format $part? Say no to keep the files that are on it."; then
+          fmt=yes
+        else
+          fmt=no
+        fi
+        ;;
+      esac
+
+      MOUNTS+=("$part=$mp=$fmt")
+    done
+
+    [[ -n ${ROOT_PART:-} ]] || die "no partition was given to /"
+    [[ -n ${EFI_PART:-} ]] || die "no EFI system partition was chosen"
+    FORMAT_EFI=$(printf '%s\n' "${MOUNTS[@]}" | awk -F= '$2=="/boot/efi"{print $3}')
+
+
+  else
+    ROOT_PART=""
+    EFI_PART=""
+    SWAP_PART=""
+    MOUNTS=()
+    FORMAT_EFI=yes
+  fi
 
   ask_step "Encryption"
   if confirm "Encrypt the disk? The passphrase is asked at every boot."; then
@@ -188,6 +295,22 @@ else
   GIT_NAME=$(ask "git user.name:" "$FULLNAME")
   GIT_EMAIL=$(ask "git user.email:" "")
 
+  # Asked here, not left to install/config/swap.sh: that step runs inside the
+  # chroot, where there is nobody to answer and where "swapon --show" reports the
+  # live system rather than the one being installed.
+  #
+  # And asked only when there is no swap partition. The question used to come
+  # after the partitions were assigned and overwrote that decision, so a disk with
+  # a swap partition was offered a swap file as well.
+  if [[ -n ${SWAP_PART:-} ]]; then
+    SWAP_MB=0
+    note "swap partition $SWAP_PART — no swap file"
+  else
+    ask_step "Swap"
+    swap_gib=$(ask "Swap file, GiB (0 for none):" "4")
+    SWAP_MB=$((${swap_gib:-0} * 1024))
+  fi
+
   ask_step "Weather"
   # The waybar forecast and the tmux status line are set from this. Asked here
   # because install.sh asks for it too, and nothing should be asked twice.
@@ -195,6 +318,10 @@ else
 
   cat >"$ANSWERS" <<EOF
 DISK="$DISK"
+LAYOUT="$LAYOUT"
+ROOT_PART="$ROOT_PART"
+EFI_PART="$EFI_PART"
+FORMAT_EFI="$FORMAT_EFI"
 ENCRYPT="$ENCRYPT"
 HOSTNAME="$HOSTNAME"
 TIMEZONE="$TIMEZONE"
@@ -206,6 +333,9 @@ FULLNAME="$FULLNAME"
 GIT_NAME="$GIT_NAME"
 GIT_EMAIL="$GIT_EMAIL"
 CITY="$CITY"
+SWAP_MB="$SWAP_MB"
+SWAP_PART="${SWAP_PART:-}"
+MOUNTS="${MOUNTS[*]}"
 EOF
 fi
 
@@ -220,6 +350,12 @@ ask_step "Passwords"
 USER_PASSWORD=$(ask_secret "Password for ${USERNAME:-the user}:")
 ROOT_PASSWORD=$(ask_secret "Password for root:")
 
+# An answers file written before this existed names no layout.
+LAYOUT="${LAYOUT:-whole}"
+SWAP_MB="${SWAP_MB:-4096}"
+SWAP_PART="${SWAP_PART:-}"
+FORMAT_EFI="${FORMAT_EFI:-yes}"
+
 [[ -n ${USERNAME:-} ]] || die "a username is required"
 [[ -b ${DISK:-} ]] || die "not a block device: ${DISK:-<none>}"
 [[ -d $MIRROR ]] || die "no package mirror at $MIRROR — this medium is incomplete"
@@ -229,15 +365,27 @@ if [[ $DISK == *[0-9] ]]; then PART_PREFIX="${DISK}p"; else PART_PREFIX="$DISK";
 
 # --- the last chance to stop -------------------------------------------------
 
-ask_step "About to erase $DISK"
+if [[ $LAYOUT == advanced ]]; then
+  ask_step "About to install onto $ROOT_PART"
+else
+  ask_step "About to erase $DISK"
+fi
 lsblk "$DISK"
 echo
+if [[ $LAYOUT == advanced ]]; then
+  note "/           $ROOT_PART  (formatted)"
+  note "EFI         $EFI_PART  ($([[ $FORMAT_EFI == yes ]] && echo formatted || echo "kept as it is"))"
+  note "everything else on $DISK is left alone"
+fi
 note "encryption: $ENCRYPT"
 note "hostname:   $HOSTNAME"
 note "user:       $USERNAME"
 echo
-confirm "Everything on $DISK will be destroyed. Continue?" ||
-  die "nothing was changed"
+if [[ $LAYOUT == advanced ]]; then
+  confirm "$ROOT_PART will be formatted. Continue?" || die "nothing was changed"
+else
+  confirm "Everything on $DISK will be destroyed. Continue?" || die "nothing was changed"
+fi
 
 [[ $ENCRYPT == yes ]] && STEP_TOTAL=9
 
@@ -246,19 +394,24 @@ confirm "Everything on $DISK will be destroyed. Continue?" ||
 # Two of them. The EFI partition stays unencrypted because the firmware has to
 # read it; everything else goes inside the container.
 
-step "Partitioning $DISK"
-wipefs -a "$DISK" >/dev/null
-sfdisk "$DISK" >/dev/null <<EOF
+if [[ $LAYOUT == whole ]]; then
+  step "Partitioning $DISK"
+  wipefs -a "$DISK" >/dev/null
+  sfdisk "$DISK" >/dev/null <<EOF
 label: gpt
 size=512M, type=uefi, name="EFI"
 type=linux, name="void"
 EOF
-partx -u "$DISK" 2>/dev/null || partprobe "$DISK" 2>/dev/null || true
-sleep 1
+  partx -u "$DISK" 2>/dev/null || partprobe "$DISK" 2>/dev/null || true
+  sleep 1
 
-EFI_PART="${PART_PREFIX}1"
-ROOT_PART="${PART_PREFIX}2"
-[[ -b $EFI_PART && -b $ROOT_PART ]] || die "partitions did not appear on $DISK"
+  EFI_PART="${PART_PREFIX}1"
+  ROOT_PART="${PART_PREFIX}2"
+else
+  step "Using the partitions you chose"
+fi
+[[ -b $EFI_PART && -b $ROOT_PART ]] ||
+  die "not both partitions are there: ${ROOT_PART:-<none>} and ${EFI_PART:-<none>}"
 
 if [[ $ENCRYPT == yes ]]; then
   step "Creating the encrypted container"
@@ -273,12 +426,48 @@ else
 fi
 
 step "Filesystems"
-mkfs.vfat -F32 -n EFI "$EFI_PART" >/dev/null
 mkfs.ext4 -F -L root "$ROOT_DEV" >/dev/null
-
 mount "$ROOT_DEV" "$TARGET"
-mkdir -p "$TARGET/boot/efi"
-mount "$EFI_PART" "$TARGET/boot/efi"
+
+if ((${#MOUNTS[@]})); then
+  # Everything else that was assigned, shallowest path first: /home has to land
+  # on top of the root that is already mounted, not underneath it.
+  while read -r _depth entry; do
+    part=${entry%%=*}
+    rest=${entry#*=}
+    mp=${rest%%=*}
+    fmt=${rest##*=}
+
+    [[ $mp == / ]] && continue
+
+    if [[ $mp == swap ]]; then
+      mkswap "$part" >/dev/null
+      # On, so xgenfstab records it later; off again before the disk is released.
+      swapon "$part"
+      continue
+    fi
+
+    case "$fmt:$mp" in
+    yes:/boot/efi) mkfs.vfat -F32 -n EFI "$part" >/dev/null ;;
+    yes:*) mkfs.ext4 -F "$part" >/dev/null ;;
+    *) note "keeping $part as it is" ;;
+    esac
+
+    mkdir -p "$TARGET$mp"
+    mount "$part" "$TARGET$mp" || die "could not mount $part on $mp"
+  done < <(
+    for m in "${MOUNTS[@]}"; do
+      mp=${m#*=}
+      mp=${mp%%=*}
+      printf '%s %s\n' "$(tr -cd / <<<"$mp" | wc -c)" "$m"
+    done | sort -n
+  )
+else
+  # The guided layout: one EFI partition, always made fresh.
+  mkfs.vfat -F32 -n EFI "$EFI_PART" >/dev/null
+  mkdir -p "$TARGET/boot/efi"
+  mount "$EFI_PART" "$TARGET/boot/efi"
+fi
 
 # --- the system --------------------------------------------------------------
 #
@@ -307,6 +496,9 @@ mkdir -p "$TARGET/var/cache/omvoid/mirror" "$TARGET/etc/xbps.d"
 # Declared before the first mount, not after: a failure in between would
 # otherwise leave the medium mounted inside the target with nothing to undo it.
 cleanup() {
+  # Before the mounts: a swap partition turned on for xgenfstab's benefit keeps
+  # the disk busy otherwise.
+  [[ -n ${SWAP_PART:-} ]] && swapoff "$SWAP_PART" 2>/dev/null
   for d in sys proc dev; do umount -R -f "$TARGET/$d" 2>/dev/null || true; done
   umount -f "$TARGET/var/cache/omvoid/mirror" 2>/dev/null || true
 }
@@ -315,11 +507,15 @@ trap cleanup EXIT
 mount --bind "$MIRROR" "$TARGET/var/cache/omvoid/mirror"
 echo "repository=/var/cache/omvoid/mirror" >"$TARGET/etc/xbps.d/00-omvoid-mirror.conf"
 
-mapfile -t packages < <(omvoid-iso-packages)
-note "${#packages[@]} packages plus dependencies, from $MIRROR"
+# Only the base here. Everything else is installed by install.sh, step by step,
+# from this same mirror -- because the steps are what describe the system, and
+# they are the path an ordinary install takes too. Preinstalling the lot from the
+# medium was tried and measured: it moves the work rather than removing it and
+# buys about a minute, at the price of a second notion of what the system
+# contains and of the medium's own tools ending up on the disk.
 
 XBPS_ARCH=x86_64 xbps-install --repository="$MIRROR" --rootdir "$TARGET" \
-  --yes --sync $BASE_PACKAGES "${packages[@]}" ||
+  --yes --sync $BASE_PACKAGES ||
   die "installing packages failed"
 
 # --- identity ----------------------------------------------------------------
@@ -385,10 +581,30 @@ if ! in_target "grep -q '^%wheel ALL=(ALL:ALL) ALL' /etc/sudoers && visudo -c -q
   chmod 440 "$TARGET/etc/sudoers.d/00-wheel"
 fi
 
-# Through chpasswd on standard input, not as an argument: an argument would show
-# the password to anyone running ps while the install is going.
-printf '%s:%s\n%s:%s\n' "$USERNAME" "$USER_PASSWORD" root "$ROOT_PASSWORD" |
-  chroot "$TARGET" chpasswd || die "setting the passwords failed"
+# Hashed here, written with "chpasswd -e".
+#
+# Plain "chpasswd" goes through PAM on Void, and inside a chroot PAM quietly does
+# nothing at all: it returns 0, prints not a word, and /etc/shadow keeps the "!"
+# it was created with. An install then finishes reporting success and hands over
+# a machine nobody can log into -- which is exactly what happened. With -e the
+# value is already encrypted, so chpasswd writes the file itself.
+#
+# Both passwords reach openssl on standard input and the hashes reach chpasswd
+# the same way: neither ever appears on a command line for ps to show.
+user_hash=$(printf '%s' "$USER_PASSWORD" | openssl passwd -6 -stdin) ||
+  die "could not hash the password"
+root_hash=$(printf '%s' "$ROOT_PASSWORD" | openssl passwd -6 -stdin) ||
+  die "could not hash the root password"
+
+printf '%s:%s\n%s:%s\n' "$USERNAME" "$user_hash" root "$root_hash" |
+  chroot "$TARGET" chpasswd -e || die "setting the passwords failed"
+
+# Checked, not assumed. The whole reason this went unnoticed is that the command
+# reported success while doing nothing.
+in_target "grep -q '^$USERNAME:\\\$6\\\$' /etc/shadow" ||
+  die "the password for $USERNAME was not written to /etc/shadow"
+in_target "grep -q '^root:\\\$6\\\$' /etc/shadow" ||
+  die "the root password was not written to /etc/shadow"
 note "passwords set for $USERNAME and root"
 
 # --- omvoid itself -----------------------------------------------------------
@@ -416,6 +632,7 @@ cat >"$TARGET/home/$USERNAME/.local/state/omvoid/install-answers" <<EOF
 OMVOID_GIT_NAME="$GIT_NAME"
 OMVOID_GIT_EMAIL="$GIT_EMAIL"
 OMVOID_CITY="$CITY"
+OMVOID_SWAP_MB="$SWAP_MB"
 EOF
 
 # Ownership last, after everything written as root.
@@ -439,6 +656,15 @@ in_target "chown -R '$USERNAME:$USERNAME' /home/$USERNAME/.local"
 echo "$USERNAME ALL=(ALL) NOPASSWD: ALL" >"$TARGET/etc/sudoers.d/zz-omvoid-install"
 chmod 440 "$TARGET/etc/sudoers.d/zz-omvoid-install"
 
+# fstab before install.sh, not after.
+#
+# Everything is mounted by now, so the generated file is already right -- and
+# install/config/swap.sh appends its swap file line to it. Generated afterwards,
+# as it was, the regeneration threw that line away: the file existed, nothing
+# referred to it, and the installed machine came up with no swap at all.
+xgenfstab "$TARGET" >"$TARGET/etc/fstab" 2>/dev/null ||
+  in_target "xgenfstab / > /etc/fstab"
+
 note "running omvoid's own install.sh inside the new system"
 in_target "su - '$USERNAME' -c 'OMVOID_IN_CHROOT=1 bash ~/.local/share/omvoid/install.sh'" ||
   note "install.sh reported problems — see $LOG"
@@ -449,9 +675,6 @@ rm -rf "$TARGET/usr/local/share/omvoid"
 # --- boot --------------------------------------------------------------------
 
 step "Bootloader"
-xgenfstab "$TARGET" >"$TARGET/etc/fstab" 2>/dev/null ||
-  in_target "xgenfstab / > /etc/fstab"
-
 if [[ $ENCRYPT == yes ]]; then
   # The UUID of the container, not of the filesystem inside it.
   luks_uuid=$(blkid -o value -s UUID "$ROOT_PART")
@@ -500,23 +723,94 @@ fi
 mountpoint -q /sys/firmware/efi/efivars ||
   mount -t efivarfs none /sys/firmware/efi/efivars 2>/dev/null || true
 
+# os-prober is installed but GRUB does not call it unless told to, and without it
+# a system sharing this disk simply disappears from the boot menu -- the machine
+# looks as though the install ate it. Harmless when there is nothing to find.
+grep -q '^GRUB_DISABLE_OS_PROBER=false' "$TARGET/etc/default/grub" ||
+  echo 'GRUB_DISABLE_OS_PROBER=false' >>"$TARGET/etc/default/grub"
+
+# --bootloader-id keeps this out of the way of whatever else boots from the same
+# EFI partition: each system gets its own directory under EFI/.
 in_target "grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=OMVOID" ||
   die "grub-install failed"
+
+# And again as the removable fallback, EFI/BOOT/BOOTX64.EFI.
+#
+# The first install writes EFI/OMVOID and an entry in the firmware's NVRAM, and
+# the machine boots by that entry alone. Lose the NVRAM -- a flat coin cell, a
+# "clear NVRAM" in the firmware menu, the disk moved to another machine -- and
+# there is nothing left to start: the ESP holds a bootloader no firmware looks
+# for by default. This is the path every firmware falls back to.
+#
+# Only when the EFI partition is ours. There is one such path per partition and
+# the last writer takes it -- systemd-boot claims it too, and on many machines it
+# is what boots Windows. On a partition we made, nobody else has put anything
+# there; on one that already existed, someone may have, and overwriting it points
+# their fallback at our GRUB.
+if [[ $FORMAT_EFI == yes ]]; then
+  in_target "grub-install --target=x86_64-efi --efi-directory=/boot/efi --removable" ||
+    note "could not install the removable fallback — the disk boots by NVRAM only"
+fi
 
 # Builds the initramfs, with the crypt key and modules when encrypted. Skipping
 # this is how an encrypted install ends up unable to open its own disk.
 #
 # It reconfigures every installed package, which on a full system is a few
 # minutes. Shown as it goes: silence here is indistinguishable from a hang.
-note "reconfiguring packages and building the initramfs — a few minutes"
-in_target "xbps-reconfigure -fa" 2>&1 | while read -r line; do
+# "-a", not "-fa".
+#
+# Without -f only packages that are *not* configured are processed -- and ours
+# are configured already: xbps ran their scripts while unpacking them into the
+# target, which the log shows package by package ("configuring ... installed
+# successfully"). Packages are left unconfigured only with -U, which we do not
+# pass. So -fa was a second full pass over some twelve hundred packages, running
+# every one of their install scripts again: font caches, icon caches, glib
+# schemas, man-db, the initramfs. pacman has no such pass at all, and that is a
+# large part of why the same machine installs Omarchy in a hundred seconds and
+# this in twelve minutes.
+#
+# The kernel is still reconfigured by force, because that is what rebuilds the
+# initramfs, and an encrypted install that skips it cannot open its own disk.
+note "configuring what is left and building the initramfs"
+in_target "xbps-reconfigure -a" 2>&1 | while read -r line; do
   printf '\r      %-70.70s' "$line"
 done
+
+# By name, whatever kernel this turned out to be. If it cannot be found, fall
+# back to reconfiguring everything: a slow install beats one that will not boot.
+kernel_pkg=$(chroot "$TARGET" xbps-query -l 2>/dev/null |
+  awk '{print $2}' | grep -oE '^linux[0-9]+\.[0-9]+' | head -1 || true)
+if [[ -n $kernel_pkg ]]; then
+  in_target "xbps-reconfigure -f $kernel_pkg" >/dev/null 2>&1 ||
+    die "could not rebuild the initramfs for $kernel_pkg"
+else
+  note "kernel package not identified — reconfiguring everything instead"
+  in_target "xbps-reconfigure -fa" >/dev/null 2>&1 || true
+fi
 printf '\r      %-70s\n' "done"
+
+# Explicitly, because nothing else does it now.
+#
+# grub-install writes the bootloader but not its configuration; the menu came
+# from the grub package's own script, which "xbps-reconfigure -fa" used to run
+# for us. With -a it does not, so this has to be said out loud -- and this is
+# also where os-prober runs and finds the neighbours.
+in_target "grub-mkconfig -o /boot/grub/grub.cfg" >/dev/null 2>&1 ||
+  die "could not generate the boot menu"
+in_target "test -s /boot/grub/grub.cfg" ||
+  die "/boot/grub/grub.cfg is missing — the machine would not boot"
 
 # --- done --------------------------------------------------------------------
 
 step "Done"
+
+# The last step closed, then everything, slowest first.
+printf '%6d  %s\n' "$((SECONDS - STEP_STARTED))" "$STEP_NAME" >>"$STEP_TIMINGS"
+echo
+echo "seconds per step, slowest first:"
+sort -rn "$STEP_TIMINGS"
+printf '%6d  total\n' "$SECONDS"
+echo
 
 # The temporary repository goes away with the medium it points at. Left behind,
 # the installed machine would carry a repository entry for a directory that is

@@ -13,8 +13,15 @@ exec > >(tee -a ~/.local/state/omvoid/install.log) 2>&1
 
 # Run an install step once. State lives outside the repo so install.sh is never
 # mutated: a completed step leaves a marker and is skipped on a retry after a failure.
+# Timings are written as the run goes, one line per step, and printed at the end.
+# Kept because "the install takes twelve minutes" is not something to fix by
+# guessing which part of it does.
+TIMINGS=~/.local/state/omvoid/timings
+mkdir -p "$(dirname "$TIMINGS")"
+: >"$TIMINGS"
+
 run_step() {
-  local marker="$OMVOID_STATE/$1"
+  local marker="$OMVOID_STATE/$1" started=$SECONDS
   if [ -f "$marker" ]; then
     echo "skip $1 (already done)"
     return 0
@@ -22,6 +29,7 @@ run_step() {
   source "$OMVOID_INSTALL/$1"
   mkdir -p "$(dirname "$marker")"
   touch "$marker"
+  printf '%6d  %s\n' "$((SECONDS - started))" "$1" >>"$TIMINGS"
 }
 
 # Give people a chance to retry running the installation
@@ -139,6 +147,11 @@ show_subtext "Installing void-packages repo and building apps [5/5]"
 
 # # Reboot
 show_logo
+echo "seconds per step, slowest first:"
+sort -rn "$TIMINGS" | head -15
+printf '%6d  total\n' "$SECONDS"
+echo
+
 show_subtext "We're done, you gorgeous!"
 show_subtext "✨ 🌟 ✨"
 # Last, on purpose: runit picks a service up within seconds, and sddm takes over

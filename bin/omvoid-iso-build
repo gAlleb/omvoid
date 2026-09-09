@@ -81,11 +81,41 @@ if ((${#missing[@]})); then
   exit 1
 fi
 
+# Is the mirror still complete?
+#
+# The package list is read out of install/ by omvoid-pkg-mirror, at the time the
+# mirror is filled -- not here. Add a package to an install step, build an image
+# without refilling the mirror, and the image is short of it: on a machine with a
+# network the install quietly downloads it, and offline it stops. That is exactly
+# what happened with dpkg.
+#
+# Asked against an empty root on purpose: --repository adds a repository to the
+# configured ones rather than replacing them, so without this the system's own
+# repositories would answer for the mirror and everything would look present.
+check_mirror_complete() {
+  local probe missing=() pkg
+  probe=$(mktemp -d)
+  while read -r pkg; do
+    [[ -n $pkg ]] || continue
+    xbps-query --rootdir "$probe" --repository="$MIRROR" -R -p pkgver "$pkg" \
+      >/dev/null 2>&1 || missing+=("$pkg")
+  done < <("$OMVOID_PATH/bin/omvoid-iso-packages")
+  rm -rf "$probe"
+
+  ((${#missing[@]})) || return 0
+  echo "omvoid-iso-build: the mirror does not have: ${missing[*]}" >&2
+  echo "  run omvoid-pkg-mirror first — an image built now would fetch them over" >&2
+  echo "  the network, and fail on a machine that has none" >&2
+  return 1
+}
+
 if [[ ! -d $MIRROR ]] || ! compgen -G "$MIRROR/*.xbps" >/dev/null 2>&1; then
   echo "omvoid-iso-build: no package mirror at $MIRROR" >&2
   echo "  run omvoid-pkg-mirror — without it the image has nothing to install" >&2
   exit 1
 fi
+
+check_mirror_complete || exit 1
 
 # "sudo -n true", not "sudo -v": -v authenticates even where the rule says
 # NOPASSWD, so it fails on exactly the setup that would have worked.

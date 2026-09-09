@@ -14,6 +14,8 @@ OMVOID itself, see [AGENTS.md](AGENTS.md) and the guides under
 - [Installing](#installing)
 - [Installing from an image](#installing-from-an-image)
 - [What is in it](#what-is-in-it)
+- [What omvoid puts on the EFI partition](#what-omvoid-puts-on-the-efi-partition)
+- [How long the install takes, and why](#how-long-the-install-takes-and-why)
 - [Everyday commands](#everyday-commands)
 - [Themes and wallpapers](#themes-and-wallpapers)
 - [Keeping several machines in sync](#keeping-several-machines-in-sync)
@@ -110,6 +112,105 @@ omvoid-iso-test -n
 `omvoid-iso-screen` takes a picture of the guest and `omvoid-iso-type` types into
 it, both through qemu's monitor — useful when a guest fails before it has a
 network.
+
+## How long the install takes, and why
+
+Measured, not guessed. The installer times every step and prints the list at the
+end; `install.sh` does the same for its own steps and leaves them in
+`~/.local/state/omvoid/timings`.
+
+**2026-09-08 — twelve minutes.** On the same machine Omarchy installed in one
+minute forty, which is what started the digging.
+
+**2026-09-09 — seven minutes**, after one change:
+
+| | |
+|---|---|
+| `install.sh` in the chroot | 341 s |
+| installing packages | 63 s |
+| bootloader, initramfs, boot menu | 18 s |
+| everything else | 6 s |
+
+and inside `install.sh`:
+
+| | |
+|---|---|
+| `development/development.sh` | 211 s |
+| `desktop/fonts.sh` | 38 s |
+| `desktop/theme.sh` | 34 s |
+| `config/swap.sh` | 16 s |
+| the other thirty steps | 1-8 s each |
+
+### What was wrong
+
+**The installer tried to work out a package list it did not need.** It called
+`omvoid-iso-packages`, a build-machine tool that derives the list from `install/`
+with a python parser — and the live system booted from the ISO is a dozen
+packages, not a desktop, so it has no python. The call failed without saying so
+and the installer preinstalled almost nothing.
+
+Nothing broke: `install.sh` installed the system step by step from the mirror, as
+it does on an ordinary install, and only the clock showed anything was odd. The
+installer now installs the base and leaves the rest to those steps, deliberately,
+so there is no list to work out and nothing on the medium to depend on.
+
+**`xbps-reconfigure -fa` ran the configuration of every package a second time.**
+Without `-f` only packages that are *not* configured are processed, and ours are
+configured while they are unpacked. The forced pass re-ran every install script
+on the system — font caches, icon caches, glib schemas, man-db, the initramfs.
+It is now `-a`, with the kernel reconfigured by force on its own so the initramfs
+is still rebuilt, and `grub-mkconfig` called explicitly because the boot menu used
+to be a side effect of that same pass. Those three together now take 18 seconds.
+
+### What is not wrong
+
+Installing package by package in `install.sh` is not a fault: those steps are the
+description of the system and they run on an ordinary install too, where there is
+no installer at all. Preinstalling from the medium is an accelerator, and the
+steps then find their work already done — an empty transaction costs half a
+second.
+
+Nor is the remaining time waste. Some nine hundred packages have to be unpacked,
+and that is the work itself.
+
+## What omvoid puts on the EFI partition
+
+Two things, and it matters if the disk carries other systems.
+
+`EFI/OMVOID/grubx64.efi` — the bootloader, in a directory of its own. Every
+system on a shared EFI partition keeps its own directory this way; they do not
+collide. The firmware finds it through an entry `grub-install` writes into NVRAM.
+
+`EFI/BOOT/BOOTX64.EFI` — the removable fallback, **written only when omvoid
+formatted the EFI partition itself**. There is exactly one such path per
+partition and the last writer takes it: systemd-boot claims it, and on many
+machines it is what boots Windows. On a partition omvoid made, nobody else has
+put anything there. On one that already existed, someone may have, so omvoid
+leaves it alone.
+
+The fallback exists because the NVRAM entry is not forever. A flat CMOS battery,
+a "clear NVRAM" in the firmware menu, a firmware update, or the disk moved to
+another machine — and the entry is gone. Nothing looks inside `EFI/OMVOID` by
+itself, so a perfectly good system stops booting. The fallback is the path every
+firmware tries when it has no entries left.
+
+> [!IMPORTANT]
+> **Replacing omvoid with another system?** Its installer will add its own
+> directory and, as a rule, will not remove ours. What stays behind is
+> `EFI/OMVOID` and, if omvoid formatted this partition, a fallback pointing at
+> it. That fallback then leads to a bootloader whose system is gone: with the
+> NVRAM entry present nothing changes, but lose it and the machine drops into a
+> GRUB rescue prompt instead of booting.
+>
+> Either let the new installer format the EFI partition, if nothing else lives
+> there, or clear ours out by hand:
+>
+> ```bash
+> sudo rm -rf /boot/efi/EFI/OMVOID /boot/efi/EFI/BOOT
+> ```
+>
+> Removing `EFI/BOOT` is safe only when omvoid put it there. If another system
+> owns the fallback, delete `EFI/OMVOID` alone.
 
 ## What is in it
 

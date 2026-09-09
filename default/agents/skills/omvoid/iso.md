@@ -153,3 +153,12 @@ accident.
   machine with "config file not found". Node is an `omvoid-mise-install` stub
   like every other tool instead: no network at install time, version still
   pinned, fetched on first use.
+- **The installer does not compute a package list** — it installs `base-system`
+  and the bootloader, and `install.sh` installs everything else from the mirror,
+  step by step, exactly as on an ordinary install. It once asked
+  `omvoid-iso-packages` instead, which parses `install/` with python; the live
+  system on the medium has no python, the call failed silently, and the only
+  symptom was the install taking twelve minutes rather than seven. Preinstalling
+  the whole list was then measured against the steps: it moves the work rather
+  than removing it and saves about a minute, at the price of a second notion of
+  what the system contains.

@@ -19,7 +19,11 @@ set -euo pipefail
 
 ISO_DIR="$HOME/.cache/omvoid/iso"
 DISK="$ISO_DIR/test-disk.qcow2"
-DISK_SIZE="24G"
+# Overridable: 24G is enough for one system, and not for testing an install
+# beside another one.
+#
+#   OMVOID_TEST_DISK_SIZE=40G omvoid-iso-test -n
+DISK_SIZE="${OMVOID_TEST_DISK_SIZE:-24G}"
 MEMORY="4G"
 CPUS="2"
 
