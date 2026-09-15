@@ -73,6 +73,19 @@ step() {
 ask_step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 note() { printf '      %s\n' "$*"; }
 
+# set -e ends the script without saying anything, and what is left on the screen
+# is whatever the failing command printed -- then a shell prompt. That is how a
+# failed install looks like the installer having finished. Every exit that is not
+# die's own goes through here and says which step it was.
+on_error() {
+  local code=$?
+  echo >&2
+  printf '\033[1momvoid-install: failed at [%d/%d] %s — exit %d\033[0m\n' \
+    "$STEP_NOW" "$STEP_TOTAL" "${STEP_NAME:-before the first step}" "$code" >&2
+  echo "  log: $LOG" >&2
+}
+trap on_error ERR
+
 # --- refuse to run anywhere it could destroy something real ------------------
 
 [[ $EUID -eq 0 ]] || die "run as root"
@@ -350,6 +363,16 @@ ask_step "Passwords"
 USER_PASSWORD=$(ask_secret "Password for ${USERNAME:-the user}:")
 ROOT_PASSWORD=$(ask_secret "Password for root:")
 
+# The disk passphrase belongs with the other two, not in front of cryptsetup
+# half an hour later. Asked by cryptsetup itself it was wanted four times over
+# the course of an install -- twice while formatting, once to open the
+# container, and once more at the bootloader step, long after whoever started
+# the install had walked away.
+LUKS_PASSPHRASE=""
+if [[ ${ENCRYPT:-no} == yes ]]; then
+  LUKS_PASSPHRASE=$(ask_secret "Passphrase for the encrypted disk:")
+fi
+
 # An answers file written before this existed names no layout.
 LAYOUT="${LAYOUT:-whole}"
 SWAP_MB="${SWAP_MB:-4096}"
@@ -415,11 +438,22 @@ fi
 
 if [[ $ENCRYPT == yes ]]; then
   step "Creating the encrypted container"
-  note "You will be asked for the passphrase, then for it again to unlock."
-  # Straight on the terminal: everything here is teed to a log, and a passphrase
-  # prompt that goes through a pipe is a prompt nobody sees.
-  cryptsetup luksFormat --type luks1 "$ROOT_PART" </dev/tty >/dev/tty 2>&1
-  cryptsetup luksOpen "$ROOT_PART" "$CRYPT_NAME" </dev/tty >/dev/tty 2>&1
+  # The passphrase was asked for with the other passwords and arrives on stdin,
+  # so nothing here needs the terminal.
+  #
+  # --batch-mode is what skips "Are you sure? (Type 'yes' in capital letters)".
+  # That question is the reason an encrypted install used to end in a shell: an
+  # ordinary "yes" aborts cryptsetup, and set -e then took the installer down
+  # without a word of its own. It costs nothing here -- batch mode only drops
+  # cryptsetup's own confirmation of the passphrase, and ask_secret has already
+  # asked for it twice.
+  #
+  # printf rather than <<<: a here-string appends a newline, and the key would
+  # then be the passphrase plus one byte that nobody can type at GRUB's prompt.
+  printf '%s' "$LUKS_PASSPHRASE" |
+    cryptsetup luksFormat --type luks1 --batch-mode --key-file - "$ROOT_PART"
+  printf '%s' "$LUKS_PASSPHRASE" |
+    cryptsetup luksOpen --key-file - "$ROOT_PART" "$CRYPT_NAME"
   ROOT_DEV="/dev/mapper/$CRYPT_NAME"
 else
   ROOT_DEV="$ROOT_PART"
@@ -682,8 +716,10 @@ if [[ $ENCRYPT == yes ]]; then
   # A key file so the passphrase is typed once. It lives inside the encrypted
   # root, so it is only readable once the disk is already open.
   dd bs=1 count=64 if=/dev/urandom of="$TARGET/boot/volume.key" status=none
-  # Asks for the existing passphrase, so it needs the terminal too.
-  cryptsetup luksAddKey "$ROOT_PART" "$TARGET/boot/volume.key" </dev/tty >/dev/tty 2>&1
+  # --key-file is the passphrase that already opens the container; the key file
+  # named on the line is the new slot being added.
+  printf '%s' "$LUKS_PASSPHRASE" |
+    cryptsetup luksAddKey --key-file - "$ROOT_PART" "$TARGET/boot/volume.key"
   chmod 000 "$TARGET/boot/volume.key"
   chmod -R g-rwx,o-rwx "$TARGET/boot"
 
