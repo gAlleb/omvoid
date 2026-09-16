@@ -46,9 +46,29 @@ fi
 # The single place that decides whether a command runs at all. The scripts used
 # to call swaync-client, makoctl and nwg-dock-hyprland unconditionally, and every
 # theme change printed three "command not found".
+#
+# A failure never stops the theme change: the rest of the desktop still has to be
+# recoloured, and one dead consumer is not worth leaving everything half applied.
+# It is not thrown away either.
+#
+# The line here used to be `"$@" 2>/dev/null || true`, which lost the error and
+# the exit code both -- and with them omvoid-theme-set-gtk failing on every
+# single run for a month, while Nautilus sat in its stock colours and the
+# installer and every theme switch reported success. Simply letting stderr
+# through instead would mean a theme change printing whatever these fifteen
+# programs mutter on a good day, which is how the redirection got here in the
+# first place. So it is held aside and shown only when the command actually
+# failed.
+failed=()
+errfile=$(mktemp)
+trap 'rm -f "$errfile"' EXIT
+
 run() {
   if $dry_run; then printf '  [would run] %s\n' "$*"; return 0; fi
-  "$@" 2>/dev/null || true
+  if ! "$@" 2>"$errfile"; then
+    cat "$errfile" >&2
+    failed+=("$1")
+  fi
 }
 
 # For helpers that stay in the foreground once started. The old scripts ran
@@ -182,5 +202,17 @@ running nwg-dock-hyprland && [[ -x $HOME/.config/nwg-dock-hyprland/reload.sh ]] 
   run_bg "$HOME/.config/nwg-dock-hyprland/reload.sh"
 running swayosd-server && [[ -x $HOME/.config/swayosd/launch.sh ]] &&
   run_bg "$HOME/.config/swayosd/launch.sh"
+
+# Said once, at the end. A complaint printed in the middle scrolls away behind
+# the output of everything that ran after it, which is half the reason the GTK
+# failure went unread even on the runs where it was visible.
+if ((${#failed[@]})); then
+  printf 'omvoid-theme-apply: did not apply: %s\n' "${failed[*]}" >&2
+  # Only with a session bus: under the installer there is none, and notify-send
+  # would print its own complaint on top of the one worth reading.
+  if have notify-send && [[ -n ${DBUS_SESSION_BUS_ADDRESS:-} ]]; then
+    notify-send "Theme partly applied" "failed: ${failed[*]}"
+  fi
+fi
 
 exit 0

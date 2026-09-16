@@ -1,7 +1,7 @@
 # Template file for 'WhiteSur-gtk-theme'
 pkgname=WhiteSur-gtk-theme
 version=2026.08.08
-revision=1
+revision=2
 # Upstream tags releases by date, and xbps will not take dashes in a version.
 _tag=2026-08-08
 hostmakedepends="bash which util-linux git sassc glib-devel gtk+3"
@@ -58,6 +58,19 @@ do_install() {
 		vmkdir usr/share/WhiteSur-gtk-theme
 		cp -a "$fakehome/.config/gtk-4.0" \
 			"${DESTDIR}/usr/share/WhiteSur-gtk-theme/"
+
+		# gtk.css and gtk-dark.css are links the installer writes with an
+		# absolute path -- $HOME/.config/gtk-4.0/gtk-Light.css, and $HOME here
+		# is the throwaway directory above. A path into the build root must not
+		# leave it: packaged as they stand, they reached the machine pointing
+		# at a /builddir that does not exist there, GTK4 read nothing, and the
+		# palette sat in omvoid.css with nobody to import it.
+		#
+		# Dropped rather than repointed. Which stylesheet is the active one is
+		# the machine's business, not the package's; install/desktop/theme.sh
+		# makes both links after copying this directory into place.
+		rm -f "${DESTDIR}/usr/share/WhiteSur-gtk-theme/gtk-4.0/gtk.css" \
+			"${DESTDIR}/usr/share/WhiteSur-gtk-theme/gtk-4.0/gtk-dark.css"
 	fi
 
 	vlicense COPYING
