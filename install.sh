@@ -99,6 +99,7 @@ run_step config/runsvdir-local.sh
 run_step config/groups.sh
 run_step config/rclone.sh
 run_step config/power.sh
+run_step config/grub-neighbours.sh
 
 
 # Development
