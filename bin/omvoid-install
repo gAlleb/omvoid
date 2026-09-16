@@ -700,8 +700,16 @@ xgenfstab "$TARGET" >"$TARGET/etc/fstab" 2>/dev/null ||
   in_target "xgenfstab / > /etc/fstab"
 
 note "running omvoid's own install.sh inside the new system"
-in_target "su - '$USERNAME' -c 'OMVOID_IN_CHROOT=1 bash ~/.local/share/omvoid/install.sh'" ||
-  note "install.sh reported problems — see $LOG"
+if in_target "su - '$USERNAME' -c 'OMVOID_IN_CHROOT=1 bash ~/.local/share/omvoid/install.sh'"; then
+  INSTALL_SH_OK=yes
+else
+  # Not fatal on purpose: the bootloader still has to be written, or there is no
+  # way into the machine to finish the job. But it is not success either, and
+  # the last screen says which of the two happened -- a note in the middle of a
+  # thousand lines of package output is not something anyone reads.
+  INSTALL_SH_OK=no
+  note "install.sh FAILED — the system is incomplete, see $LOG"
+fi
 
 rm -f "$TARGET/etc/sudoers.d/zz-omvoid-install"
 rm -rf "$TARGET/usr/local/share/omvoid"
@@ -859,7 +867,8 @@ cleanup
 umount -R "$TARGET" 2>/dev/null || true
 
 banner
-cat <<EOF
+if [[ $INSTALL_SH_OK == yes ]]; then
+  cat <<EOF
 
   OMVOID is installed on $DISK.
 
@@ -871,6 +880,34 @@ $([[ $ENCRYPT == yes ]] && echo "    disk:      encrypted, the passphrase is ask
   or it will boot the installer instead of the system.
 
 EOF
+else
+  # The machine boots and the account works; what is missing is everything
+  # install.sh had not reached yet. Steps it finished are marked in
+  # ~/.local/state/omvoid/done, so running it again on the installed machine
+  # carries on from the step that failed rather than starting over.
+  bold=$'\033[1m' off=$'\033[0m'
+  cat <<EOF
+
+  ${bold}The system on $DISK is INCOMPLETE.${off}
+
+  Base system, account and bootloader are in place, but omvoid's own
+  install.sh stopped partway -- the desktop may be missing entirely.
+  The last thing it did is at the end of $LOG.
+
+    user:      $USERNAME
+    hostname:  $HOSTNAME
+$([[ $ENCRYPT == yes ]] && echo "    disk:      encrypted, the passphrase is asked once, by GRUB")
+
+  Boot the machine, log in on the console, bring up the network, and finish
+  the install from where it stopped:
+
+      bash ~/.local/share/omvoid/install.sh
+
+  Take the installation medium out before the machine starts again,
+  or it will boot the installer instead of the system.
+
+EOF
+fi
 
 if confirm "Reboot now?"; then
   echo
