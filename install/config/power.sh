@@ -100,9 +100,23 @@ SUBSYSTEM=="power_supply", ENV{POWER_SUPPLY_NAME}=="ADAPTER_NAME_PLACEHOLDER", E
         ERROR_MESSAGE+=" Failed to write udev rule to $RULE_FILE."
     else
         # Reload udev rules and trigger events ---
-        echo "Reloading udev rules and triggering power_supply events..."
-        sudo udevadm control --reload-rules
-        #sudo udevadm trigger --subsystem=power_supply
+        #
+        # Not in a chroot. "udevadm control" does not read the rule file, it
+        # talks to a running udevd through a socket in /run -- and the installer
+        # binds only /dev, /proc and /sys into the target, so there is no such
+        # socket there. The command fails, install.sh runs under set -e, and
+        # everything after this step -- the whole desktop -- never gets
+        # installed while the installer still reports success.
+        #
+        # Nothing is lost by skipping it: udev reads the rules directory when
+        # the installed system boots, which is the first moment they can matter.
+        if [[ -z ${OMVOID_IN_CHROOT:-} ]]; then
+            echo "Reloading udev rules and triggering power_supply events..."
+            sudo udevadm control --reload-rules
+            #sudo udevadm trigger --subsystem=power_supply
+        else
+            echo "In a chroot: the rule is written, udev will read it at first boot."
+        fi
 
         echo ""
         echo "Udev rule setup complete for adapter '$ADAPTER_NAME'."
