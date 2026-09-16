@@ -15,6 +15,21 @@ sudo xbps-install -y WhiteSur-gtk-theme WhiteSur-icon-theme WhiteSur-kde
 if [[ -d /usr/share/WhiteSur-gtk-theme/gtk-4.0 ]]; then
   mkdir -p ~/.config/gtk-4.0
   cp -a /usr/share/WhiteSur-gtk-theme/gtk-4.0/. ~/.config/gtk-4.0/
+
+  # gtk.css is what GTK4 actually reads; it is a link to one of the two
+  # stylesheets beside it. Made here rather than taken from the package.
+  #
+  # Upstream's installer writes that link with an absolute path -- and during a
+  # package build $HOME is the throwaway one inside the build root, so the link
+  # arrived on the machine pointing into a /builddir that does not exist. cp -a
+  # preserves links exactly, which is right for everything else in this
+  # directory and wrong for these two. GTK4 then read nothing at all: the
+  # palette was written to omvoid.css next to it, with nobody left to import it.
+  #
+  # Relative on purpose, so the pair survives being copied anywhere. The targets
+  # are the package's own files and both are always present.
+  ln -snf gtk-Light.css ~/.config/gtk-4.0/gtk.css
+  ln -snf gtk-Dark.css ~/.config/gtk-4.0/gtk-dark.css
 fi
 
 # gsettings reaches dconf over the session bus. Installing from the medium there
