@@ -110,3 +110,18 @@
   --status-bar-text-color:           {color7};
   --status-bar-border-color:         {background.lighten(30).saturate(25)};
 }}
+
+/* Поиск: заголовок найденной заметки.
+ *
+ * Obsidian красит его в --text-faint, а у нас это
+ * background.lighten(30).saturate(25) -- на палитре redpeace выходит #65416e
+ * на фоне панели #301c34, контраст 1.89:1 при пороге 4.5. Заголовок видно
+ * хуже, чем фрагменты под ним, хотя он и есть то, что ищут глазами.
+ *
+ * Перекрашивается точечно, а не через --text-faint: на нём держатся
+ * комментарии в коде и прочая намеренная приглушённость, и поднимать его
+ * целиком значит убирать разницу между "тихо" и "не видно". */
+.search-result-file-title,
+.search-result-file-title .tree-item-inner {{
+  color: var(--text-normal);
+}}
