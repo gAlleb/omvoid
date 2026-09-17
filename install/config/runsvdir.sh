@@ -1,6 +1,6 @@
 #!/bin/sh
 mkdir -p ~/.config/service/
-cp -r ~/.local/share/omvoid/config/sv_runsvdir/* ~/.config/service/
+cp -r ~/.local/share/omvoid/default/services/sv_runsvdir/* ~/.config/service/
 sudo mkdir /etc/sv/runsvdir-$USER
 
 

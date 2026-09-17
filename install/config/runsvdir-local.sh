@@ -1,7 +1,7 @@
 #!/bin/sh
 mkdir -p ~/.config/service/
 
-cp -r ~/.local/share/omvoid/config/sv_runsvdir_local/* ~/.config/service/
+cp -r ~/.local/share/omvoid/default/services/sv_runsvdir_local/* ~/.config/service/
 
 #sed -i 's|^exec-once=mpdris2-rs\s*$|#exec-once=mpdris2-rs|' ~/.config/mango/conf/autostart.conf
 

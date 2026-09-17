@@ -5,4 +5,4 @@ mkdir -p ~/.config/service/dbus
 sudo ln -s /usr/share/examples/turnstile/dbus.run ~/.config/service/dbus/run
 sudo ln -s /usr/share/examples/turnstile/dbus.check ~/.config/service/dbus/check
 
-cp -r ~/.local/share/omvoid/config/sv_turnstile/* ~/.config/service/
+cp -r ~/.local/share/omvoid/default/services/sv_turnstile/* ~/.config/service/

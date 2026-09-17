@@ -180,6 +180,13 @@ else
     mapfile -t chosen < <(gum choose --no-limit --height 20 \
       --header "Пробел -- отметить, Enter -- обновить отмеченные" \
       "${diverged[@]}" || true)
+    # Enter без единого пробела -- это "ничего не выбрано", но gum печатает при
+    # этом пустую строку, и массив выходит непустым: один пустой элемент. Дальше
+    # он доезжал до omvoid-refresh-config, где пустой путь превращался в
+    # "config/" и в жалобу, что такого файла в репозитории нет.
+    picked=()
+    for one in "${chosen[@]}"; do [[ -n $one ]] && picked+=("$one"); done
+    chosen=("${picked[@]}")
   else
     printf '  %s\n' "${diverged[@]}"
     chosen=()

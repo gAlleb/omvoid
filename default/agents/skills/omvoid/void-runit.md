@@ -64,5 +64,5 @@ process: `sv down foo` first, then unlink.
   service with no symlink answers "fail: foo: unable to change to service
   directory".
 - **User services are a different tree.** omvoid's per-user services live under
-  `config/sv_runsvdir_local/` and `config/sv_turnstile/`, supervised by the
+  `default/services/sv_runsvdir_local/` and `default/services/sv_turnstile/`, supervised by the
   user's own runsvdir, not this one.
