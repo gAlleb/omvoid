@@ -21,6 +21,7 @@ that works today and vanishes on the next install:
 | `themes/` | symlinked into `~/.config/omvoid/themes/` | edits are live immediately |
 | `default/` | copied file by file in `install/config/config.sh` (`.bashrc`, `.bash_profile`, `.gtkrc-2.0`, `gnupg/`) | **edit both**; `default/xcompose` is the exception — it is included by path, so it is live |
 | `default/agents/skills/` | symlinked by `omvoid-link-skills` | edits are live immediately |
+| `default/services/` | copied into `~/.config/service/` by `install/config/runsvdir-local.sh` — **not** by the blanket `config/` copy | **edit both**, or re-run that step |
 
 ## Task guides
 
