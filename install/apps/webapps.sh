@@ -6,3 +6,4 @@ omvoid-webapp-install "AIstudio" https://aistudio.google.com/ AIstudio.png
 omvoid-webapp-install "YouTube" https://youtube.com/ YouTube.png
 omvoid-webapp-install "GitHub" https://github.com/ GitHub.png
 omvoid-webapp-install "ClaudeAI" https://claude.ai/ ClaudeAI.png
+omvoid-webapp-install "ChatGPT" https://chatgpt.com/ ChatGPT.png
