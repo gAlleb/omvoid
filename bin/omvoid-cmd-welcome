@@ -1,0 +1,105 @@
+#!/bin/bash
+
+# The greeting shown once, after the first boot, from omvoid-cmd-first-run.
+#
+# It also does the one thing the installer cannot: build the boot menu with the
+# neighbouring systems in it. That runs in a chroot, where os-prober finds
+# nothing; here the machine is alive and it works. It used to be a block in
+# /etc/rc.local, which held up every first boot by a few seconds and did the
+# whole thing silently, as root. A person at a terminal does it better: they
+# see what was found and decide.
+#
+# Can be opened again at any time: omvoid-cmd-welcome
+
+set -uo pipefail
+
+OMVOID_PATH="${OMVOID_PATH:-$HOME/.local/share/omvoid}"
+
+bold=$'\033[1m'
+dim=$'\033[2m'
+off=$'\033[0m'
+
+say() { printf '%s\n' "$*"; }
+
+# Asked before sudo, never after: a password prompt nobody explained is the
+# worst thing to teach in the first minute of a system.
+ask() {
+  local reply
+  read -r -p "$1 [Y/n] " reply
+  [[ -z $reply || ${reply,,} == y* ]]
+}
+
+clear 2>/dev/null || true
+[[ -f $OMVOID_PATH/logo.txt ]] && cat "$OMVOID_PATH/logo.txt"
+
+cat <<EOF
+
+  ${bold}The system is installed.${off}
+
+  Void Linux without systemd: runit keeps the services, xbps the packages.
+  The desktop is mango -- a Wayland compositor driven from the keyboard.
+  omvoid itself lives in ~/.local/share/omvoid and goes on owning the configs:
+  edit it there, not in ~/.config.
+
+    ${bold}ALT+Return${off}   terminal
+    ${bold}ALT+I${off}        AI agent
+    ${bold}ALT+W${off}        wallpaper -- and with it the colours of everything
+
+  The rest of it: ${bold}less ~/.local/share/omvoid/doc/MANUAL.md${off}
+
+  ${dim}Shown once. To see it again: omvoid-cmd-welcome${off}
+
+EOF
+
+# --- neighbouring systems -----------------------------------------------------
+
+say "  ${bold}Boot menu${off}"
+say
+say "  Windows or another Linux on this disk can be added to the GRUB menu."
+say "  The installer could not do it: it works inside a chroot, where the"
+say "  search for other systems finds nothing."
+say
+say "  The search needs root -- os-prober reads whole partitions."
+say
+
+if ask "  Look for other systems?"; then
+  say
+  found=$(sudo os-prober 2>/dev/null)
+  if [[ -n $found ]]; then
+    say "  Found:"
+    printf '%s\n' "$found" | sed 's/^/    /'
+    say
+    if ask "  Add them to the boot menu?"; then
+      if sudo grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1; then
+        say "  Menu rebuilt -- they will be there at the next boot."
+      else
+        say "  That failed. By hand: sudo grub-mkconfig -o /boot/grub/grub.cfg"
+      fi
+    fi
+  else
+    say "  No other systems found -- nothing to add."
+  fi
+else
+  say
+  say "  Skipped. Later:  sudo grub-mkconfig -o /boot/grub/grub.cfg"
+fi
+
+# --- updates ------------------------------------------------------------------
+
+say
+say "  ${bold}Updates${off}"
+say
+say "  omvoid-update pulls the repository, the packages and the migrations."
+say "  Needs a network."
+say
+
+if ask "  Run it now?"; then
+  say
+  omvoid-update
+else
+  say
+  say "  Later:  omvoid-update"
+fi
+
+say
+read -r -p "Enter to close. " _

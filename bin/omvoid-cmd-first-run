@@ -12,6 +12,14 @@ if [[ -f "$FIRST_RUN_MODE" ]]; then
   sed -i '/^exec-once=omvoid-cmd-first-run\s*$/d' ~/.config/mango/conf/autostart.conf
   omvoid-font-set "CaskaydiaMono Nerd Font"
   omvoid-theme-set redpeace
+
+  # The greeting goes last, once the font and the theme are applied: a window
+  # opened before that comes up in stock colours. The three seconds keep it from
+  # appearing over a desktop that is still drawing itself. setsid, or it dies
+  # together with this script. kitty rather than alacritty, and with --class --
+  # that is what the window rules here match on, the same way rmpc and ratune
+  # are started.
+  (sleep 3; setsid kitty --class=omvoid-welcome --title=omvoid-welcome -o font_size=11 -e omvoid-cmd-welcome) &
   #$OMVOID_PATH/install/first-run/battery-monitor.sh
   #$OMVOID_PATH/install/first-run/firewall.sh
 fi
