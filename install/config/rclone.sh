@@ -4,13 +4,16 @@ sudo ln -sf /usr/bin/rclone /sbin/mount.rclone
 sudo ln -sf /usr/bin/rclone /usr/bin/rclonefs
 
 if [ -f /etc/fuse.conf ]; then
-    # If it exists, first try to uncomment the line.
-    # The \s* handles optional whitespace like '# user_allow_other'
-    sudo sed -i 's/^#\s*user_allow_other/user_allow_other/' /etc/fuse.conf
-    
-    # Now, verify the line is present. If not, add it.
-    # This covers the case where the file existed but the line was missing.
-    if ! grep -q '^user_allow_other' /etc/fuse.conf; then
+    # Anchored to the end of the line, and that anchor is the whole point.
+    # Without it the pattern also matches the line of prose above the setting --
+    # "#user_allow_other - Using the allow_other mount option works fine as
+    # root, but" -- and uncommenting that leaves a sentence where fuse expects
+    # an option. The check below then found the word at the start of that line
+    # and reported success, so the damage stayed quiet.
+    sudo sed -i 's/^#\s*user_allow_other\s*$/user_allow_other/' /etc/fuse.conf
+
+    # Anchored for the same reason: the option occupies a line by itself.
+    if ! grep -q '^user_allow_other\s*$' /etc/fuse.conf; then
         echo "user_allow_other" | sudo tee -a /etc/fuse.conf
     fi
 else
