@@ -55,6 +55,17 @@ step "omvoid"
 install -d "$ROOTFS/usr/local/share/omvoid"
 cp -a "$OMVOID_PATH" "$ROOTFS/usr/local/share/omvoid/repo"
 
+# The remote belongs to whoever installs the image, not to the machine that
+# built it. What gets copied above is a working checkout whose origin is a
+# private Forgejo: an installed machine has neither the key nor the access, and
+# omvoid-update would die on its first git pull. The public mirror is readable
+# by everyone.
+#
+# safe.directory because this runs as root over a tree owned by the builder, and
+# git refuses to touch such a repository without being told it is fine.
+git -c safe.directory='*' -C "$ROOTFS/usr/local/share/omvoid/repo" \
+    remote set-url origin https://github.com/gAlleb/omvoid
+
 # --- tmux plugins -------------------------------------------------------------
 #
 # tpm and the plugins tmux.conf names are git checkouts, cloned by
