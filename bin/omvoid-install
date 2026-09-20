@@ -68,10 +68,109 @@ step() {
   STEP_STARTED=$SECONDS
   STEP_NAME="$*"
   STEP_NOW=$((STEP_NOW + 1))
-  printf '\n\033[1m[%d/%d] %s\033[0m\n' "$STEP_NOW" "$STEP_TOTAL" "$*"
+  if $ui_live; then
+    ui_status
+  else
+    printf '\n\033[1m[%d/%d] %s\033[0m\n' "$STEP_NOW" "$STEP_TOTAL" "$*"
+  fi
 }
 ask_step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 note() { printf '      %s\n' "$*"; }
+
+# --- экран установки ---------------------------------------------------------
+#
+# Шапка стоит на месте, вывод крутится под ней. Ничего не прячется: то же самое,
+# что и раньше, просто логотип и текущий шаг не уезжают вверх вместе с выводом
+# xbps. Сделано областью прокрутки (DECSTBM): всё выше неё для вывода
+# недосягаемо.
+#
+# Рисуется прямо в /dev/tty, а не в stdout: stdout уходит в tee, и escape-
+# последовательности засорили бы лог, который потом читают глазами.
+UI_THEME=${OMVOID_INSTALL_THEME:-redpeace}
+UI_TTY=/dev/tty
+ui_live=false
+ui_rows=0
+ui_head=0
+
+ui_colors() {
+  local dir="/usr/local/share/omvoid/repo/themes/$UI_THEME" i hex bg fg
+  [[ -f $dir/colors.json ]] || return 0
+  command -v jq >/dev/null || return 0
+
+  # Палитра ставится терминалу целиком -- тогда в тему попадает и фон, и чужой
+  # вывод: xbps, gum, install.sh. Текстовая консоль понимает ESC]P, графический
+  # терминал (установка в ВМ через ssh -- тоже случай) -- OSC 4/10/11.
+  for i in {0..15}; do
+    hex=$(jq -r ".colors.color$i // empty" "$dir/colors.json")
+    [[ -n $hex ]] || continue
+    if [[ ${TERM:-linux} == linux ]]; then
+      printf '\033]P%x%s' "$i" "${hex#\#}"
+    else
+      printf '\033]4;%d;%s\a' "$i" "$hex"
+    fi
+  done >"$UI_TTY"
+
+  [[ ${TERM:-linux} == linux ]] && return 0
+  bg=$(jq -r '.special.background // empty' "$dir/colors.json")
+  fg=$(jq -r '.special.foreground // empty' "$dir/colors.json")
+  [[ -n $bg ]] && printf '\033]11;%s\a' "$bg" >"$UI_TTY"
+  [[ -n $fg ]] && printf '\033]10;%s\a' "$fg" >"$UI_TTY"
+  return 0
+}
+
+ui_start() {
+  [[ -w $UI_TTY ]] || return 0
+
+  local cols logo_h=0 pad width line
+  read -r ui_rows cols < <(stty size <"$UI_TTY" 2>/dev/null || echo "24 80")
+  [[ -f $LOGO ]] && logo_h=$(wc -l <"$LOGO")
+  ui_head=$((logo_h + 9))
+  ((ui_rows > ui_head + 4)) || return 0
+
+  ui_colors
+  {
+    printf '\033[?25l\033[H\033[J'
+    if [[ -f $LOGO ]]; then
+      width=$(awk '{ if (length($0) > m) m = length($0) } END { print m }' "$LOGO")
+      pad=$(((cols - width) / 2))
+      ((pad < 0)) && pad=0
+      printf '\033[38;5;6m'
+      while IFS= read -r line; do printf '%*s%s\n' "$pad" "" "$line"; done <"$LOGO"
+      printf '\033[0m'
+    fi
+    pad=$(((cols - 64) / 2))
+    ((pad < 0)) && pad=0
+    printf '\n%*s\033[1mWelcome to the OMVOID installer\033[0m\n' "$pad" ""
+    printf '%*s\033[38;5;8mVoid Linux, mango, runit -- installed from this medium, offline.\033[0m\n' "$pad" ""
+    printf '%*s\033[38;5;8mEverything was asked up front; from here it runs to the end.\033[0m\n' "$pad" ""
+    printf '\033[%d;%dr\033[%d;1H' "$ui_head" "$ui_rows" "$ui_head"
+  } >"$UI_TTY"
+  ui_live=true
+  return 0
+}
+
+# Возвращает терминал в чувство. Обязателен на любом выходе, включая падение:
+# оставленная область прокрутки и спрятанный курсор -- это терминал, в котором
+# потом нельзя работать.
+ui_stop() {
+  $ui_live || return 0
+  ui_live=false
+  {
+    printf '\033[r\033[?25h\033[%d;1H\n' "$ui_rows"
+    [[ ${TERM:-linux} == linux ]] && printf '\033]R' || printf '\033]104\a\033]110\a\033]111\a'
+  } >"$UI_TTY"
+  return 0
+}
+
+ui_status() {
+  $ui_live || return 0
+  local elapsed=$((SECONDS - UI_STARTED))
+  printf '\033[s\033[%d;1H\033[2K  \033[1;38;5;6m[%d/%d]\033[0m %s   \033[38;5;8m%02d:%02d\033[0m\033[u' \
+    "$((ui_head - 3))" "$STEP_NOW" "$STEP_TOTAL" "$STEP_NAME" $((elapsed / 60)) $((elapsed % 60)) \
+    >"$UI_TTY"
+  return 0
+}
+UI_STARTED=$SECONDS
 
 # set -e ends the script without saying anything, and what is left on the screen
 # is whatever the failing command printed -- then a shell prompt. That is how a
@@ -79,10 +178,18 @@ note() { printf '      %s\n' "$*"; }
 # die's own goes through here and says which step it was.
 on_error() {
   local code=$?
+  ui_stop
   echo >&2
   printf '\033[1momvoid-install: failed at [%d/%d] %s — exit %d\033[0m\n' \
     "$STEP_NOW" "$STEP_TOTAL" "${STEP_NAME:-before the first step}" "$code" >&2
   echo "  log: $LOG" >&2
+  # Последние строки лога прямо здесь. С неподвижной шапкой вывод, на котором всё
+  # оборвалось, уезжает вместе с областью прокрутки, а идти читать файл догадается
+  # не каждый.
+  if [[ -s $LOG ]]; then
+    echo "  последнее перед этим:" >&2
+    tail -n 12 "$LOG" | sed 's/^/    /' >&2
+  fi
 }
 trap on_error ERR
 
@@ -412,6 +519,11 @@ fi
 
 [[ $ENCRYPT == yes ]] && STEP_TOTAL=9
 
+# Вопросы кончились -- дальше установка идёт сама, и с этого места экран наш.
+# Раньше нельзя: gum рисует свои списки на весь экран и с областью прокрутки
+# не дружит.
+ui_start
+
 # --- partitions --------------------------------------------------------------
 #
 # Two of them. The EFI partition stays unencrypted because the firmware has to
@@ -530,6 +642,7 @@ mkdir -p "$TARGET/var/cache/omvoid/mirror" "$TARGET/etc/xbps.d"
 # Declared before the first mount, not after: a failure in between would
 # otherwise leave the medium mounted inside the target with nothing to undo it.
 cleanup() {
+  ui_stop
   # Before the mounts: a swap partition turned on for xgenfstab's benefit keeps
   # the disk busy otherwise.
   [[ -n ${SWAP_PART:-} ]] && swapoff "$SWAP_PART" 2>/dev/null
@@ -865,6 +978,7 @@ rmdir "$TARGET/var/cache/omvoid/mirror" "$TARGET/var/cache/omvoid" 2>/dev/null |
 
 cleanup
 umount -R "$TARGET" 2>/dev/null || true
+ui_stop
 
 banner
 if [[ $INSTALL_SH_OK == yes ]]; then
