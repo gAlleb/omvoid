@@ -47,10 +47,34 @@ die() {
   exit 1
 }
 
+# Шапка. Одна и та же и для вопросов, и потом для рабочего экрана: установщик
+# не должен выглядеть как две разные программы, склеенные посередине.
 banner() {
-  clear 2>/dev/null || true
-  [[ -f $LOGO ]] && cat "$LOGO"
-  echo
+  local cols width pad line
+  # Всё в /dev/tty, а не в stdout: stdout уходит в tee, и шапка с её escape-
+  # последовательностями засоряла бы лог -- а его потом печатает on_error.
+  exec 3>"$UI_TTY"
+  clear >&3 2>/dev/null || true
+  printf '\n\n' >&3   # отступ сверху: логотип впритык к краю выглядит обрубленным
+  cols=$(stty size </dev/tty 2>/dev/null | cut -d" " -f2) || cols=80
+  [[ -n ${cols:-} ]] || cols=80
+
+  if [[ -f $LOGO ]]; then
+    width=$(awk '{ if (length($0) > m) m = length($0) } END { print m }' "$LOGO")
+    pad=$(((cols - width) / 2))
+    ((pad < 0)) && pad=0
+    printf '\033[38;5;6m' >&3
+    while IFS= read -r line; do printf '%*s%s\n' "$pad" "" "$line" >&3; done <"$LOGO"
+    printf '\033[0m' >&3
+  fi
+
+  pad=$(((cols - 64) / 2))
+  ((pad < 0)) && pad=0
+  printf '\n%*s\033[1mWelcome to the OMVOID installer\033[0m\n' "$pad" "" >&3
+  printf '%*s\033[38;5;8mVoid Linux, mango, runit -- installed from this medium, offline.\033[0m\n' "$pad" "" >&3
+  printf '%*s\033[38;5;8mEverything is asked up front; after that it runs to the end.\033[0m\n' "$pad" "" >&3
+  echo >&3
+  exec 3>&-
 }
 
 STEP_TOTAL=8
@@ -124,28 +148,28 @@ ui_start() {
   local cols logo_h=0 pad width line
   read -r ui_rows cols < <(stty size <"$UI_TTY" 2>/dev/null || echo "24 80")
   [[ -f $LOGO ]] && logo_h=$(wc -l <"$LOGO")
-  ui_head=$((logo_h + 9))
+  # banner печатает logo_h + 7 строк: две сверху на отступ, логотип, пустая,
+  # три строки приветствия, пустая. Ниже -- строка шага и пустая, дальше
+  # начинается область прокрутки.
+  ui_head=$((logo_h + 10))
   ((ui_rows > ui_head + 4)) || return 0
 
-  ui_colors
-  {
-    printf '\033[?25l\033[H\033[J'
-    if [[ -f $LOGO ]]; then
-      width=$(awk '{ if (length($0) > m) m = length($0) } END { print m }' "$LOGO")
-      pad=$(((cols - width) / 2))
-      ((pad < 0)) && pad=0
-      printf '\033[38;5;6m'
-      while IFS= read -r line; do printf '%*s%s\n' "$pad" "" "$line"; done <"$LOGO"
-      printf '\033[0m'
-    fi
-    pad=$(((cols - 64) / 2))
-    ((pad < 0)) && pad=0
-    printf '\n%*s\033[1mWelcome to the OMVOID installer\033[0m\n' "$pad" ""
-    printf '%*s\033[38;5;8mVoid Linux, mango, runit -- installed from this medium, offline.\033[0m\n' "$pad" ""
-    printf '%*s\033[38;5;8mEverything was asked up front; from here it runs to the end.\033[0m\n' "$pad" ""
-    printf '\033[%d;%dr\033[%d;1H' "$ui_head" "$ui_rows" "$ui_head"
-  } >"$UI_TTY"
+  # Та же шапка, что была на вопросах -- меняется только то, что ниже неё
+  # появляется область прокрутки, а строка шага встаёт на место.
+  printf '\033[?25l' >"$UI_TTY"
+  banner
+  printf '\033[%d;%dr\033[%d;1H' "$ui_head" "$ui_rows" "$ui_head" >"$UI_TTY"
+
+  # Отсчёт с этого места, а не с запуска скрипта: время, потраченное на ответы,
+  # к длительности установки отношения не имеет.
+  UI_EPOCH=$(date +%s)
+  printf '0\t%s\tstarting\n' "$STEP_TOTAL" >"$UI_STATE"
   ui_live=true
+
+  # Часы должны идти, а не менять цифры на смене шага: шаг с распаковкой пакетов
+  # длится минуты, и застывшее время выглядит как зависший установщик.
+  ( while sleep 1; do ui_draw; done ) &
+  ui_tick_pid=$!
   return 0
 }
 
@@ -155,22 +179,37 @@ ui_start() {
 ui_stop() {
   $ui_live || return 0
   ui_live=false
-  {
-    printf '\033[r\033[?25h\033[%d;1H\n' "$ui_rows"
-    [[ ${TERM:-linux} == linux ]] && printf '\033]R' || printf '\033]104\a\033]110\a\033]111\a'
-  } >"$UI_TTY"
+  ((ui_tick_pid)) && kill "$ui_tick_pid" 2>/dev/null
+  ui_tick_pid=0
+  # Снимается только область прокрутки и прячущийся курсор. Палитра остаётся:
+  # итоговый экран и всё, что после него, -- это по-прежнему установщик, и
+  # возвращать серый терминал посреди его же работы незачем.
+  printf '\033[r\033[?25h\033[%d;1H\n' "$ui_rows" >"$UI_TTY"
+  return 0
+}
+
+# Строка шага и часы. Рисуются из двух мест -- из step() при смене шага и раз в
+# секунду из фонового тика, -- поэтому что рисовать, лежит в файле: у фонового
+# процесса своя копия переменных, и про новый шаг он иначе не узнает.
+ui_draw() {
+  local n total name elapsed
+  IFS=$'\t' read -r n total name <"$UI_STATE" 2>/dev/null || return 0
+  elapsed=$(($(date +%s) - UI_EPOCH))
+  printf '\033[s\033[%d;1H\033[2K  \033[1;38;5;6m[%s/%s]\033[0m %s   \033[38;5;8m%02d:%02d\033[0m\033[u' \
+    "$((ui_head - 2))" "$n" "$total" "$name" $((elapsed / 60)) $((elapsed % 60)) \
+    >"$UI_TTY"
   return 0
 }
 
 ui_status() {
   $ui_live || return 0
-  local elapsed=$((SECONDS - UI_STARTED))
-  printf '\033[s\033[%d;1H\033[2K  \033[1;38;5;6m[%d/%d]\033[0m %s   \033[38;5;8m%02d:%02d\033[0m\033[u' \
-    "$((ui_head - 3))" "$STEP_NOW" "$STEP_TOTAL" "$STEP_NAME" $((elapsed / 60)) $((elapsed % 60)) \
-    >"$UI_TTY"
+  printf '%s\t%s\t%s\n' "$STEP_NOW" "$STEP_TOTAL" "$STEP_NAME" >"$UI_STATE"
+  ui_draw
   return 0
 }
-UI_STARTED=$SECONDS
+UI_EPOCH=0
+UI_STATE=/tmp/omvoid-install.ui
+ui_tick_pid=0
 
 # set -e ends the script without saying anything, and what is left on the screen
 # is whatever the failing command printed -- then a shell prompt. That is how a
@@ -187,8 +226,11 @@ on_error() {
   # оборвалось, уезжает вместе с областью прокрутки, а идти читать файл догадается
   # не каждый.
   if [[ -s $LOG ]]; then
-    echo "  последнее перед этим:" >&2
-    tail -n 12 "$LOG" | sed 's/^/    /' >&2
+    echo "  last lines before that:" >&2
+    # Из лога вычищаются escape-последовательности: туда попадает и наша шапка,
+    # и без чистки хвост рисует на экране второй логотип поверх сообщения об
+    # ошибке.
+    tail -n 12 "$LOG" | sed -e 's/\x1b\[[0-9;?]*[a-zA-Z]//g' -e 's/^/    /' >&2
   fi
 }
 trap on_error ERR
@@ -269,6 +311,9 @@ choose() {
 
 # --- simple or advanced ------------------------------------------------------
 
+# Цвета темы -- с первого экрана, а не с середины. Палитра отдаётся терминалу
+# целиком, поэтому в ней оказываются и вопросы gum, и весь дальнейший вывод.
+ui_colors
 banner
 
 if ! confirm "Install OMVOID with the guided installer? (No opens void-installer)"; then
@@ -531,6 +576,14 @@ ui_start
 
 if [[ $LAYOUT == whole ]]; then
   step "Partitioning $DISK"
+
+  # Чужого на диске может и не быть, а вот своё с прошлого запуска -- запросто:
+  # смонтированная цель, включённый swap, открытый контейнер. wipefs на занятом
+  # устройстве не работает, поэтому освобождаем его сами, молча и до разметки.
+  umount -R "$TARGET" 2>/dev/null || true
+  swapoff -a 2>/dev/null || true
+  cryptsetup luksClose "$CRYPT_NAME" 2>/dev/null || true
+
   wipefs -a "$DISK" >/dev/null
   sfdisk "$DISK" >/dev/null <<EOF
 label: gpt
@@ -648,6 +701,12 @@ cleanup() {
   [[ -n ${SWAP_PART:-} ]] && swapoff "$SWAP_PART" 2>/dev/null
   for d in sys proc dev; do umount -R -f "$TARGET/$d" 2>/dev/null || true; done
   umount -f "$TARGET/var/cache/omvoid/mirror" 2>/dev/null || true
+  umount -R "$TARGET" 2>/dev/null || true
+
+  # И закрыть контейнер. Без этого /dev/mapper/void держит раздел открытым
+  # после выхода, и следующий запуск установщика падает на первом же шаге:
+  # "wipefs: /dev/vda: Device or resource busy".
+  cryptsetup luksClose "$CRYPT_NAME" 2>/dev/null || true
 }
 trap cleanup EXIT
 
