@@ -41,7 +41,11 @@ catch_errors() {
 
 trap catch_errors ERR
 
+# Под мастером установки экран принадлежит ему: там своя шапка и область
+# прокрутки, а clear отсюда стирает шапку и оставляет вывод посреди пустоты.
+# На обычной установке, без chroot, всё как было.
 show_logo() {
+  [[ -n ${OMVOID_IN_CHROOT:-} ]] && return 0
   clear
   # tte -i ~/.local/share/omvoid/logo.txt --frame-rate ${2:-120} ${1:-expand}
   cat <~/.local/share/omvoid/logo.txt
@@ -49,6 +53,12 @@ show_logo() {
 }
 
 show_subtext() {
+  # Под мастером -- одной строкой в общий поток: какая идёт четверть, видеть
+  # полезно, а пустые строки вокруг только рвут вывод.
+  if [[ -n ${OMVOID_IN_CHROOT:-} ]]; then
+    echo "==> $1"
+    return 0
+  fi
   echo "$1" # | tte --frame-rate ${3:-640} ${2:-wipe}
   echo
 }
