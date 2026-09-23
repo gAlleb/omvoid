@@ -1,0 +1,53 @@
+/* Тема для ввода одной строки: адрес, имя, что угодно.
+ *
+ * Наследует menu-style.rasi -- те же цвета из ~/.cache/wal и те же обои.
+ * Переопределяет одно: в menu-style (и тем более в menu-style-minimal) в
+ * inputbar кладётся listview, а поле ввода описано, но никуда не вставлено.
+ * Для меню это нормально, для ввода -- пустое окно. Здесь наоборот: поле и
+ * подсказка есть, списка нет.
+ *
+ * Полоса обоев оставлена, но тонкая: вводится одна строка, разворачивать под
+ * это половину экрана незачем. */
+
+@import "~/.config/rofi/menu-style.rasi"
+
+configuration {
+    show-icons: false;
+}
+
+* {
+    font: "CaskaydiaMono Nerd Font 14";
+}
+
+window {
+    width: 600px;
+}
+
+inputbar {
+    padding:     24px 15px;
+    orientation: horizontal;
+    spacing:     10px;
+    children:    [ "prompt", "entry" ];
+}
+
+prompt {
+    enabled:          true;
+    expand:           false;
+    padding:          12px 18px;
+    border-radius:    100%;
+    background-color: @background;
+    text-color:       inherit;
+}
+
+entry {
+    placeholder: "";
+}
+
+/* Списка нет -- убираем и его, и контейнер, иначе останется пустая плашка. */
+listbox {
+    children: [ ];
+}
+
+listview {
+    enabled: false;
+}

@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# SSH picker: choose an address, open it in a terminal.
+#
+# The list is a plain file, one address per line. Blank lines and #-comments
+# are ignored, so it can be grouped and annotated by hand. The file lives
+# outside the repository on purpose -- these are personal addresses and omvoid
+# is public. When it does not exist yet, the menu offers to create it.
+
+set -uo pipefail
+
+HOSTS="${OMVOID_SSH_HOSTS:-$HOME/.config/omvoid/hosts}"
+THEME="$HOME/.config/rofi/menu-style-minimal.rasi"
+# Menu themes put the listview where the text field would go, so an empty list
+# renders an empty window. Typing an address needs a theme that shows the entry.
+INPUT_THEME="$HOME/.config/rofi/input.rasi"
+ADD="+ add address"
+
+list() {
+  [[ -f $HOSTS ]] || return 0
+  sed 's/#.*//; s/[[:space:]]*$//' "$HOSTS" | grep -v '^[[:space:]]*$'
+}
+
+add() {
+  local host
+  # Empty stdin: rofi accepts whatever is typed and returns it.
+  host=$(rofi -dmenu -p "user@host" -theme "$INPUT_THEME" </dev/null) || return 1
+  [[ -n $host ]] || return 1
+  mkdir -p "$(dirname "$HOSTS")"
+  printf '%s\n' "$host" >>"$HOSTS"
+  printf '%s\n' "$host"
+}
+
+picked=$(printf '%s\n%s\n' "$(list)" "$ADD" | grep -v '^[[:space:]]*$' |
+  rofi -dmenu -i -p "SSH" -theme "$THEME") || exit 0
+[[ -n $picked ]] || exit 0
+
+if [[ $picked == "$ADD" ]]; then
+  picked=$(add) || exit 0
+fi
+
+# exec bash keeps the window open after ssh exits -- otherwise a refused
+# connection closes the terminal before the error can be read.
+setsid -f "${TERMINAL:-alacritty}" -e bash -c "ssh ${picked@Q}; exec bash" >/dev/null 2>&1
