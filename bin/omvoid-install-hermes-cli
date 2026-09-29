@@ -1,0 +1,123 @@
+#!/bin/bash
+
+# Installs the terminal Hermes as a lazy mise-backed wrapper in ~/.local/bin.
+#
+#   omvoid-install-hermes-cli           write the stub, download nothing
+#   omvoid-install-hermes-cli --now     write it and install Hermes right away
+#   omvoid-install-hermes-cli --owns    exit 0 when the hermes on PATH is ours
+#   omvoid-install-hermes-cli --remove  remove what this command installed
+#
+# It gets its own script rather than a line in install/development/mise.sh
+# because of the interpreter. omvoid-mise-install writes a fixed stub with
+# nowhere to name one, and Hermes needs one named: given no pin uv builds the
+# venv against whatever python it finds, reports success, and leaves the
+# breakage to surface later inside a dependency.
+#
+# The bound to obey is the PUBLISHED package's, not the git tree's. hermes-agent
+# on PyPI declares Requires-Python >=3.11,<3.14, while main has already moved to
+# <3.15 -- the two are months apart, and this stub installs the former. Pinned
+# to 3.14 once, it installed in violation of that bound and reported success,
+# which is the exact failure the pin exists to prevent.
+#
+# This is the terminal Hermes only. The desktop app builds a runtime of its own
+# under ~/.hermes and takes ~/.local/bin/hermes over, because it needs a runtime
+# from its own commit; there is only ever one Hermes on a machine. That is what
+# --remove and --owns are for: whatever installs the app calls them, so the
+# terminal command, the agent and the app end up on one installation.
+
+set -euo pipefail
+
+TOOL='pipx:hermes-agent[extras=all]'
+PYTHON='3.13'
+STUB="${OMVOID_STUB_DIR:-$HOME/.local/bin}/hermes"
+
+# Matched whole, so a wrapper that merely mentions the command is not taken for
+# ours. Written as a regular file: a symlink at that path is someone else's.
+MARK="# omvoid-install-hermes-cli"
+
+ours() {
+  [[ -f $STUB && ! -L $STUB ]] && grep -qxF "$MARK" "$STUB"
+}
+
+case "${1:-}" in
+--owns)
+  ours
+  exit $?
+  ;;
+--remove)
+  # Only ever our own stub and the mise tool behind it. A hermes the user put
+  # there -- the official installer's, a hand-rolled wrapper, a dangling link --
+  # is theirs and is never removed here.
+  if ours; then
+    mise rm -g "$TOOL" >/dev/null 2>&1 || true
+    mise uninstall --all "$TOOL" >/dev/null 2>&1 || true
+    rm -f "$STUB"
+    echo "Hermes CLI removed: $STUB"
+  fi
+  exit 0
+  ;;
+"" | --now) ;;
+*)
+  echo "Usage: omvoid-install-hermes-cli [--now|--owns|--remove]" >&2
+  exit 1
+  ;;
+esac
+
+if [[ -e $STUB || -L $STUB ]] && ! ours; then
+  echo "omvoid-install-hermes-cli: $STUB was not written by us -- leaving it alone" >&2
+  exit 1
+fi
+
+mkdir -p "$(dirname "$STUB")"
+
+cat >"$STUB" <<EOF
+#!/bin/bash
+
+$MARK
+
+# Hermes has to be built against an interpreter it supports. Without this uv
+# takes whatever it finds and still reports success.
+export UV_PYTHON="$PYTHON"
+
+# mise holds new releases back for days by default; Hermes ships several times
+# a week. Exported rather than set on the install line alone, so the version
+# resolved to run is the one just installed.
+export MISE_MINIMUM_RELEASE_AGE=0
+
+# Asks which interpreter is actually there, not merely whether the tool exists:
+# a plain "mise up" reinstalls without the pin.
+if ! [[ -d "\$(mise where '$TOOL' 2>/dev/null)/hermes-agent/lib/python$PYTHON" ]]; then
+  echo "Installing Hermes on Python $PYTHON, this takes a minute..." >&2
+  # Said here rather than only when the stub was written: months can pass
+  # between the two, and this is the moment someone is actually waiting on
+  # Hermes and can still change their mind.
+  echo "(terminal CLI from PyPI, no desktop app; for that run omvoid-install-hermes)" >&2
+
+  # mise's pipx backend shells out to uv, which omvoid does not install. Fetched
+  # here rather than when the stub was written, so a machine that never runs
+  # Hermes pays nothing.
+  if ! command -v uv >/dev/null 2>&1 && ! mise where uv >/dev/null 2>&1; then
+    mise use -g --quiet uv@latest || exit 1
+  fi
+
+  mise use -g --quiet --force '$TOOL' || exit 1
+fi
+
+# The pin belongs to building Hermes, not to everything Hermes then runs: left
+# exported it would reach every command Hermes shells out to.
+exec env -u UV_PYTHON mise x '$TOOL' -- hermes "\$@"
+EOF
+
+chmod +x "$STUB"
+echo "stub written: $STUB -> $TOOL (Python $PYTHON)"
+echo "this is the terminal Hermes from PyPI; for the desktop app, and a build"
+echo "months newer, run omvoid-install-hermes"
+
+case ":$PATH:" in
+*":$(dirname "$STUB"):"*) ;;
+*) echo "warning: $(dirname "$STUB") is not in PATH -- 'hermes' will not be found" >&2 ;;
+esac
+
+if [[ ${1:-} == --now ]]; then
+  "$STUB" --version
+fi

@@ -44,6 +44,19 @@ omvoid-mise-install github:can1357/oh-my-pi omp
 omvoid-mise-install github:OpenRouterLabs/ori-releases ori
 omvoid-mise-install npm:@xai-official/grok grok
 
+# Hermes -- отдельной командой, а не строкой выше: ему нужно назвать
+# интерпретатор, а omvoid-mise-install пишет stub по шаблону, где сказать это
+# негде. Подробности в самом omvoid-install-hermes-cli.
+#
+# Это терминальный Hermes из пакета на PyPI, и он заметно отстаёт от git.
+# Десктоп-приложение ставится вторым каналом, вручную: omvoid-install-hermes.
+#
+# || true: в отличие от строк выше эта может вернуть ненулевой код -- когда
+# ~/.local/bin/hermes поставлен не нами и трогать его нельзя. Файл
+# подключается через source под `set -e` с ловушкой на ERR, так что отказ
+# оборвал бы всю установку на ровном месте.
+omvoid-install-hermes-cli || true
+
 # Прочие инструменты
 omvoid-mise-install gh
 omvoid-mise-install npm:playwright playwright
