@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+"""Convert a copied pywal colors.json to Hermes dashboard theme + TUI skin."""
+import json
+import os
+import re
+import tempfile
+from pathlib import Path
+
+home = Path(os.environ.get("HERMES_HOME") or Path.home() / ".hermes")
+source = home / "pywal-colors.json"
+if source.stat().st_size > 16384:
+    raise SystemExit("Palette file too large")
+data = json.loads(source.read_text(encoding="utf-8"))
+hex_color = re.compile(r"#[0-9a-fA-F]{6}\Z")
+
+def color(value):
+    if not isinstance(value, str) or not hex_color.fullmatch(value):
+        raise ValueError("Invalid pywal color")
+    return value.lower()
+
+def luminance(value):
+    rgb = [int(value[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    linear = [v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4 for v in rgb]
+    return sum(v * weight for v, weight in zip(linear, (0.2126, 0.7152, 0.0722)))
+
+def contrast(a, b):
+    light, dark = sorted((luminance(a), luminance(b)), reverse=True)
+    return (light + 0.05) / (dark + 0.05)
+
+bg = color(data["special"]["background"])
+fg = color(data["special"]["foreground"])
+colors = [color(data["colors"][f"color{i}"]) for i in range(16)]
+if contrast(bg, fg) < 4.5:
+    raise SystemExit("Pywal foreground/background contrast is too low")
+accent = next((c for c in (colors[12], colors[14], colors[4], colors[6]) if contrast(bg, c) >= 4.5), fg)
+muted = colors[8] if contrast(bg, colors[8]) >= 3 else fg
+border = colors[8]
+glow = "rgba(" + ", ".join(str(int(accent[i:i + 2], 16)) for i in (1, 3, 5)) + ", 0.12)"
+q = json.dumps  # JSON strings are valid YAML scalar values.
+dashboard = f'''name: pywal-live
+label: Pywal (обои)
+description: Автоматически из pywal
+palette:
+  background: {q(bg)}
+  midground: {q(fg)}
+  foreground:
+    hex: {q(accent)}
+    alpha: 0
+  warmGlow: {q(glow)}
+  noiseOpacity: 0
+colorOverrides:
+  primary: {q(accent)}
+  primaryForeground: {q(bg)}
+  ring: {q(accent)}
+'''
+skin_colors = {
+    "background": bg, "ui_accent": accent, "banner_accent": accent,
+    "banner_title": accent, "banner_text": fg, "ui_text": fg,
+    "banner_dim": muted, "banner_border": border, "ui_border": border,
+    "ui_tool": accent, "ui_thinking": muted,
+    "ui_ok": "#5af7b0", "ui_warn": "#ffcf5f", "ui_error": "#ff6b7d",
+    "prompt": fg, "input_rule": accent, "response_border": accent,
+    "status_bar_bg": bg, "status_bar_text": fg,
+    "status_bar_good": "#5af7b0", "status_bar_warn": "#ffcf5f", "status_bar_critical": "#ff6b7d",
+    "session_label": accent, "session_border": border,
+}
+skin = "name: pywal-live\ndescription: Automatically generated from pywal\ncolors:\n" + "".join(f"  {k}: {q(v)}\n" for k, v in skin_colors.items())
+
+def atomic_write(target, contents):
+    target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    fd, temp = tempfile.mkstemp(prefix=".pywal-", dir=target.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(contents)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(temp, 0o644)
+        os.replace(temp, target)
+    finally:
+        if os.path.exists(temp):
+            os.unlink(temp)
+
+atomic_write(home / "dashboard-themes" / "pywal-live.yaml", dashboard)
+atomic_write(home / "skins" / "pywal-live.yaml", skin)
+print(f"pywal-live: background={bg} foreground={fg} accent={accent} contrast={contrast(bg, accent):.2f}:1")
