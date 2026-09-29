@@ -20,7 +20,24 @@ TARGETS=(
   "$HOME/.claude/skills"
   "$HOME/.codex/skills"
   "$HOME/.gemini/config/skills"
+  # Hermes keeps skills the same way and finds nested bundles just as the others
+  # do. The directory is made even where Hermes is not installed, so that a
+  # later install finds the skills already in place.
+  "${HERMES_HOME:-$HOME/.hermes}/skills"
 )
+
+# A Hermes profile is a Hermes home of its own with its own skills. Existing
+# ones are added; none are created, because a profile is Hermes' to make.
+for profile in "${HERMES_HOME:-$HOME/.hermes}"/profiles/*/; do
+  if [[ -d $profile ]]; then TARGETS+=("${profile}skills"); fi
+done
+
+HERMES_ROOT="${HERMES_HOME:-$HOME/.hermes}"
+
+# Hermes comes with a corpus of its own, and obsidian is in it. Ours would only
+# shadow that copy, which is written for Hermes and kept up by its curator.
+# Everything else goes there like anywhere else.
+HERMES_SKIP=(obsidian)
 
 linked=0
 for skill in "$SKILLS_DIR"/*/; do
@@ -34,6 +51,12 @@ for skill in "$SKILLS_DIR"/*/; do
       echo "omvoid-link-skills: $target/$name существует и это не ссылка -- пропускаю" >&2
       continue
     fi
+
+    if [[ $target == "$HERMES_ROOT"/* ]] &&
+      printf '%s\n' "${HERMES_SKIP[@]}" | grep -qxF "$name"; then
+      continue
+    fi
+
     ln -sfn "${skill%/}" "$target/$name"
   done
   echo "связан скилл: $name"
