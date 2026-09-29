@@ -176,6 +176,7 @@ have pywalfox && run pywalfox update
 have omvoid-theme-set-browser && run omvoid-theme-set-browser wal
 have omvoid-theme-set-gtk && run omvoid-theme-set-gtk
 have omvoid-theme-set-obsidian && run omvoid-theme-set-obsidian
+have omvoid-theme-set-hermes && run omvoid-theme-set-hermes
 have wal-telegram && run wal-telegram --wal
 
 # --- reload what is actually running -----------------------------------------

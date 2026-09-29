@@ -1,0 +1,110 @@
+#!/bin/bash
+
+# Repaints Hermes from the current pywal palette: the one installed here, and
+# the one on the VM.
+#
+# Hermes is not part of omvoid. The copy that gets used runs on a separate
+# Ubuntu machine reached through the ssh alias "hermes"; a second one is
+# installed here. The converter that turns a pywal palette into a Hermes theme
+# and skin runs on each machine, but lives in this repository, and goes over
+# with every palette -- the VM must never hold the only copy of it.
+#
+# Omarchy themes only its local Hermes, and only the skin. This writes the
+# dashboard theme as well, which is what the web UI reads.
+
+set -euo pipefail
+
+HOST="${OMVOID_HERMES_HOST:-hermes}"
+SKIN="pywal-live"
+CONVERTER="${OMVOID_PATH:-$HOME/.local/share/omvoid}/remote/hermes/hermes-pywal-theme"
+REMOTE_CONVERTER=".local/bin/hermes-pywal-theme"
+
+palette="$HOME/.cache/wal/colors.json"
+[[ -s $palette ]] || {
+  echo "omvoid-theme-set-hermes: no palette at $palette" >&2
+  exit 1
+}
+[[ -f $CONVERTER ]] || {
+  echo "omvoid-theme-set-hermes: no converter at $CONVERTER" >&2
+  exit 1
+}
+
+# The same steps run on both machines, so they are written once here and fed to
+# a shell: a local one, and the VM's over ssh. The palette is put in place by
+# whoever calls it -- cp here, scp there.
+apply=$(
+  cat <<'APPLY'
+set -eu
+skin=$1
+converter=$2
+# Hermes' own default, and its converter reads the same variable.
+config="${HERMES_HOME:-$HOME/.hermes}/config.yaml"
+export PATH="$HOME/.local/bin:$PATH"
+
+# Relative for the VM, where this machine's paths mean nothing; absolute here,
+# where the converter is read straight out of the repository.
+case $converter in
+/*) ;;
+*) converter="$HOME/$converter" ;;
+esac
+
+python3 "$converter"
+
+# Activating needs a config, which Hermes writes only once it has actually been
+# run, and the CLI to write it with. Without either there is nothing to do but
+# publish the files, and the first run will pick them up by itself.
+[ -f "$config" ] || exit 0
+command -v hermes >/dev/null || exit 0
+
+# Only Hermes' own default is replaced. A skin picked by hand stays: publishing
+# the files above is what repaints, and overriding a deliberate choice on every
+# wallpaper change would be worse than never activating at all.
+activate() {
+  case $2 in
+  "" | default | null)
+    timeout 30 hermes config set "$1" "$skin" >/dev/null 2>&1 || true
+    ;;
+  esac
+}
+
+# Read out of config.yaml rather than through "hermes config get", which costs
+# about a second a call and would be paid on every wallpaper change; the CLI is
+# only used to write, because writing through it is what makes the gateway
+# announce the change. From the second run on these find our own skin and
+# nothing is written at all.
+#
+# Both keys are single-valued today. "  theme:" is anchored to its section
+# anyway, because a second one is the kind of line a config grows.
+skin_now=$(grep -m1 '^  skin: ' "$config" 2>/dev/null | sed 's/^  skin: //')
+theme_now=$(grep -A1 '^dashboard:' "$config" 2>/dev/null | grep -m1 '^  theme: ' | sed 's/^  theme: //')
+
+[ "$skin_now" = "$skin" ] || activate display.skin "$skin_now"
+[ "$theme_now" = "$skin" ] || activate dashboard.theme "$theme_now"
+APPLY
+)
+
+# omvoid-link-skills makes ~/.hermes/skills even where Hermes is not installed,
+# so the agent's own directory is what says whether there is anything to paint.
+if [[ -d ${HERMES_HOME:-$HOME/.hermes}/hermes-agent ]]; then
+  cp "$palette" "${HERMES_HOME:-$HOME/.hermes}/pywal-colors.json"
+  bash -s -- "$SKIN" "$CONVERTER" <<<"$apply"
+fi
+
+# An ssh alias that is not configured resolves to itself. Without this check a
+# machine with no VM -- which is every machine but this one -- would get an ssh
+# error and a "Theme partly applied" notification on every wallpaper change.
+[[ $(ssh -G "$HOST" 2>/dev/null | awk '/^hostname /{print $2}') != "$HOST" ]] || exit 0
+
+# BatchMode so a missing key asks nobody; short timeouts so a VM that is off
+# costs the theme change a moment rather than a minute.
+# ClearAllForwardings because ~/.ssh/config carries a LocalForward for the
+# Hermes web UI, and a second connection cannot bind that port.
+ssh_options=(-o BatchMode=yes -o ConnectTimeout=3 -o ConnectionAttempts=1 -o ClearAllForwardings=yes)
+
+# The converter goes over every time. Asking for its checksum first would cost
+# the same round trip as sending the 3 KB, and the repository is the source of
+# truth anyway: a converter edited on the VM is meant to be overwritten.
+timeout 10s scp -q "${ssh_options[@]}" "$palette" "$HOST:.hermes/pywal-colors.json"
+timeout 10s scp -q "${ssh_options[@]}" "$CONVERTER" "$HOST:$REMOTE_CONVERTER"
+
+timeout 20s ssh "${ssh_options[@]}" "$HOST" "bash -s -- '$SKIN' '$REMOTE_CONVERTER'" <<<"$apply"
