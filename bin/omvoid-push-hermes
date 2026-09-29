@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# Puts on the Hermes VM what this repository owns there: the pywal converter and
+# the skill that tells Hermes what omvoid is.
+#
+# The VM is Ubuntu and has no checkout, so everything there is a copy. The
+# copies land in ~/.omvoid/ and are symlinked into Hermes' own directories --
+# the same arrangement omarchy uses locally, so Hermes' curator may write to
+# them like any other skill, and the next push puts the repository's version
+# back. The repository is the source of truth; the VM is not.
+#
+# Run it by hand after changing anything under remote/hermes/. The theme script
+# ships the converter too, on every repaint, so colours never depend on having
+# remembered to run this.
+
+set -euo pipefail
+
+HOST="${OMVOID_HERMES_HOST:-hermes}"
+SRC="${OMVOID_PATH:-$HOME/.local/share/omvoid}/remote/hermes"
+REMOTE_ROOT=".omvoid"
+
+[[ -d $SRC ]] || {
+  echo "omvoid-push-hermes: no such directory: $SRC" >&2
+  exit 1
+}
+
+# Unlike the theme fan-out, this is a command someone typed: a missing host is
+# worth saying out loud rather than passing over in silence.
+if [[ $(ssh -G "$HOST" 2>/dev/null | awk '/^hostname /{print $2}') == "$HOST" ]]; then
+  echo "omvoid-push-hermes: host '$HOST' is not configured in ~/.ssh/config" >&2
+  exit 1
+fi
+
+# ClearAllForwardings because ~/.ssh/config carries a LocalForward for the
+# Hermes web UI: a second connection cannot bind the same port and warns on
+# stderr, which has nothing to do with copying files.
+ssh_options=(-o BatchMode=yes -o ConnectTimeout=5 -o ClearAllForwardings=yes)
+
+# The skill directory is replaced rather than merged: a file dropped from the
+# repository has to disappear from the VM too, and rsync is not on every host.
+timeout 20s ssh "${ssh_options[@]}" "$HOST" "bash -s -- '$REMOTE_ROOT'" <<'REMOTE'
+set -eu
+root=$1
+rm -rf "$HOME/$root/skills"
+mkdir -p "$HOME/$root/skills" "$HOME/.local/bin" "$HOME/.hermes/skills"
+REMOTE
+
+timeout 60s scp -q -r "${ssh_options[@]}" "$SRC/skills/." "$HOST:$REMOTE_ROOT/skills/"
+timeout 30s scp -q "${ssh_options[@]}" "$SRC/hermes-pywal-theme" "$HOST:.local/bin/hermes-pywal-theme"
+
+# Linked, not copied, so Hermes sees one known location and the next push has
+# one place to overwrite. A real directory there was put by someone else and is
+# left alone, exactly as omvoid-link-skills does locally.
+timeout 20s ssh "${ssh_options[@]}" "$HOST" "bash -s -- '$REMOTE_ROOT'" <<'REMOTE'
+set -eu
+root=$1
+for skill in "$HOME/$root/skills"/*/; do
+  [ -d "$skill" ] || continue
+  name=$(basename "$skill")
+  target="$HOME/.hermes/skills/$name"
+  if [ -e "$target" ] && [ ! -L "$target" ]; then
+    echo "omvoid-push-hermes: $target exists and is not a symlink -- skipping" >&2
+    continue
+  fi
+  ln -sfn "${skill%/}" "$target"
+  echo "linked skill: $name"
+done
+REMOTE
+
+echo "converter and skills pushed to $HOST"
