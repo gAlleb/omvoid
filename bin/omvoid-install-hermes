@@ -1,0 +1,264 @@
+#!/bin/bash
+
+# Installs Hermes from its own installer: the CLI and, with it, the desktop app.
+#
+# This is the second of the two ways omvoid can put Hermes on a machine. The
+# first, omvoid-install-hermes-cli, wraps the package published on PyPI through
+# mise -- small, lazy, and months behind (0.19.0 in July against 0.21.5 in
+# September). This one runs the installer Nous publishes: it clones the
+# repository, fetches its own uv and Python, and builds the Electron app. Budget
+# minutes and about 4 GB.
+#
+# There is only ever one Hermes on a machine. The app needs a runtime built from
+# its own commit and claims ~/.local/bin/hermes for it, so the stub from the
+# first channel is handed over before the installer runs -- only the stub omvoid
+# wrote, never a hermes someone put there by hand.
+#
+# Deliberately not an install step: it downloads and builds, and network during
+# installation is what breaks an offline install from the ISO. Run it when you
+# want it.
+#
+#   omvoid-install-hermes            install
+#   omvoid-install-hermes --remove   take the runtime away, keep the data
+#                                    unless told otherwise
+
+set -euo pipefail
+
+INSTALLER_URL="https://hermes-agent.nousresearch.com/install.sh"
+HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+RUNTIME="$HERMES_HOME/hermes-agent"
+APPS="$HOME/.local/share/applications"
+
+# Hermes keeps two separate things in two places, and forgetting the second is
+# how a "clean" machine reconnects to the last gateway on first launch:
+#   $HERMES_HOME       the agent -- config, credentials, skills, sessions, and
+#                      the runtime and toolchain it built for itself
+#   ~/.config/Hermes   the Electron app -- window state, the connection list,
+#                      cookies and the OAuth partitions
+APP_STATE="$HOME/.config/Hermes"
+
+(($(id -u) != 0)) || {
+  echo "omvoid-install-hermes: run as your desktop user, not as root" >&2
+  exit 1
+}
+
+mode=${1:-}
+case "$mode" in
+"" | --remove) ;;
+*)
+  echo "Usage: omvoid-install-hermes [--remove]" >&2
+  exit 1
+  ;;
+esac
+
+confirm() {
+  if command -v gum >/dev/null && [[ -t 0 && -t 1 ]]; then
+    gum confirm "$1"
+  else
+    read -rp "$1 [y/N] " answer
+    [[ $answer == [yY]* ]]
+  fi
+}
+
+# Removing files a running Hermes still holds leaves a live writer on a deleted
+# SQLite generation. Asked of /proc rather than by name: "hermes" also matches
+# this script and an editor with the word in its command line.
+hermes_holders() {
+  local proc link target held=()
+  for proc in /proc/[0-9]*; do
+    [[ -O $proc ]] || continue
+    [[ ${proc##*/} == "$$" ]] && continue
+    for link in exe cwd; do
+      target=$(readlink "$proc/$link" 2>/dev/null) || continue
+      target=${target% (deleted)}
+      if [[ $target == "$HERMES_HOME"/* || $target == "$APP_STATE"/* ]]; then
+        held+=("${proc##*/}")
+        break
+      fi
+    done
+  done
+  printf '%s' "${held[*]}"
+}
+
+remove_hermes() {
+  local holders part
+  holders=$(hermes_holders)
+  if [[ -n $holders ]]; then
+    echo "Hermes is still running (PIDs: $holders). Close it and try again." >&2
+    exit 1
+  fi
+
+  # The first channel's stub, if it is still around: it owns only what it wrote.
+  command -v omvoid-install-hermes-cli >/dev/null && omvoid-install-hermes-cli --remove
+
+  # The runtime and the toolchain it built for itself, but not the agent's own
+  # files. What goes here comes back by installing again; what stays does not.
+  for part in hermes-agent tools installs cache; do
+    [[ -e $HERMES_HOME/$part ]] || continue
+    echo "removing $HERMES_HOME/$part"
+    rm -rf "${HERMES_HOME:?}/$part"
+  done
+
+  rm -f "$HOME"/.local/bin/{hermes,hermes-agent,hermes-acp}
+  rm -f "$APPS/com.nousresearch.hermes.desktop" "$APPS/hermes.desktop"
+  rm -f "$HOME"/.local/share/icons/hicolor/*/apps/hermes.png
+  command -v update-desktop-database >/dev/null &&
+    update-desktop-database "$APPS" 2>/dev/null || true
+
+  echo
+  echo "Kept unless you say otherwise:"
+  echo "  $HERMES_HOME -- config, credentials, skills, sessions"
+  echo "  $APP_STATE -- the app's connection list and OAuth sessions"
+  echo
+
+  # Asked separately and answered no by default: this is the half that does not
+  # come back. Leaving only the app state behind is what makes a reinstalled
+  # Hermes open straight onto the last gateway as if nothing had happened.
+  if confirm "Remove that data too?"; then
+    rm -rf "${HERMES_HOME:?}" "${APP_STATE:?}"
+    echo "data removed"
+  fi
+
+  echo "Done."
+}
+
+if [[ $mode == --remove ]]; then
+  remove_hermes
+  exit 0
+fi
+
+# The installer checks these too, but failing here costs nothing and explains
+# more than its own message would.
+for tool in git curl; do
+  command -v "$tool" >/dev/null || {
+    echo "omvoid-install-hermes: $tool is required -- xbps-install -S $tool" >&2
+    exit 1
+  }
+done
+
+# The installer's own Void note: on a musl host its Node.js links the system
+# libstdc++, and without it every node stage fails verification. Checked here
+# rather than after twenty minutes of building.
+if ldd --version 2>&1 | head -1 | grep -qi musl; then
+  xbps-query -l 2>/dev/null | grep -q 'libstdc++' || {
+    echo "omvoid-install-hermes: on musl the Node runtime needs libstdc++ -- xbps-install -S libstdc++" >&2
+    exit 1
+  }
+fi
+
+
+cat <<TEXT
+
+What will happen:
+  1. the terminal Hermes stub is removed, if omvoid put it there
+  2. the Nous installer is downloaded: $INSTALLER_URL
+  3. it clones hermes-agent into $RUNTIME and brings
+     its own Python and uv
+
+This takes minutes and a few GB. Hermes data in $HERMES_HOME is left alone.
+
+TEXT
+
+confirm "Install?" || {
+  echo "cancelled"
+  exit 0
+}
+
+# Before the installer, not after: it writes ~/.local/bin/hermes itself, and a
+# stub still sitting there would be the second Hermes this whole arrangement
+# exists to avoid. It removes only what it owns and is silent when it owns
+# nothing, so this is safe whether or not the first channel was ever used.
+if command -v omvoid-install-hermes-cli >/dev/null; then
+  omvoid-install-hermes-cli --remove
+fi
+
+# Downloaded, then run -- not piped into a shell. A copy on disk is something to
+# look at when it misbehaves, and its size and checksum are worth stating.
+workdir=$(mktemp -d)
+trap 'rm -rf "$workdir"' EXIT
+installer="$workdir/hermes-install.sh"
+
+echo "Downloading the installer..."
+curl -fsSL --max-time 60 "$INSTALLER_URL" -o "$installer"
+printf 'installer: %s bytes, sha256 %s\n\n' \
+  "$(stat -c%s "$installer")" "$(sha256sum "$installer" | cut -c1-16)…"
+
+# --dir and --hermes-home are not passed: the installer already defaults to
+# exactly these paths ($HOME/.hermes and $HERMES_HOME/hermes-agent), and it
+# reads HERMES_HOME out of the environment by itself. Passing a flag whose only
+# effect is to restate a default is a flag nobody can explain later.
+#
+# --include-desktop is what builds the Electron app. It costs Node, Electron and
+# several minutes, so it is asked for rather than assumed -- the CLI alone is a
+# perfectly good reason to run this channel, since it is months ahead of the
+# package the first one installs. Setup is left interactive on purpose: it asks
+# about accounts, and that is the user's to answer.
+installer_args=()
+if confirm "Build the desktop app as well? (Node, Electron, several minutes)"; then
+  installer_args+=(--include-desktop)
+  want_desktop=true
+else
+  want_desktop=false
+fi
+
+bash "$installer" "${installer_args[@]}"
+
+echo
+echo "=== checks ==="
+
+hermes_bin="$HOME/.local/bin/hermes"
+if [[ -x $hermes_bin ]] && timeout 30 "$hermes_bin" --version >/dev/null 2>&1; then
+  timeout 30 "$hermes_bin" --version | head -1
+else
+  echo "hermes does not answer: $hermes_bin" >&2
+  exit 1
+fi
+
+if $want_desktop; then
+  if compgen -G "$RUNTIME/apps/desktop/release/linux*-unpacked" >/dev/null; then
+    echo "desktop app built: $RUNTIME/apps/desktop/release"
+  else
+    echo "the desktop app was not built -- finish it with: hermes desktop --build-only" >&2
+  fi
+fi
+
+# The installer builds the app but never registers a launcher: the entry is
+# written by "hermes desktop", which it does not run. Without this the app is
+# built and nothing in the menu offers it. --build-only writes the entry and
+# launches nothing, and the packaged app is already there, so it is quick.
+if $want_desktop; then
+  echo "Registering the desktop launcher..."
+  timeout 300 "$hermes_bin" desktop --build-only || {
+    echo "could not register the launcher, retry with: hermes desktop --build-only" >&2
+  }
+  command -v update-desktop-database >/dev/null &&
+    update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+fi
+
+# The launcher Hermes writes has pointed at its own package-managed console
+# script before, and that one carries no apps/desktop, so the entry ran and
+# failed with "Desktop GUI source not found" while the terminal worked. Newer
+# Hermes guards against it; checked rather than assumed.
+if $want_desktop; then
+  for entry in "$HOME/.local/share/applications/com.nousresearch.hermes.desktop" \
+    "$HOME/.local/share/applications/hermes.desktop"; do
+    [[ -f $entry ]] || continue
+    exec_line=$(grep -m1 '^Exec=' "$entry" || true)
+    if [[ $exec_line == *"/installs/"*"/environments/"* ]]; then
+      echo "warning: $(basename "$entry") launches an environment with no desktop sources:" >&2
+      echo "  $exec_line" >&2
+      echo "  the launcher will not open it, although the terminal command works" >&2
+    else
+      echo "launcher is fine: $(basename "$entry")"
+    fi
+  done
+fi
+
+if command -v omvoid-theme-set-hermes >/dev/null; then
+  echo
+  echo "Handing Hermes the current theme..."
+  omvoid-theme-set-hermes || echo "could not hand over the theme, retry with: omvoid-theme-set-hermes" >&2
+fi
+
+echo
+echo "Done."
