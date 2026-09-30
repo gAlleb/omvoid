@@ -39,11 +39,18 @@ most common way to get an omvoid question wrong.
 
 ## Where it lives
 
-- On a machine running it: `~/.local/share/omvoid`, also exported as `$OMVOID_PATH`.
-- Public: `github.com/galleb/omvoid`. A fresh install clones from there. Or, if there is already cloned repo in `~/.local/forgejo/omvoid` - it is valid too.
+- On a Void Linux machine running OMVOID: `~/.local/share/omvoid`, also exported
+  as `$OMVOID_PATH`. This is the installed distribution, not just a source tree.
+- On this Ubuntu-based Hermes host: `/home/hermes/.local/forgejo/omvoid` is a
+  source checkout for reading and developing OMVOID. OMVOID is **not installed**
+  here; its Void-specific commands and desktop environment are not available.
+- Public read-only mirror: `github.com/gAlleb/omvoid`. Fresh OMVOID installs on
+  Void Linux clone from there, but this Hermes host works from Forgejo.
 
-**Read the repository before answering anything specific.** It is public, so
-fetch it rather than guessing (or git pull for `~/.local/forgejo/omvoid` if it is there) . `AGENTS.md` at its root explains the layout, and it is short. Fetch new commits before answering.
+**Read the repository before answering anything specific.** On this host check
+the Forgejo checkout first, then update it if the working tree is clean; read
+its root `AGENTS.md`. Do not assume that source checkout means OMVOID is running
+here. On another host without that checkout, use the public mirror for reading.
 
 Rough shape: `bin/` holds every executable, named `omvoid-<verb>-<noun>` and on
 PATH straight out of the repository; `config/` is copied into `~/.config` at
@@ -69,28 +76,23 @@ Deliberately **not** taken from Omarchy, each for a stated reason:
   better left alone. The rule: wrap through mise what is *not* on the system,
   not what is already installed natively.
 
-## How Hermes reaches it
+## How Hermes reaches OMVOID
 
-This machine has no checkout. An omvoid machine pushes the files here with
-`omvoid-push-hermes`; the copies live in `~/.omvoid/` and are symlinked into
-`~/.hermes/skills/`. The repository is the source of truth — anything edited
-here is replaced on the next push.
+An OMVOID machine pushes the Hermes-side palette converter and this skill with
+`omvoid-push-hermes`. Those deployed copies live in `~/.omvoid/` on this host
+and are symlinked into `~/.hermes/skills/`. They are not an installed OMVOID
+desktop or the working source: edit the Forgejo checkout, not the deployed
+copies, which the next push will replace.
 
-## How Hermes reaches the repository
-
-On the Hermes host, the working checkout is
-`/home/hermes/.local/forgejo/omvoid`. Its `origin` is the private Forgejo
-repository over SSH. The Hermes host has an authorized SSH key there, so
-this checkout is the place to read, edit, and — only when the user asks —
-commit or push OMVOID changes.
-
-`github.com/gAlleb/omvoid` is a read-only public mirror, not the working
-remote. Do not clone it as a substitute when the Forgejo checkout exists:
-matching commits do not make the two checkouts interchangeable.
+The source checkout's `origin` is the private Forgejo repository over SSH. The
+Hermes host has an authorized SSH key, so use this checkout for reading and
+editing; commit or push only when the user asks. GitHub is a read-only mirror,
+not the working remote. Do not clone it instead of using the Forgejo checkout:
+matching commits do not make the two interchangeable.
 
 Before any OMVOID task, check whether the Forgejo checkout exists, inspect
-`git status` and its remote, and read the repository's `AGENTS.md`. Update
-the checkout before relying on its contents; if it has local changes,
-do not blindly pull or discard them. Use the GitHub mirror only when the
-working checkout is unavailable, and state that you are limited to reading.
+`git status` and its remote, and read its `AGENTS.md`. Update the checkout
+before relying on its contents; if it has local changes, do not blindly pull
+or discard them. If the checkout is unavailable, use the GitHub mirror only
+for reading and state that limitation.
 
