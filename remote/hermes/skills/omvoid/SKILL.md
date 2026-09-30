@@ -75,3 +75,22 @@ This machine has no checkout. An omvoid machine pushes the files here with
 `omvoid-push-hermes`; the copies live in `~/.omvoid/` and are symlinked into
 `~/.hermes/skills/`. The repository is the source of truth — anything edited
 here is replaced on the next push.
+
+## How Hermes reaches the repository
+
+On the Hermes host, the working checkout is
+`/home/hermes/.local/forgejo/omvoid`. Its `origin` is the private Forgejo
+repository over SSH. The Hermes host has an authorized SSH key there, so
+this checkout is the place to read, edit, and — only when the user asks —
+commit or push OMVOID changes.
+
+`github.com/gAlleb/omvoid` is a read-only public mirror, not the working
+remote. Do not clone it as a substitute when the Forgejo checkout exists:
+matching commits do not make the two checkouts interchangeable.
+
+Before any OMVOID task, check whether the Forgejo checkout exists, inspect
+`git status` and its remote, and read the repository's `AGENTS.md`. Update
+the checkout before relying on its contents; if it has local changes,
+do not blindly pull or discard them. Use the GitHub mirror only when the
+working checkout is unavailable, and state that you are limited to reading.
+
