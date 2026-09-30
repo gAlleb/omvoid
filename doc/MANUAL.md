@@ -21,6 +21,7 @@ OMVOID itself, see [AGENTS.md](AGENTS.md) and the guides under
 - [Keeping several machines in sync](#keeping-several-machines-in-sync)
 - [Migrations](#migrations)
 - [AI coding agents](#ai-coding-agents)
+  - [Hermes](#hermes)
 - [Adding your own things](#adding-your-own-things)
 - [Where things live](#where-things-live)
 - [Troubleshooting](#troubleshooting)
@@ -98,9 +99,30 @@ Answers are kept in `/tmp/omvoid-install.conf`. Put that file on the medium and
 nothing is asked at all, which is how an unattended install is done. Passwords
 are never written there and are always asked.
 
+It asks how the disk should be prepared, and there are two answers:
+
+**Erase it and let the installer partition it.** What a machine dedicated to
+omvoid wants. Everything on the disk goes.
+
+**Partition it yourself.** `cfdisk` opens, you make the partitions you want, and
+then the installer walks through them and asks what each one is — anything you
+leave alone stays untouched. This is the answer for a disk that already carries
+another system: an EFI partition that is already there is **kept as it is** by
+default, so the other system keeps its bootloader. Only the partition you name as
+`/` is formatted.
+
+Either way the last screen lists what is about to happen — the root partition,
+what becomes of the EFI partition, encryption, hostname, user — and waits for a
+yes.
+
 > [!WARNING]
-> The installer erases the disk it is given. Installing beside an existing
-> system, or into partitions you made yourself, is not supported yet.
+> Erasing the whole disk destroys everything on it, and the installer says so
+> before it starts. Read that last screen.
+
+**Encryption** is offered for both layouts: answer yes and the root partition
+goes into a LUKS container. The passphrase is asked at the beginning along with
+the other passwords, not halfway through — earlier versions asked for it later
+and the install could die in a shell that had nowhere to prompt.
 
 To try it in a virtual machine rather than on hardware:
 
@@ -119,10 +141,15 @@ Measured, not guessed. The installer times every step and prints the list at the
 end; `install.sh` does the same for its own steps and leaves them in
 `~/.local/state/omvoid/timings`.
 
+**Now: four minutes twenty on an average machine.** The rest of this section is
+how it got there, because the road was more interesting than the number.
+
 **2026-09-08 — twelve minutes.** On the same machine Omarchy installed in one
 minute forty, which is what started the digging.
 
-**2026-09-09 — seven minutes**, after one change:
+**2026-09-09 — seven minutes**, after one change. The breakdown below is from that
+run; steps have been added and trimmed since, so the totals moved but the shape did
+not. Your own run prints its own numbers.
 
 | | |
 |---|---|
@@ -252,6 +279,10 @@ PATH straight from the repo — so editing one takes effect immediately.
 | `omvoid-toggle-idle`, `omvoid-toggle-waybar` | idle inhibitor, hide the bar |
 | `omvoid-cmd-screenshot`, `omvoid-cmd-screenrecord` | capture |
 | `omvoid-webapp-install`, `omvoid-tui-install` | add a web app or a TUI to the menu |
+| `omvoid-cmd-ssh-launcher` | pick a host and open ssh (`SUPER+S`) |
+| `omvoid-fetch-appimages` | fetch the AppImages the system expects |
+| `omvoid-migrate-secrets` | carry the mail stack and keys to another machine |
+| `omvoid-cmd-welcome` | the window shown after the first boot |
 
 `ALT+W` opens the wallpaper picker. Media, volume and brightness keys work as
 expected through `swayosd` and `playerctl`.
@@ -382,9 +413,48 @@ It appears only once there is real usage on the machine. Click it to refresh.
 The authoritative percentages need a live sign-in, which only the terminal
 `claude` refreshes; the token counts come from local transcripts and always work.
 
+### Hermes
+
+Hermes is installed differently from the others, because there are two of it and
+only one may be on a machine at a time.
+
+```bash
+omvoid-install-hermes-cli      # the terminal one, wrapped like the agents above
+omvoid-install-hermes          # Hermes' own installer, optionally the desktop app
+omvoid-install-hermes --remove # take it away again
+```
+
+The **first** is pre-wired like every other agent: the command is there from first
+boot and installs on first run. It gives the terminal `hermes` from the package
+published on PyPI, which lags the project by months — it says so when it installs.
+
+The **second** runs the installer Nous publishes: it clones the repository, brings
+its own Python, and — if you say yes to the question — builds the desktop app as
+well. Budget minutes and a few GB. It is not part of the system install, because
+it downloads and compiles, and that is exactly what an offline install from the
+image cannot do. Before it runs it hands over from the first: the desktop app needs
+a runtime built from its own commit and claims `~/.local/bin/hermes` for it.
+
+`--remove` takes the runtime, the launchers and the menu entry, then asks
+separately — answering no by default — about the two places Hermes keeps data:
+`~/.hermes` (config, credentials, skills, sessions) and `~/.config/Hermes` (the
+app's connection list and sign-ins). Forgetting the second is why a reinstalled
+Hermes opens straight onto the gateway it used last.
+
+Theme changes reach Hermes like everything else: it gets both a skin, which the
+desktop app, the TUI and the CLI follow, and a dashboard theme for the web UI. If
+your `~/.ssh/config` has a host named `hermes`, the same colours go to that machine
+too; on a machine without one, nothing is said and nothing fails.
+
+`omvoid-push-hermes` sends that machine what this repository owns there — the
+palette converter and the skill below — since a VM has no checkout of its own.
+
+### The skill
+
 OMVOID also ships a **skill** describing itself, symlinked into the skill
-directories of Claude Code, Codex, Antigravity and the generic `~/.agents/skills`.
-Agents that read it know how this system is put together without being told.
+directories of Claude Code, Codex, Antigravity, Hermes and the generic
+`~/.agents/skills`. Agents that read it know how this system is put together
+without being told.
 
 ## Adding your own things
 
@@ -414,6 +484,8 @@ offered by `omvoid-update` on existing ones — no new install step needed.
 | `~/.local/state/omvoid/migrations/` | which migrations have run |
 | `~/.local/state/omvoid/install.log` | the installer's log |
 | `~/.cache/omvoid_wallpaper/` | wallpaper thumbnails and current-wallpaper state |
+| `$OMVOID_PATH/remote/` | files that run on other machines, not on this one |
+| `~/.hermes`, `~/.config/Hermes` | Hermes' own two homes, if it is installed |
 
 ## Troubleshooting
 
