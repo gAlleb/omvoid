@@ -40,11 +40,10 @@ most common way to get an omvoid question wrong.
 ## Where it lives
 
 - On a machine running it: `~/.local/share/omvoid`, also exported as `$OMVOID_PATH`.
-- Public: `github.com/galleb/omvoid`. A fresh install clones from there.
+- Public: `github.com/galleb/omvoid`. A fresh install clones from there. Or, if there is already cloned repo in `~/.local/forgejo/omvoid` - it is valid too.
 
 **Read the repository before answering anything specific.** It is public, so
-fetch it rather than guessing. `AGENTS.md` at its root explains the layout, and
-it is short.
+fetch it rather than guessing (or git pull for `~/.local/forgejo/omvoid` if it is there) . `AGENTS.md` at its root explains the layout, and it is short. Fetch new commits before answering.
 
 Rough shape: `bin/` holds every executable, named `omvoid-<verb>-<noun>` and on
 PATH straight out of the repository; `config/` is copied into `~/.config` at
