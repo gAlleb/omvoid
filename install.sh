@@ -131,6 +131,7 @@ run_step development/agent-skills.sh
 # ЗАКОММЕНТИРОВАНО: node ставится через mise (см. development/mise.sh)
 #run_step development/node.sh
 run_step development/mihomo.sh
+run_step development/netbird.sh
 run_step development/mw.sh
 
 # Desktop
