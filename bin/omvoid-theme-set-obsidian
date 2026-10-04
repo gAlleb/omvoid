@@ -1,19 +1,27 @@
 #!/bin/bash
 
-# Отдаёт цвета текущей палитры всем хранилищам Obsidian.
+# Hands the current palette's colours to every Obsidian vault.
 #
-# Кладётся сниппетом, а не темой: тема (GitHub Theme и любая другая) остаётся
-# выбранной вместе со своей вёрсткой, сниппет меняет поверх неё только цвета.
-# Так же поступает Noctalia -- отсюда и совместимость, если оба включены.
+# Delivered as a snippet rather than a theme: the chosen theme (GitHub Theme or
+# any other) keeps its layout, and the snippet changes only the colours on top of
+# it. Noctalia does the same, which is where the compatibility comes from when
+# both are enabled.
 #
-# Хранилища берутся из ~/.config/obsidian/obsidian.json, а не задаются жёстко:
-# их может быть несколько, и путь к ним меняется.
+# Vaults come from ~/.config/obsidian/obsidian.json rather than a fixed list:
+# there can be several, and their paths change.
+#
+# Each vault may hold more than one configuration directory. Obsidian's own is
+# `.obsidian`; a second install -- the web build -- keeps `.obsidian-web` beside
+# it, with the same appearance.json and the same snippets. Colouring one and not
+# the other left the vault looking different depending on which Obsidian opened
+# it.
 
 set -euo pipefail
 
 SOURCE="$HOME/.cache/wal/obsidian.css"
 SNIPPET_NAME="omvoid"
 VAULTS_FILE="$HOME/.config/obsidian/obsidian.json"
+CONFIG_DIRS=(.obsidian .obsidian-web)
 
 if [[ ! -f $SOURCE ]]; then
   echo "omvoid-theme-set-obsidian: нет $SOURCE -- pywal ещё не разворачивал шаблон" >&2
@@ -24,38 +32,41 @@ fi
 
 count=0
 while read -r vault; do
-  [[ -d $vault/.obsidian ]] || continue
+  for name in "${CONFIG_DIRS[@]}"; do
+    conf="$vault/$name"
+    [[ -d $conf ]] || continue
 
-  mkdir -p "$vault/.obsidian/snippets"
-  cp -f "$SOURCE" "$vault/.obsidian/snippets/$SNIPPET_NAME.css"
+    mkdir -p "$conf/snippets"
+    cp -f "$SOURCE" "$conf/snippets/$SNIPPET_NAME.css"
 
-  # Сниппет мало положить -- его надо ещё включить, иначе Obsidian его
-  # проигнорирует.
-  #
-  # Но appearance.json одновременно держит открытым сам Obsidian и переписывает
-  # его из своей памяти. Запись отсюда при каждой смене темы однажды уже стёрла
-  # пользователю пять включённых сниппетов: наше чтение-правка-запись разошлось
-  # с его записью. Поэтому трогаем файл ровно один раз -- когда нашего сниппета
-  # в списке ещё нет. Дальше меняется только сам CSS, а его Obsidian
-  # перечитывает на лету и ни с кем за файл не спорит.
-  appearance="$vault/.obsidian/appearance.json"
-  [[ -f $appearance ]] || echo '{}' >"$appearance"
+    # Putting the snippet there is not enough -- it has to be enabled too, or
+    # Obsidian ignores it.
+    #
+    # But appearance.json is held open by Obsidian itself, which rewrites it from
+    # memory. Writing it from here on every theme change once wiped five of the
+    # user's enabled snippets: our read-modify-write raced its write. So the file
+    # is touched exactly once -- when our snippet is not in the list yet. After
+    # that only the CSS changes, and Obsidian re-reads that on the fly without
+    # contending for the file.
+    appearance="$conf/appearance.json"
+    [[ -f $appearance ]] || echo '{}' >"$appearance"
 
-  if ! jq -e --arg s "$SNIPPET_NAME" \
-    '(.enabledCssSnippets // []) | index($s)' "$appearance" >/dev/null 2>&1; then
-    tmp=$(mktemp)
-    if jq --arg s "$SNIPPET_NAME" \
-      '.enabledCssSnippets = ((.enabledCssSnippets // []) + [$s])' \
-      "$appearance" >"$tmp"; then
-      mv "$tmp" "$appearance"
-      echo "сниппет $SNIPPET_NAME включён в $vault"
-    else
-      rm -f "$tmp"
-      echo "omvoid-theme-set-obsidian: не смог включить сниппет в $vault" >&2
+    if ! jq -e --arg s "$SNIPPET_NAME" \
+      '(.enabledCssSnippets // []) | index($s)' "$appearance" >/dev/null 2>&1; then
+      tmp=$(mktemp)
+      if jq --arg s "$SNIPPET_NAME" \
+        '.enabledCssSnippets = ((.enabledCssSnippets // []) + [$s])' \
+        "$appearance" >"$tmp"; then
+        mv "$tmp" "$appearance"
+        echo "сниппет $SNIPPET_NAME включён в $conf"
+      else
+        rm -f "$tmp"
+        echo "omvoid-theme-set-obsidian: не смог включить сниппет в $conf" >&2
+      fi
     fi
-  fi
 
-  count=$((count + 1))
+    count=$((count + 1))
+  done
 done < <(jq -r '.vaults | values[].path' "$VAULTS_FILE" 2>/dev/null)
 
-echo "цвета Obsidian обновлены (хранилищ: $count)"
+echo "цвета Obsidian обновлены (конфигураций: $count)"
