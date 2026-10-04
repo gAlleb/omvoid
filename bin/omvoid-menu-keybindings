@@ -21,47 +21,53 @@ THEME="${OMVOID_MENU_THEME:-keybindings}"
 # Строки пишутся и как "bind=MOD,key,action", и как "bind = MOD, key, action",
 # поэтому сначала приводим к одному виду, а уже потом режем по запятым.
 list() {
-  # Хвостовой комментарий отрезаем здесь: в конфиге встречается "down# swap
-  # window" без пробела, и без этого он прилипал бы к действию.
-  sed -n 's/^[[:space:]]*bind[[:space:]]*=\{0,1\}[[:space:]]*//p' "$CONFIG" |
-    awk -F',' '
-      {
-        # Хвостовой комментарий -- это описание бинда человеческим языком, если
-        # автор его написал. Раньше он просто отрезался, и в меню оставалась
-        # сама команда: понятная тому, кто её писал, и никому больше. Отрезаем
-        # здесь же, потому что дальше строка режется по запятым, а в описании
-        # запятая встречается.
-        desc = ""
-        h = index($0, "#")
-        if (h > 0) {
-          desc = substr($0, h + 1)
-          $0 = substr($0, 1, h - 1)
-          gsub(/^[ \t]+|[ \t]+$/, "", desc)
-        }
-        for (i = 1; i <= NF; i++) {
-          gsub(/^[ \t]+|[ \t]+$/, "", $i)
-        }
-        mod = $1
-        key = $2
-        if (key == "") next
+  # Описание бинда пишется строкой ВЫШЕ него и помечается "#:". Хвостовой
+  # комментарий на самой строке использовать нельзя: mango его не отрезает, а
+  # отдаёт команде -- "nautilus  # file manager" открывал три окна Nautilus,
+  # по окну на слово, и жаловался, что не нашёл ни "#", ни "file", ни "manager".
+  awk '
+    /^[[:space:]]*#:/ {
+      desc = $0
+      sub(/^[[:space:]]*#:[[:space:]]*/, "", desc)
+      next
+    }
 
-        action = $3
-        args = ""
-        for (i = 4; i <= NF; i++) {
-          if ($i == "") continue
-          args = (args == "" ? $i : args " " $i)
-        }
+    /^[[:space:]]*bind[[:space:]]*=/ {
+      line = $0
+      sub(/^[[:space:]]*bind[[:space:]]*=?[[:space:]]*/, "", line)
+      sub(/[[:space:]]*#.*$/, "", line)
 
-        combo = (mod == "" ? key : mod " + " key)
-        gsub(/\+/, " + ", combo)
-        gsub(/  +/, " ", combo)
+      n = split(line, f, ",")
+      for (i = 1; i <= n; i++) gsub(/^[ \t]+|[ \t]+$/, "", f[i])
 
-        line = action
-        if (args != "") line = line " " args
-        if (desc != "") line = desc
-        printf "%-28s %s\n", combo, line
+      mod = f[1]
+      key = f[2]
+      if (key == "") { desc = ""; next }
+
+      action = f[3]
+      args = ""
+      for (i = 4; i <= n; i++) {
+        if (f[i] == "") continue
+        args = (args == "" ? f[i] : args " " f[i])
       }
-    '
+
+      combo = (mod == "" ? key : mod " + " key)
+      gsub(/\+/, " + ", combo)
+      gsub(/  +/, " ", combo)
+
+      text = action
+      if (args != "") text = text " " args
+      if (desc != "") text = desc
+
+      printf "%-28s %s\n", combo, text
+      desc = ""
+      next
+    }
+
+    # Что угодно ещё обрывает связь: описание действует только на бинд сразу
+    # под ним, иначе заголовок раздела прилип бы к первому биндy после него.
+    { desc = "" }
+  ' "$CONFIG"
 }
 
 count=$(list | wc -l)
