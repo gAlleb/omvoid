@@ -282,6 +282,7 @@ PATH straight from the repo — so editing one takes effect immediately.
 | `omvoid-cmd-ssh-launcher` | pick a host and open ssh (`SUPER+S`) |
 | `omvoid-fetch-appimages` | fetch the AppImages the system expects |
 | `omvoid-migrate-secrets` | carry the mail stack and keys to another machine |
+| `omvoid-migrate-agents` | carry Claude Code, Claude Desktop conversations and groups, and Codex |
 | `omvoid-cmd-welcome` | the window shown after the first boot |
 
 `ALT+W` opens the wallpaper picker. Media, volume and brightness keys work as

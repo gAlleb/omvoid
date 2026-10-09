@@ -1,0 +1,185 @@
+#!/bin/bash
+
+# Moves the coding agents to another machine: Claude Code (settings, plugins,
+# skills, conversation history), the Claude Desktop conversation list and its
+# groups, and Codex.
+#
+#   omvoid-migrate-agents export [archive]        write ~/agents-<host>-<date>.tar.gz
+#   omvoid-migrate-agents import <archive>        unpack it into $HOME on the new machine
+#   omvoid-migrate-agents groups-export [file]    only the Claude Desktop groups (~/claude-groups-<host>.json)
+#   omvoid-migrate-agents groups-import <file>    merge those groups into this machine's settings
+#
+# Sign-ins are not carried: log in again on the new machine (claude, codex
+# login). A refresh token rotates when used, so one token shared by two
+# machines signs one of them out. Caches, logs and the install id stay behind.
+#
+# The archive holds conversation history, which is private: delete it once it
+# has been unpacked, and from wherever it travelled through.
+#
+# Companion to omvoid-migrate-secrets, which carries the keys and the mail stack.
+
+set -euo pipefail
+
+CLAUDE_EXCLUDES=(
+  --exclude='.claude/.credentials.json'
+  --exclude='.claude/cache'
+  --exclude='.claude/telemetry'
+  --exclude='.claude/statsig'
+  --exclude='.claude/session-env'
+)
+CODEX_EXCLUDES=(
+  --exclude='.codex/auth.json'
+  --exclude='.codex/cache'
+  --exclude='.codex/logs_2.sqlite*'
+  --exclude='.codex/shell_snapshots'
+  --exclude='.codex/ipc'
+  --exclude='.codex/installation_id'
+)
+# Claude Desktop keeps one small file per conversation here; each points at a
+# transcript in ~/.claude/projects.
+PATHS=(.claude .claude.json .codex .config/Claude/claude-code-sessions)
+
+# Conversation groups do not live next to the conversations but inside the
+# app's settings file, together with settings that belong to this machine. So
+# the whole file is not copied: only the groups section travels, and it is
+# merged into the settings on the other end.
+DESKTOP_CFG="$HOME/.config/Claude/claude_desktop_config.json"
+GROUPS_IN_ARCHIVE=".config/Claude/omvoid-migrate-agents-groups.json"
+
+die() {
+  echo "omvoid-migrate-agents: $*" >&2
+  exit 1
+}
+
+desktop_running() {
+  pgrep -x claude-desktop >/dev/null 2>&1
+}
+
+need_desktop_closed() {
+  # Claude Desktop writes its conversation list and settings when it quits; an
+  # import done while it runs is overwritten on exit.
+  desktop_running && die "Claude Desktop is running -- quit it completely (tray icon too) first"
+  return 0
+}
+
+groups_out() {   # groups_out <file>: extract the groups from the Claude Desktop settings
+  [[ -f "$DESKTOP_CFG" ]] || { echo "no $DESKTOP_CFG -- no groups to carry"; return 1; }
+  python3 - "$DESKTOP_CFG" "$1" <<'PY'
+import json, sys
+cfg, out = sys.argv[1], sys.argv[2]
+prefs = json.load(open(cfg, encoding='utf-8')).get('preferences', {}).get('epitaxyPrefs', {})
+keep = {k: prefs[k] for k in ('dframe-group-scopes', 'dframe-code-sections', 'starred-session-groups')
+        if k in prefs}
+json.dump(keep, open(out, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+n = sum(len(s.get('groups', [])) for s in keep.get('dframe-group-scopes', {}).values())
+print(f'conversation groups: {n}')
+PY
+}
+
+groups_in() {    # groups_in <file>: merge groups into the settings without overwriting
+  python3 - "$DESKTOP_CFG" "$1" <<'PY'
+import json, os, shutil, sys, time
+cfg, src_file = sys.argv[1], sys.argv[2]
+src = json.load(open(src_file, encoding='utf-8'))
+d = json.load(open(cfg, encoding='utf-8')) if os.path.exists(cfg) else {}
+if os.path.exists(cfg):
+    shutil.copy2(cfg, f'{cfg}.bak-omvoid-migrate-agents-{time.strftime("%Y%m%d-%H%M%S")}')
+prefs = d.setdefault('preferences', {}).setdefault('epitaxyPrefs', {})
+
+added = 0
+scopes = prefs.setdefault('dframe-group-scopes', {})
+for scope, s in src.get('dframe-group-scopes', {}).items():
+    t = scopes.setdefault(scope, {})
+    have = {g.get('id') for g in t.get('groups', [])}
+    new = [g for g in s.get('groups', []) if g.get('id') not in have]
+    t['groups'] = t.get('groups', []) + new
+    added += len(new)
+    # A conversation already filed into a group on this machine stays there.
+    for sid, gid in s.get('assignments', {}).items():
+        t.setdefault('assignments', {}).setdefault(sid, gid)
+    for gid, order in s.get('order', {}).items():
+        mine = t.setdefault('order', {}).setdefault(gid, [])
+        mine.extend(x for x in order if x not in mine)
+    for k, v in s.items():
+        t.setdefault(k, v)
+
+sections = prefs.setdefault('dframe-code-sections', {})
+for scope, v in src.get('dframe-code-sections', {}).items():
+    sections.setdefault(scope, v)
+
+starred = prefs.setdefault('starred-session-groups', [])
+starred.extend(x for x in src.get('starred-session-groups', []) if x not in starred)
+
+os.makedirs(os.path.dirname(cfg), exist_ok=True)
+with open(cfg, 'w', encoding='utf-8') as fh:
+    json.dump(d, fh, ensure_ascii=False, indent=2)
+os.chmod(cfg, 0o600)
+print(f'groups added: {added} (previous settings kept next to it as .bak-omvoid-migrate-agents-...)')
+PY
+}
+
+do_export() {
+  local out="${1:-$HOME/agents-$(hostname)-$(date +%F).tar.gz}"
+  local have=()
+  for p in "${PATHS[@]}"; do
+    if [[ -e "$HOME/$p" ]]; then have+=("$p"); else echo "no ~/$p -- skipped"; fi
+  done
+  ((${#have[@]})) || die "nothing to carry"
+  if pgrep -x codex >/dev/null 2>&1 || desktop_running; then
+    echo "Codex or Claude Desktop is running -- their databases change as they are read; quit them for a clean copy"
+  fi
+  if groups_out "$HOME/$GROUPS_IN_ARCHIVE"; then
+    have+=("$GROUPS_IN_ARCHIVE")
+  fi
+  umask 077
+  # GNU tar exits 1 for "file changed as we read it": the archive is usable, an
+  # agent was just writing something of its own. Only 2 and above is a failure.
+  local rc=0
+  tar -czf "$out" -C "$HOME" --warning=no-file-changed \
+      "${CLAUDE_EXCLUDES[@]}" "${CODEX_EXCLUDES[@]}" "${have[@]}" || rc=$?
+  rm -f "$HOME/$GROUPS_IN_ARCHIVE"
+  if ((rc > 1)); then
+    rm -f "$out"
+    die "tar failed ($rc) -- the archive is not usable"
+  fi
+  chmod 600 "$out"
+  echo "written: $out ($(du -h "$out" | cut -f1))"
+  echo "contains: ${have[*]}"
+  echo "the archive holds conversation history -- delete it after the move, wherever it went"
+}
+
+do_import() {
+  local file="${1:-}"
+  [[ -f "$file" ]] || die "usage: omvoid-migrate-agents import <archive>"
+  need_desktop_closed
+  tar -xzf "$file" -C "$HOME"
+  echo "unpacked into $HOME"
+  if [[ -f "$HOME/$GROUPS_IN_ARCHIVE" ]]; then
+    groups_in "$HOME/$GROUPS_IN_ARCHIVE"
+    rm -f "$HOME/$GROUPS_IN_ARCHIVE"
+  fi
+  cat <<'EOF'
+
+Next:
+  1. claude          -- sign in
+  2. codex login     -- sign in
+  3. if you use the om-ai project memory: sh <vault>/AI/bootstrap.sh
+     once the vault has synced, then in codex run /hooks and trust the hooks
+  4. start Claude Desktop -- conversations and groups show up when the account
+     is the same and the conversations' folders exist at the same paths
+
+The archive is no longer needed:  rm <archive>
+EOF
+}
+
+case "${1:-}" in
+  export) shift; do_export "$@" ;;
+  import) shift; do_import "$@" ;;
+  groups-export)
+    shift; out="${1:-$HOME/claude-groups-$(hostname).json}"
+    groups_out "$out" && echo "written: $out" ;;
+  groups-import)
+    shift; [[ -f "${1:-}" ]] || die "usage: omvoid-migrate-agents groups-import <file>"
+    need_desktop_closed; groups_in "$1" ;;
+  *) sed -n '3,19p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac
