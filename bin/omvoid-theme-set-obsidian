@@ -21,7 +21,7 @@ set -euo pipefail
 SOURCE="$HOME/.cache/wal/obsidian.css"
 SNIPPET_NAME="omvoid"
 VAULTS_FILE="$HOME/.config/obsidian/obsidian.json"
-CONFIG_DIRS=(.obsidian .obsidian-web)
+CONFIG_DIRS=(.obsidian .obsidian-web .obsidian-2)
 
 if [[ ! -f $SOURCE ]]; then
   echo "omvoid-theme-set-obsidian: нет $SOURCE -- pywal ещё не разворачивал шаблон" >&2
