@@ -26,6 +26,16 @@ DISK="$ISO_DIR/test-disk.qcow2"
 DISK_SIZE="${OMVOID_TEST_DISK_SIZE:-24G}"
 MEMORY="4G"
 CPUS="2"
+# The guest's video card. "gl" is virtio with virgl: the guest gets a render
+# node (/dev/dri/renderD128) and mango draws through the host's GPU, as it would
+# on hardware -- the desktop is usable, and this is what someone trying omvoid
+# in a VM will see. "std" is plain Bochs VGA with no 3D: mango then refuses to
+# start at all (black screen after the SDDM login). It is still enough to test
+# the installer when the host has no working OpenGL, and it is the card the
+# installer was first tested on.
+#
+#   OMVOID_TEST_VGA=std omvoid-iso-test -b
+VGA="${OMVOID_TEST_VGA:-gl}"
 
 iso=""
 disk_only=false
@@ -73,14 +83,27 @@ args=(
   -enable-kvm
   -m "$MEMORY" -smp "$CPUS"
   -drive "file=$DISK,format=qcow2,if=virtio"
-  -display gtk,zoom-to-fit=off
-  # Plain VGA, not virtio. virtio-vga with a forced resolution produced a mode
-  # whose row stride qemu drew wrongly: the whole screen came out sheared along
-  # a diagonal. Nothing here needs a fast framebuffer -- it is a text installer.
-  -vga std
   -net nic -net user
+  # A tablet instead of the default PS/2 mouse: it reports absolute positions,
+  # so the guest's pointer sits where the host's is instead of lagging and
+  # drifting away from it.
+  -device qemu-xhci -device usb-tablet
   -monitor "telnet:127.0.0.1:$MONITOR_PORT,server,nowait"
 )
+
+# virtio-vga was dropped once because, with a forced resolution, qemu drew its
+# mode with the wrong row stride and the whole screen came out sheared along a
+# diagonal. Nothing forces a resolution now; if the shear comes back, it is
+# OMVOID_TEST_VGA=std until it is understood.
+case "$VGA" in
+gl) args+=(-device virtio-vga-gl -display gtk,gl=on,zoom-to-fit=off) ;;
+std) args+=(-vga std -display gtk,zoom-to-fit=off) ;;
+*)
+  echo "omvoid-iso-test: OMVOID_TEST_VGA is gl or std, not '$VGA'" >&2
+  exit 1
+  ;;
+esac
+echo "==> video: $VGA"
 
 # The firmware is a pair: read-only code, and a writable copy of the variable
 # store per machine -- otherwise the guest cannot remember its own boot entry,

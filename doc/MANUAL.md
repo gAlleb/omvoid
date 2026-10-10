@@ -135,6 +135,25 @@ omvoid-iso-test -n
 it, both through qemu's monitor — useful when a guest fails before it has a
 network.
 
+**Give the virtual machine 3D acceleration.** mango draws with OpenGL. A guest
+whose video card has no 3D has no `/dev/dri/renderD*`, and since mangowc 0.17
+mango refuses to draw on the CPU: the session dies at once and SDDM's login
+leaves a black screen. (`WLR_RENDERER_ALLOW_SOFTWARE=1` in the session's
+environment lets it through, slowly.) The fix is on the host's side:
+
+- **`omvoid-iso-test`** uses `virtio-vga-gl` with `-display gtk,gl=on` by default.
+  `OMVOID_TEST_VGA=std` switches to plain VGA when the host has no working OpenGL.
+- **virt-manager:** Video → model *Virtio*, tick *3D acceleration*; Display Spice →
+  *Listen type: None*, tick *OpenGL*.
+- **VirtualBox:** graphics controller *VMSVGA* with *Enable 3D Acceleration*
+  (not tried).
+
+Inside the guest, `ls /dev/dri` shows `renderD128` when it worked.
+
+With virtio and 3D the hardware cursor comes out upside down. `~/.bash_profile`
+sets `WLR_NO_HARDWARE_CURSORS=1` whenever the CPU reports the `hypervisor` flag,
+so in a guest mango draws the cursor itself; on bare metal nothing changes.
+
 ## How long the install takes, and why
 
 Measured, not guessed. The installer times every step and prints the list at the
