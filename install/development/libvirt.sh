@@ -23,9 +23,5 @@ sudo usermod -aG libvirt,kvm $USER
 # The "default" NAT network needs no setup: the package ships it already
 # marked for autostart (/etc/libvirt/qemu/networks/autostart/default.xml).
 #
-# ufw does need telling, or the guests get no address: their DHCP and DNS go to
-# the host's dnsmasq on virbr0 -- incoming, so dropped -- and their traffic out
-# is forwarded, which "deny routed" drops whatever libvirt's own nftables table
-# accepts. Runs after development/firewall.sh, which installs ufw.
-sudo ufw allow in on virbr0 comment 'libvirt guests: dhcp, dns'
-sudo ufw route allow in on virbr0 comment 'libvirt guests: nat out'
+# Its ufw rules for virbr0 live in development/firewall.sh, not here: in a
+# chroot no ufw command may run after that step -- see the end of it.

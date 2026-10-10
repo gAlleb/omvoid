@@ -34,6 +34,14 @@ sudo ufw allow in on docker0 comment 'docker bridge'
 # IPv6 at all but protocol 41 (6in4 tunnels) inside IPv4.
 sudo ufw deny in on ygg0 from ::/0 comment 'yggdrasil is public'
 
+# libvirt's NAT network. Guests send DHCP and DNS to the host's dnsmasq on
+# virbr0 -- incoming, so dropped -- and their traffic out is forwarded, which
+# "deny routed" drops. Whether libvirt's own rules already get there first was
+# never checked; these two are harmless if they do. Here and not in
+# development/libvirt.sh: see the end of this file.
+sudo ufw allow in on virbr0 comment 'libvirt guests: dhcp, dns'
+sudo ufw route allow in on virbr0 comment 'libvirt guests: nat out'
+
 # Without this an install over SSH would cut itself off the moment ufw comes up.
 if [[ -e /etc/runit/runsvdir/default/sshd ]]; then
   sudo ufw allow 22/tcp comment 'sshd'
@@ -43,6 +51,13 @@ fi
 # the live system's -- it would firewall the machine running the install, not
 # the one being installed. There only the flag is set; ufw-init reads it at
 # boot. On a running system enable for real, so it takes effect now.
+#
+# This has to be the last ufw command of the whole install. Once ENABLED=yes,
+# every later "ufw allow" believes the firewall is running, finds no ufw chains
+# in the (live) kernel and tries to load the full rule set into it; in the image
+# that fails with "ERROR: problem running" and set -e stops the install. That is
+# exactly what the first install from omvoid-20261010.iso did, when
+# development/libvirt.sh still added its virbr0 rules after this step.
 if [[ -n ${OMVOID_IN_CHROOT:-} ]]; then
   sudo sed -i 's/^ENABLED=.*/ENABLED=yes/' /etc/ufw/ufw.conf
 else

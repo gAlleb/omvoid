@@ -7,6 +7,35 @@
 	margin: 0px 5px;
 }
 
+/* Waybar after 0.15.0 (upstream 822071f3) wraps a custom module's label in a
+   box, and #custom-<name> is now the box. The * rule above then reaches the
+   label as well: its margin is applied twice, and its 14px beats the size set
+   on #custom-<name>. There is no class that marks custom modules alone (the
+   box is shared with window, workspaces and others, which want the * rule),
+   so they are listed: every custom/ module in config-mango. A new one added
+   there needs a line here. */
+#custom-agent-usage label,
+#custom-expand-icon label,
+#custom-hdd label,
+#custom-keyboard label,
+#custom-mail label,
+#custom-menu label,
+#custom-playerctl label,
+#custom-screenrecording-indicator label,
+#custom-screenshot label,
+#custom-sep label,
+#custom-swaync label,
+#custom-tasks label,
+#custom-temperature label,
+#custom-updates label,
+#custom-updates-icon label,
+#custom-vpn label,
+#custom-weather label,
+#custom-wlogout label {
+	margin: 0px;
+	font-size: inherit;
+}
+
 @define-color bg70 @background70;
 @define-color bg @background;
 @define-color fg @foreground;
@@ -59,6 +88,7 @@ window#waybar {
 #cpu,
 #memory,
 #window,
+#layout,
 #battery,
 #network,
 #bluetooth,
@@ -186,6 +216,16 @@ window#waybar {
 	font-weight: bold;
 	font-family: 'CaskaydiaMono Nerd Font';
 	font-size: 20px;
+}
+
+/* The layout symbol used to be the start of dwl/window's label, so it wore the
+   window's colour and sat right after the tags (the -20px). mango/layout is a
+   module of its own now; it takes both over, and #window above no longer needs
+   to pull itself left. */
+#layout {
+	background-color: transparent;
+	color: @cyan;
+	font-weight: bold;
   margin-left: -20px;
 }
 
