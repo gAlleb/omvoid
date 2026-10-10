@@ -132,6 +132,7 @@ run_step development/agent-skills.sh
 #run_step development/node.sh
 run_step development/mihomo.sh
 run_step development/netbird.sh
+run_step development/firewall.sh
 run_step development/mw.sh
 
 # Desktop
