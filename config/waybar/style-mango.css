@@ -54,6 +54,7 @@ window#waybar {
 #workspaces {
 	font-weight: bold;
   margin: 0px 0px;
+  margin-left: -10px;
 }
 #workspaces button {
 	color: @fg;
@@ -61,6 +62,10 @@ window#waybar {
 	padding: 0px 0px;
 	margin: 0px 0px;
   font-weight: bold;
+}
+/* mango/workspaces buttons come out narrower than ext/workspaces' did. */
+#workspaces button {
+	padding: 0px 5px;
 }
 #workspaces button.empty {
 	color: @color9;
@@ -109,6 +114,7 @@ window#waybar {
 #custom-screenrecording-indicator,
 #mpris,
 #custom-keyboard,
+#language,
 #custom-vpn,
 #custom-playerctl,
 #idle_inhibitor,
