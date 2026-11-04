@@ -1,8 +1,6 @@
 [Desktop Entry]
 Name=OMVOID Menu
-Name[ru]=Меню OMVOID
 Comment=Applications, appearance, updates and help
-Comment[ru]=Приложения, оформление, обновления и справка
 Exec=omvoid-menu
 Icon=preferences-system
 Terminal=false

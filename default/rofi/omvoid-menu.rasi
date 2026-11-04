@@ -18,7 +18,7 @@ prompt {
 entry {
   width: 100%;
   border-radius: 10px;
-  placeholder: "Поиск…";
+  placeholder: "Search…";
 }
 listview {
   lines: 10;

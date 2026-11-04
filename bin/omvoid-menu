@@ -21,11 +21,11 @@ if [[ ${1:-} == --run ]]; then
   "$@"
   result=$?
   if ((result == 0)); then
-    printf '\nГотово.\n'
+    printf '\nDone.\n'
   else
-    printf '\nКоманда завершилась с ошибкой (код %s). Подробности выше.\n' "$result"
+    printf '\nCommand failed (exit code %s). See details above.\n' "$result"
   fi
-  read -r -p 'Enter — закрыть окно…' _ || true
+  read -r -p 'Press Enter to close…' _ || true
   exit "$result"
 fi
 
@@ -34,10 +34,10 @@ case ${1:-} in
     echo 'Usage: omvoid-menu [install|appearance|update|help|manage|tools]'
     exit 0 ;;
   ''|install|appearance|update|help|manage|tools) section=${1:-root} ;;
-  *) echo "Неизвестный раздел: $1" >&2; exit 2 ;;
+  *) echo "Unknown section: $1" >&2; exit 2 ;;
 esac
 
-command -v rofi >/dev/null || { echo 'Для меню нужен rofi.' >&2; exit 1; }
+command -v rofi >/dev/null || { echo 'This menu requires rofi.' >&2; exit 1; }
 theme="$OMVOID_PATH/default/rofi/omvoid-menu.rasi"
 
 dialog() {
@@ -47,7 +47,7 @@ dialog() {
 pick() {
   local title=$1 index
   shift
-  index=$(printf '%s\n' "$@" | dialog -p "$title" -mesg 'Enter — выбрать · Esc — назад') || return 1
+  index=$(printf '%s\n' "$@" | dialog -p "$title" -mesg 'Enter — select · Esc — back') || return 1
   [[ $index =~ ^[0-9]+$ ]] && ((index < $#)) || return 1
   printf '%s' "$index"
 }
@@ -57,7 +57,7 @@ error() { rofi -e "$*" -theme "$theme"; }
 terminal() {
   # The system ships Alacritty; its launcher supports the TUI.float window rule.
   TERMINAL=alacritty omvoid-launch-tui "$SELF" --run "$@" || {
-    error 'Не удалось выполнить действие в терминале.'
+    error 'Could not run the action in a terminal.'
     return 1
   }
   exit 0
@@ -68,23 +68,23 @@ appimages() {
   local -a ids=() labels=() missing_ids=() missing_labels=() rows=() chosen=() names=()
   while true; do
     ids=() labels=() missing_ids=() missing_labels=() rows=() chosen=() names=()
-    choice=$(pick 'Установить → AppImage' 'Выбрать приложения…' 'Установить все недостающие…' '← Назад') || return
+    choice=$(pick 'Install → AppImage' 'Select applications…' 'Install all missing…' '← Back') || return
     [[ $choice == 2 ]] && return
-    catalogue=$(omvoid-fetch-appimages --list) || { error 'Не удалось прочитать каталог AppImage.'; return; }
+    catalogue=$(omvoid-fetch-appimages --list) || { error 'Could not read the AppImage catalogue.'; return; }
     while IFS=$'\t' read -r id label kind state; do
       [[ -n $id ]] || continue
-      [[ $kind == build ]] && label+=' — сборка из исходников'
+      [[ $kind == build ]] && label+=' — builds from source'
       ids+=("$id")
       labels+=("$label")
       if [[ $state == installed ]]; then
-        rows+=("$label — установлено")
+        rows+=("$label — installed")
       else
         rows+=("$label")
         missing_ids+=("$id")
         missing_labels+=("$label")
       fi
     done <<<"$catalogue"
-    ((${#ids[@]})) || { error 'Каталог AppImage пуст.'; return; }
+    ((${#ids[@]})) || { error 'The AppImage catalogue is empty.'; return; }
 
     if [[ $choice == 1 ]]; then
       chosen=("${missing_ids[@]}")
@@ -92,15 +92,15 @@ appimages() {
     else
       selected=$(printf '%s\n' "${rows[@]}" | dialog -p 'AppImage' -multi-select \
         -kb-accept-custom 'Control+Return' -kb-accept-alt 'Shift+Return' \
-        -mesg 'Shift+Enter — отметить несколько · Enter — продолжить · Esc — назад') || continue
+        -mesg 'Shift+Enter — mark multiple · Enter — continue · Esc — back') || continue
       while IFS= read -r index; do
         [[ $index =~ ^[0-9]+$ ]] && ((index < ${#ids[@]})) || continue
         chosen+=("${ids[index]}")
         names+=("${labels[index]}")
       done <<<"$selected"
     fi
-    ((${#chosen[@]})) || { error 'Нет приложений для установки.'; return; }
-    confirm=$(printf '%s\n' 'Установить' '← Назад' | dialog -p 'Установить приложения?' \
+    ((${#chosen[@]})) || { error 'No applications to install.'; return; }
+    confirm=$(printf '%s\n' 'Install' '← Back' | dialog -p 'Install applications?' \
       -mesg "$(printf '%s\n' "${names[@]}")") || continue
     [[ $confirm == 0 ]] && terminal omvoid-fetch-appimages "${chosen[@]}"
   done
@@ -109,10 +109,10 @@ appimages() {
 select_setting() {
   local title=$1 list_command=$2 apply_command=$3 output index
   local -a values=()
-  output=$("$list_command") || { error "Не удалось получить список: $title"; return; }
-  [[ -n $output ]] || { error "Список пуст: $title"; return; }
+  output=$("$list_command") || { error "Could not retrieve the list: $title"; return; }
+  [[ -n $output ]] || { error "The list is empty: $title"; return; }
   mapfile -t values <<<"$output"
-  index=$(pick "$title" "${values[@]}" '← Назад') || return
+  index=$(pick "$title" "${values[@]}" '← Back') || return
   ((index < ${#values[@]})) || return
   terminal "$apply_command" "${values[index]}"
 }
@@ -139,10 +139,10 @@ install_tools() {
     commands+=("$command") packages+=("$package") binaries+=("$binary")
     rows+=("$command — $package")
   done < <(tools_catalogue)
-  ((${#rows[@]})) || { error 'Не найден список инструментов.'; return; }
-  index=$(pick 'Инструменты и агенты' "${rows[@]}" '← Назад') || return
+  ((${#rows[@]})) || { error 'No tools found in the catalogue.'; return; }
+  index=$(pick 'Tools and agents' "${rows[@]}" '← Back') || return
   ((index < ${#rows[@]})) || return
-  action=$(pick "${commands[index]}" 'Установить сейчас' '← Назад') || return
+  action=$(pick "${commands[index]}" 'Install now' '← Back') || return
   case $action in
     0) terminal "$SELF" --install-tool "${packages[index]}" "${commands[index]}" "${binaries[index]}" ;;
   esac
@@ -155,10 +155,10 @@ remove_tool() {
     [[ -f $file ]] || continue
     command grep -q '^# omvoid-mise-stub ' "$file" && commands+=("${file##*/}")
   done
-  ((${#commands[@]})) || { error 'Нет команд, добавленных через omvoid-mise-install.'; return; }
-  index=$(pick 'Удалить инструмент' "${commands[@]}" '← Назад') || return
+  ((${#commands[@]})) || { error 'No commands added by omvoid-mise-install.'; return; }
+  index=$(pick 'Remove tool' "${commands[@]}" '← Back') || return
   ((index < ${#commands[@]})) || return
-  action=$(pick "Удалить ${commands[index]}?" '← Назад' 'Удалить только команду' 'Удалить команду и скачанный инструмент') || return
+  action=$(pick "Remove ${commands[index]}?" '← Back' 'Remove command only' 'Remove command and downloaded tool') || return
   case $action in
     1) terminal omvoid-mise-uninstall "${commands[index]}" ;;
     2) terminal omvoid-mise-uninstall --purge "${commands[index]}" ;;
@@ -168,20 +168,20 @@ remove_tool() {
 confirm_action() {
   local title=$1 index
   shift
-  index=$(pick "$title" '← Назад' 'Продолжить') || return
+  index=$(pick "$title" '← Back' 'Continue') || return
   [[ $index == 1 ]] && terminal "$@"
 }
 
 while true; do
   case $section in
     root)
-      choice=$(pick 'OMVOID' 'Приложения' 'Оформление' 'Обновление' 'Справка' 'Управление' 'Инструменты') || exit 0
+      choice=$(pick 'OMVOID' 'Applications' 'Appearance' 'Updates' 'Help' 'Controls' 'Tools') || exit 0
       case $choice in
         0) section=install ;; 1) section=appearance ;; 2) section=update ;; 3) section=help ;;
         4) section=manage ;; 5) section=tools ;;
       esac ;;
     install)
-      choice=$(pick 'OMVOID → Приложения' 'Установить AppImage…' 'Добавить веб-приложение…' 'Добавить ярлык TUI…' 'Инструменты и агенты…' 'Hermes…' 'Удалить…' '← Назад') || { section=root; continue; }
+      choice=$(pick 'OMVOID → Applications' 'Install AppImage…' 'Add web application…' 'Add TUI shortcut…' 'Tools and agents…' 'Hermes…' 'Remove…' '← Back') || { section=root; continue; }
       case $choice in
         0) appimages ;;
         1) terminal omvoid-webapp-install ;;
@@ -192,16 +192,16 @@ while true; do
         6) section=root ;;
       esac ;;
     hermes)
-      choice=$(pick 'Приложения → Hermes' 'Установить CLI из PyPI' 'Официальный установщик — CLI и Desktop' 'Удалить CLI из PyPI…' 'Удалить официальную установку…' '← Назад') || { section=install; continue; }
+      choice=$(pick 'Applications → Hermes' 'Install CLI from PyPI' 'Official installer — CLI and Desktop' 'Remove CLI from PyPI…' 'Remove official installation…' '← Back') || { section=install; continue; }
       case $choice in
         0) terminal omvoid-install-hermes-cli --now ;;
         1) terminal omvoid-install-hermes ;;
-        2) confirm_action 'Удалить Hermes CLI из PyPI?' omvoid-install-hermes-cli --remove ;;
-        3) confirm_action 'Удалить Hermes? О данных установщик спросит отдельно.' omvoid-install-hermes --remove ;;
+        2) confirm_action 'Remove Hermes CLI from PyPI?' omvoid-install-hermes-cli --remove ;;
+        3) confirm_action 'Remove Hermes? The installer will ask separately about your data.' omvoid-install-hermes --remove ;;
         4) section=install ;;
       esac ;;
     remove)
-      choice=$(pick 'Приложения → Удалить' 'Веб-приложение…' 'Ярлыки TUI…' 'Инструмент mise…' '← Назад') || { section=install; continue; }
+      choice=$(pick 'Applications → Remove' 'Web application…' 'TUI shortcuts…' 'mise tool…' '← Back') || { section=install; continue; }
       case $choice in
         0) terminal omvoid-webapp-remove ;;
         1) terminal omvoid-tui-remove ;;
@@ -209,12 +209,12 @@ while true; do
         3) section=install ;;
       esac ;;
     appearance)
-      choice=$(pick 'OMVOID → Оформление' 'Тема…' 'Обои…' 'Светлый / тёмный режим…' 'Шрифт…' 'Следующая тема' 'Следующие обои текущей темы' 'Текущая тема' 'Текущий шрифт' '← Назад') || { section=root; continue; }
+      choice=$(pick 'OMVOID → Appearance' 'Theme…' 'Wallpaper…' 'Light / dark mode…' 'Font…' 'Next theme' 'Next wallpaper in current theme' 'Current theme' 'Current font' '← Back') || { section=root; continue; }
       case $choice in
-        0) select_setting 'Тема' omvoid-theme-list omvoid-theme-set ;;
-        1) "$HOME/.config/rofi/wallpaper/wallpaper-wayland.sh" || error 'Не удалось выбрать обои.' ;;
-        2) "$HOME/.config/rofi/wallpaper/wallpaper-switch-theme-wayland.sh" || error 'Не удалось изменить режим.' ;;
-        3) select_setting 'Шрифт' omvoid-font-list omvoid-font-set ;;
+        0) select_setting 'Theme' omvoid-theme-list omvoid-theme-set ;;
+        1) "$HOME/.config/rofi/wallpaper/wallpaper-wayland.sh" || error 'Could not select a wallpaper.' ;;
+        2) "$HOME/.config/rofi/wallpaper/wallpaper-switch-theme-wayland.sh" || error 'Could not change the mode.' ;;
+        3) select_setting 'Font' omvoid-font-list omvoid-font-set ;;
         4) terminal omvoid-theme-next ;;
         5) terminal omvoid-theme-bg-next ;;
         6) terminal omvoid-theme-current ;;
@@ -222,7 +222,7 @@ while true; do
         8) section=root ;;
       esac ;;
     update)
-      choice=$(pick 'OMVOID → Обновление' 'Обновить систему и omvoid…' 'Обновить инструменты mise…' 'Обновить ярлыки приложений' 'Ожидающие миграции' 'Обновить ссылки на скиллы агентов' 'Обновить данные расхода агентов' '← Назад') || { section=root; continue; }
+      choice=$(pick 'OMVOID → Updates' 'Update system and omvoid…' 'Update mise tools…' 'Refresh application shortcuts' 'Pending migrations' 'Refresh agent skill links' 'Refresh agent usage data' '← Back') || { section=root; continue; }
       case $choice in
         0) terminal omvoid-update ;;
         1) terminal omvoid-update-mise ;;
@@ -233,7 +233,7 @@ while true; do
         6) section=root ;;
       esac ;;
     help)
-      choice=$(pick 'OMVOID → Справка' 'Горячие клавиши' 'Руководство' 'Инструменты mise — список и состояние' '← Назад') || { section=root; continue; }
+      choice=$(pick 'OMVOID → Help' 'Keybindings' 'Manual' 'mise tools — list and status' '← Back') || { section=root; continue; }
       case $choice in
         0) omvoid-menu-keybindings ;;
         1) terminal less "$OMVOID_PATH/doc/MANUAL.md" ;;
@@ -241,7 +241,7 @@ while true; do
         3) section=root ;;
       esac ;;
     manage)
-      choice=$(pick 'OMVOID → Управление' 'Устройство вывода звука…' 'Выбрать и запустить агента…' 'Перечитать конфигурацию Waybar' 'Перечитать конфигурацию mango' 'Открыть конфигурацию mango' 'Mihomo…' '← Назад') || { section=root; continue; }
+      choice=$(pick 'OMVOID → Controls' 'Audio output device…' 'Select and launch agent…' 'Reload Waybar configuration' 'Reload mango configuration' 'Edit mango configuration' 'Mihomo…' '← Back') || { section=root; continue; }
       case $choice in
         0) omvoid-audioswitcher ;;
         1) exec omvoid-launch-agent --set ;;
@@ -252,7 +252,7 @@ while true; do
         6) section=root ;;
       esac ;;
     tools)
-      choice=$(pick 'OMVOID → Инструменты' 'Подключиться по SSH…' 'Радио…' 'Запись экрана…' '← Назад') || { section=root; continue; }
+      choice=$(pick 'OMVOID → Tools' 'Connect via SSH…' 'Radio…' 'Screen recording…' '← Back') || { section=root; continue; }
       case $choice in
         0) exec omvoid-cmd-ssh-launcher ;;
         1) exec omvoid-cmd-radio ;;
@@ -261,13 +261,13 @@ while true; do
       esac ;;
     record)
       if pgrep -x wf-recorder >/dev/null || pgrep -x wl-screenrec >/dev/null; then
-        choice=$(pick 'Запись экрана' 'Остановить запись' '← Назад') || { section=tools; continue; }
+        choice=$(pick 'Screen recording' 'Stop recording' '← Back') || { section=tools; continue; }
         case $choice in
           0) exec omvoid-cmd-screenrecord ;;
           1) section=tools ;;
         esac
       else
-        choice=$(pick 'Запись экрана' 'Область без звука…' 'Область со звуком…' 'Экран без звука' 'Экран со звуком' '← Назад') || { section=tools; continue; }
+        choice=$(pick 'Screen recording' 'Region without audio…' 'Region with audio…' 'Screen without audio' 'Screen with audio' '← Back') || { section=tools; continue; }
         case $choice in
           0) exec omvoid-cmd-screenrecord region ;;
           1) exec omvoid-cmd-screenrecord region audio ;;
