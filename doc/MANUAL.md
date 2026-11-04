@@ -289,6 +289,7 @@ PATH straight from the repo — so editing one takes effect immediately.
 | | |
 |---|---|
 | `omvoid-update` | pull the repo, update the system, sync files, run migrations |
+| `omvoid-menu` | searchable system menu: apps, appearance, updates, controls, tools and help |
 | `omvoid-theme-next`, `omvoid-theme-set <name>`, `omvoid-theme-list` | curated themes |
 | `omvoid-font-set <name>`, `omvoid-font-list` | change the font everywhere at once |
 | `omvoid-menu-keybindings` | every keybinding in a searchable list |
@@ -306,6 +307,46 @@ PATH straight from the repo — so editing one takes effect immediately.
 
 `ALT+W` opens the wallpaper picker. Media, volume and brightness keys work as
 expected through `swayosd` and `playerctl`.
+
+### System menu
+
+Run `omvoid-menu` or open **OMVOID Menu** in the application launcher. Type to
+filter, press Enter to select, and Escape to return to the parent menu (or close
+the main menu). Each submenu also has a Back entry.
+
+The AppImage section offers a selection or all missing applications. In the
+selection list, Shift+Enter marks several rows; Enter continues to a confirmation
+showing the selected apps. Installed apps are labelled and skipped by the
+installer. Apps requiring a source build are labelled before installation.
+Web applications and TUI shortcuts use the existing interactive helpers; creating
+a TUI shortcut does not install its underlying program.
+
+Installations, updates and theme/font application open in a floating terminal
+that keeps the result visible until Enter is pressed. Updates retain their normal
+interactive prompts. The menu uses the existing rofi font and pywal colours.
+Direct entry points are `omvoid-menu install`, `appearance`, `update`, `help`,
+`manage` and `tools`.
+The AppImage catalogue is provided by `omvoid-fetch-appimages --list`, without
+downloads; add applications to that script's catalogue to expose them in both
+the CLI and the menu.
+
+The **Applications** section also offers the tools and agents declared in
+`install/development/mise.sh`. Pick an entry to install it immediately; the normal
+omvoid installation already prepares commands that download tools on first use.
+The menu reads those literal
+declarations without executing the installation step. Hermes has its own submenu
+for the PyPI CLI and the official installer. Removal uses the existing web-app,
+TUI and mise helpers; mise removal offers either just the wrapper or the wrapper
+and downloaded tool. Personal commands without the omvoid wrapper marker are
+excluded from this list.
+
+**Appearance** includes next theme/background and current theme/font.
+**Updates** also provides application shortcut refresh, pending migrations,
+agent skill links and usage data refresh. **Help** includes the mise inventory.
+**Controls** offers audio output selection, agent selection and launch, Waybar
+and mango config reload, the mango config editor, and Mihomo.
+**Tools** contains SSH, radio and screen recording with region/screen and audio
+choices; while a recording is running, the menu offers to stop it.
 
 ## Themes and wallpapers
 

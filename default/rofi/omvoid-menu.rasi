@@ -1,0 +1,33 @@
+/* Inherit the user's font and pywal palette, expose navigation and search. */
+@import "~/.config/rofi/menu-style-minimal.rasi"
+
+mainbox {
+  children: [ inputbar, message, listview ];
+  spacing: 10px;
+}
+inputbar {
+  orientation: vertical;
+  children: [ prompt, entry ];
+  padding: 12px;
+  spacing: 10px;
+}
+prompt {
+  background-color: transparent;
+  text-color: @foreground;
+}
+entry {
+  width: 100%;
+  border-radius: 10px;
+  placeholder: "Поиск…";
+}
+listview {
+  lines: 10;
+  padding: 10px;
+  spacing: 4px;
+}
+element-text {
+  horizontal-align: 0.0;
+}
+textbox {
+  border-radius: 10px;
+}

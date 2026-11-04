@@ -1,21 +1,8 @@
 #!/bin/bash
 
-# Приносит в ~/Downloads AppImage'и, которых нет в репозиториях Void, и отдаёт
-# их Gear Lever. Писано для свежей машины: поставил систему, запустил, забыл.
-#
-#   omvoid-fetch-appimages            все
-#   omvoid-fetch-appimages obsidian   только названные
-#   omvoid-fetch-appimages -n         сказать, что сделал бы, и выйти
-#
-# Новое приложение -- строка в таблице внизу:
-#
-#   github  владелец/репозиторий  шаблон имени файла в релизе
-#   url     прямая ссылка
-#   build   репозиторий, который надо собрать
-#
-# Имя в первой колонке -- и то, чем приложение называют в командной строке, и то,
-# по чему его ищут в Gear Lever. Поэтому codex-desktop-linux записан как chatgpt:
-# приложение зовёт себя ChatGPT Community, так его знает и Gear Lever.
+# Fetch AppImages and hand them to Gear Lever. The catalogue also feeds the menu.
+# No arguments installs all missing apps; names select a subset; -n previews.
+# --list prints tab-separated id, display name, source kind and installed status.
 
 set -u
 
@@ -26,19 +13,27 @@ APPIMAGETOOL=https://github.com/AppImage/appimagetool/releases/download/continuo
 dry=false
 [[ ${1:-} == -n ]] && { dry=true; shift; }
 
+catalogue() {
+  # IDs also match the beginning of the names reported by Gear Lever.
+  cat <<'APPS'
+obsidian|github|obsidianmd/obsidian-releases|Obsidian-[0-9.]+\.AppImage$|Obsidian
+claude|github|aaddrick/claude-desktop-debian|amd64\.AppImage$|Claude Desktop
+onlyoffice|github|ONLYOFFICE/DesktopEditors|DesktopEditors-x86_64\.AppImage$|ONLYOFFICE
+vk|url|https://upload.object2.vk-apps.com/vk-me-desktop-dev-5837a06d-5f28-484a-ac22-045903cb1b1a/latest/vk-messenger.AppImage||VK Messenger
+chatgpt|build|https://github.com/ilysenko/codex-desktop-linux||ChatGPT Community
+APPS
+}
+
 say() { echo "  $*" >&2; }
 bad() { echo "  не вышло: $*" >&2; failed=1; }
 
-# Ссылка на самый свежий AppImage. Не releases/latest: у Obsidian последним
-# релизом регулярно оказывается сборка под Android, где AppImage нет вовсе.
+# Search recent assets: Obsidian's latest release may contain only Android builds.
 github_url() {
   curl -sfL "https://api.github.com/repos/$1/releases?per_page=10" |
     jq -r --arg p "$2" '[.[].assets[] | select(.name | test($p))][0].browser_download_url // empty'
 }
 
-# Качает в ~/Downloads и печатает путь. Имя файла несёт версию, поэтому
-# существующий файл -- это она и есть; у прямых ссылок версии в имени нет, и там
-# решает curl -z: заберёт, только если на сервере новее.
+# Conditional downloads also handle direct URLs without a version in the name.
 download() {
   local url=$1 file=$DOWNLOADS/${1##*/} newer_than=()
 
@@ -56,8 +51,7 @@ download() {
   fi
 }
 
-# Codex готового AppImage не публикует, его собирают. Путь взят из README
-# проекта -- для дистрибутивов, под которые они не делают родного пакета.
+# This community application requires a local build rather than a release download.
 build() {
   local dir=$BUILDDIR/${1##*/} file
 
@@ -81,8 +75,7 @@ build() {
   echo "$DOWNLOADS/${file##*/}"
 }
 
-# Он и сам AppImage, и ему нужен fuse2 -- на omvoid тот есть, его тянет за собой
-# ntfs-3g. Поэтому проверяем запуском, а не наличием файла.
+# Check execution as well as presence: appimagetool itself needs AppImage support.
 install_appimagetool() {
   say "нет appimagetool, беру официальную сборку"
   mkdir -p "$HOME/.local/bin"
@@ -93,36 +86,53 @@ install_appimagetool() {
     { bad "appimagetool не запускается"; return 1; }
 }
 
-# Новую версию поверх уже подключённой этот скрипт не ставит. gearlever --update
-# умеет это только для приложений со своим апдейтером, а у большинства написано
-# UpdatesNotAvailable; замена же руками -- дело на один раз и делается осознанно:
-#
-#   omvoid-fetch-appimages -n <имя>     посмотреть, какая версия сейчас на сайте
-#   gearlever --integrate <файл> --replace -y
+# Existing integrations are preserved. Replacing one is a separate manual action:
+# gearlever --integrate <file> --replace -y
 installed() {
   command -v gearlever >/dev/null || return 1
   gearlever --list-installed 2>/dev/null | grep -qi "^$1"
 }
 
+if [[ ${1:-} == --list ]]; then
+  while IFS='|' read -r name kind source pattern label; do
+    state=missing
+    installed "$name" && state=installed
+    printf '%s\t%s\t%s\t%s\n' "$name" "$label" "$kind" "$state"
+  done < <(catalogue)
+  exit 0
+fi
+
+if [[ ${1:-} == --help || ${1:-} == -h ]]; then
+  echo 'Usage: omvoid-fetch-appimages [-n] [app ...] | --list'
+  exit 0
+fi
+
+# Reject typos before starting any downloads.
+for requested in "$@"; do
+  if ! catalogue | cut -d'|' -f1 | command grep -Fxq -- "$requested"; then
+    say "неизвестное приложение: $requested (список: --list)"
+    exit 2
+  fi
+done
+
+$dry || mkdir -p "$DOWNLOADS" || exit 1
 failed=0
-while read -r name kind source pattern; do
+while IFS='|' read -r name kind source pattern label; do
   [[ -z $name ]] && continue
   (($#)) && [[ " $* " != *" $name "* ]] && continue
 
   printf '\n%s\n' "$name" >&2
 
-  # Проверяется до скачивания, и это главное: Gear Lever уносит образ в
-  # ~/AppImages, так что в Downloads его нет и "файл уже скачан" не сработает --
-  # скрипт качал бы сотню мегабайт заново на каждом запуске.
+  # Gear Lever moves files out of Downloads, so check integrations first.
   if installed "$name"; then
     say "уже в Gear Lever, пропускаю"
     continue
   fi
 
   case $kind in
-  github) file=$(download "$(github_url "$source" "$pattern")") ;;
-  url) file=$(download "$source") ;;
-  build) file=$(build "$source") ;;
+  github) file=$(download "$(github_url "$source" "$pattern")") || { $dry || failed=1; continue; } ;;
+  url) file=$(download "$source") || { $dry || failed=1; continue; } ;;
+  build) file=$(build "$source") || { $dry || failed=1; continue; } ;;
   esac
   [[ -n ${file:-} ]] || continue
 
@@ -130,13 +140,8 @@ while read -r name kind source pattern; do
     say "подключён в Gear Lever, переехал в ~/AppImages"
   else
     say "лежит в ${DOWNLOADS/#$HOME/\~}"
+    bad "не подключён в Gear Lever"
   fi
-done <<'APPS'
-obsidian   github obsidianmd/obsidian-releases    Obsidian-[0-9.]+\.AppImage$
-claude     github aaddrick/claude-desktop-debian  amd64\.AppImage$
-onlyoffice github ONLYOFFICE/DesktopEditors       DesktopEditors-x86_64\.AppImage$
-vk         url    https://upload.object2.vk-apps.com/vk-me-desktop-dev-5837a06d-5f28-484a-ac22-045903cb1b1a/latest/vk-messenger.AppImage
-chatgpt    build  https://github.com/ilysenko/codex-desktop-linux
-APPS
+done < <(catalogue)
 
 exit $failed
