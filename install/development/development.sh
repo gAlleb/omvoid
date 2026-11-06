@@ -15,7 +15,7 @@ sudo xbps-install -y \
   kvantum qt5ct qt6ct xtools libinput-gestures mesa-dri yq lm_sensors \
   tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng tesseract-ocr-san \
   gearlever mpdris2-rs fuzzypkg yazi python3-watchdog libxkbcommon-tools \
-  bind-utils ripdrag keepassxc gajim exfat-utils fuse-exfat bat fd \
+  bind-utils ripdrag keepassxc omtalk exfat-utils fuse-exfat bat fd \
   neomutt msmtp pass gettext isync goimapnotify pam-gnupg lynx notmuch \
   urlview abook w3m mesa-vulkan-intel vulkan-loader mesa-vulkan-lavapipe \
   ripgrep pinentry-qt wireless-regdb dpkg syncthing nextcloud-client jq
