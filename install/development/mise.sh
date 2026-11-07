@@ -58,6 +58,7 @@ omvoid-mise-install npm:@xai-official/grok grok
 omvoid-install-hermes-cli || true
 
 # Прочие инструменты
+omvoid-mise-install herdr
 omvoid-mise-install gh
 omvoid-mise-install npm:playwright playwright
 omvoid-mise-install npm:@kitlangton/ghui ghui
