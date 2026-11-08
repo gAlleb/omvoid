@@ -132,7 +132,6 @@ def migrate(text):
 config = root / ".config/mango"
 template = root / ".config/wal/templates/colors-mango.conf"
 cache = root / ".cache/wal/colors-mango.conf"
-palette = root / ".cache/wal/colors.json"
 paths = [config / "config.conf", *sorted((config / "conf").rglob("*.conf")), template, cache]
 changes = {}
 for path in paths:
@@ -141,26 +140,6 @@ for path in paths:
         updated = migrate(original)
         if updated != original:
             changes[path] = updated
-
-# Render only Mango's cache from the current palette, without switching themes
-# or reloading unrelated desktop programs. This also restores colors that were
-# commented out as a temporary workaround for unknown-key errors.
-if (template in changes or cache in changes) and template.is_file() and palette.is_file():
-    import json
-    from pywal import export
-
-    with tempfile.TemporaryDirectory(prefix="omvoid-mango-colors-") as temp:
-        source = Path(temp) / "colors-mango.conf"
-        output = Path(temp) / "rendered.conf"
-        source.write_text(changes.get(template, template.read_text()))
-        export.template(export.flatten_colors(json.loads(palette.read_text())), str(source), str(output))
-        if not output.is_file():
-            raise SystemExit("Cannot render Mango colors; no files were changed.")
-        rendered = output.read_text()
-        if not cache.is_file() or rendered != cache.read_text():
-            changes[cache] = rendered
-        else:
-            changes.pop(cache, None)
 
 if not changes:
     print("Mango configuration already uses 0.18 keys.")
