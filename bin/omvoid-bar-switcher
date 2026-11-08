@@ -4,52 +4,51 @@ CONFIG_FILE_EFFECTS="$HOME/.config/mango/conf/effects.conf"
 CONFIG_FILE_KEYBINDINGS="$HOME/.config/mango/conf/keybindings.conf"
 CONFIG_FILE_AUTOSTART="$HOME/.config/mango/conf/autostart.conf"
 
-# Функция для применения настроек Mango через родную утилиту
+# Apply the compositor settings through Mango's IPC.
 reload_mango() {
     mmsg dispatch reload_config
 }
 
 if pgrep -x "waybar" > /dev/null; then
-    # --- ПЕРЕКЛЮЧАЕМ НА NOCTALIA ---
+    # Switch to Noctalia.
     echo "Switching to Noctalia..."
 
-    # 1. Останавливаем текущие процессы
+    # Stop the processes owned by the outgoing bar.
     pkill waybar
     pkill -f omvoid-bar-playerctl-loop
     pkill -f layout-switcher-mango
     pkill mmsg
     pkill swayidle
 
-    # 2. Правим конфиг (blur 1 -> 0)
+    # Preserve the directive spelling on machines still running Mango 0.17.
     sed -i 's/blur_layer=1/blur_layer=0/' "$CONFIG_FILE_EFFECTS"
     sed -i 's/bind=ALT,l,spawn,swaylock/bind=ALT,l,spawn,noctalia msg session lock/' "$CONFIG_FILE_KEYBINDINGS"
-    sed -i 's%exec-once=waybar -c ~/.config/waybar/config-mango -s ~/.config/waybar/style-mango.css%exec-once=noctalia%' "$CONFIG_FILE_AUTOSTART"
-    sed -i 's%exec-once=swayidle -w%#exec-once=swayidle -w%' "$CONFIG_FILE_AUTOSTART"
+    sed -Ei 's%(exec[-_]once=)waybar -c ~/.config/waybar/config-mango -s ~/.config/waybar/style-mango.css%\1noctalia%' "$CONFIG_FILE_AUTOSTART"
+    sed -Ei 's%^(exec[-_]once=swayidle -w)%#\1%' "$CONFIG_FILE_AUTOSTART"
 
-    # 3. Применяем настройки Mango
+    # Apply the updated configuration.
     reload_mango
 
-    # 4. Запускаем Noctalia через setsid
-    # >/dev/null 2>&1 нужно, чтобы вывод не забивал терминал/логи
+    # Detach the bar and keep its output out of the terminal.
     setsid noctalia >/dev/null 2>&1 &
 
 else
-    # --- ПЕРЕКЛЮЧАЕМ НА WAYBAR ---
+    # Switch to Waybar.
     echo "Switching to Waybar..."
 
-    # 1. Останавливаем noctalia
+    # Stop the outgoing bar.
     pkill noctalia
 
-    # 2. Правим конфиг (blur 0 -> 1)
+    # Preserve the directive spelling on machines still running Mango 0.17.
     sed -i 's/blur_layer=0/blur_layer=1/' "$CONFIG_FILE_EFFECTS"
     sed -i 's/bind=ALT,l,spawn,noctalia msg session lock/bind=ALT,l,spawn,swaylock/' "$CONFIG_FILE_KEYBINDINGS"
-    sed -i 's%exec-once=noctalia%exec-once=waybar -c ~/.config/waybar/config-mango -s ~/.config/waybar/style-mango.css%' "$CONFIG_FILE_AUTOSTART"
-    sed -i 's%#exec-once=swayidle -w%exec-once=swayidle -w%' "$CONFIG_FILE_AUTOSTART"
+    sed -Ei 's%(exec[-_]once=)noctalia%\1waybar -c ~/.config/waybar/config-mango -s ~/.config/waybar/style-mango.css%' "$CONFIG_FILE_AUTOSTART"
+    sed -Ei 's%^#(exec[-_]once=swayidle -w)%\1%' "$CONFIG_FILE_AUTOSTART"
 
-    # 3. Применяем настройки Mango
+    # Apply the updated configuration.
     reload_mango
 
-    # 4. Запускаем Waybar с кастомными параметрами через setsid
+    # Detach the bar and the idle watcher.
     setsid waybar -c ~/.config/waybar/config-mango -s ~/.config/waybar/style-mango.css >/dev/null 2>&1 &
     setsid swayidle -w >/dev/null 2>&1 & 
 fi
