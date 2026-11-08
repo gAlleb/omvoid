@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=botui
+Exec=kitty --class=botui -o font_size=12 --title=botui -e bash -i -c "botui"
+Type=Application
+Comment=botui
+Terminal=false
+Icon=books
+Categories=Books;
+Keywords=books;reader;
