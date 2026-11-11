@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=botui
-Exec=kitty --class=botui -o font_size=12 -o window_margin_width=0 --title=botui -e bash -i -c "botui"
+Exec=kitty --class=botui -o font_size=12 -o window_margin_width=0 --title=botui -e bash -i -c "botui %F"
 Type=Application
 Comment=botui
 Terminal=false
