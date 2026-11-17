@@ -1,6 +1,8 @@
 vim.g.base46_cache = vim.fn.stdpath "data" .. "/base46/"
 vim.g.mapleader = " "
-
+vim.g.vimtex_view_method = "general"
+vim.g.vimtex_view_general_viewer = "botui"
+vim.g.vimtex_view_general_options = "--synctex-forward @line:@col:@tex @pdf"
 -- bootstrap lazy and all plugins
 local lazypath = vim.fn.stdpath "data" .. "/lazy/lazy.nvim"
 
